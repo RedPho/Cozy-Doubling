@@ -6,10 +6,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -25,22 +25,92 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 fun FriendsScreen(viewModel: FriendsViewModel = viewModel()) {
     val friendsList by viewModel.friends.collectAsState()
 
-    FriendsPage(friendsList = friendsList)
+    FriendsPage(
+        friendsList = friendsList,
+        onAddFriend = { username -> viewModel.onAddFriendClicked(username) }
+    )
 }
 
 // --- THE UI COMPONENT ---
 @Composable
-fun FriendsPage(friendsList: List<FriendUiState>) {
-    LazyColumn(
+fun FriendsPage(
+    friendsList: List<FriendUiState>,
+    onAddFriend: (String) -> Unit
+) {
+    // Dialog state
+    var showAddDialog by remember { mutableStateOf(false) }
+    var newFriendUsername by remember { mutableStateOf("") }
+
+    Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 16.dp),
-        contentPadding = PaddingValues(vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+            .padding(horizontal = 16.dp)
     ) {
-        items(friendsList) { friend ->
-            FriendCard(friend = friend)
+        // --- Add Friend Button ---
+        Button(
+            onClick = { showAddDialog = true },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 16.dp),
+            shape = RoundedCornerShape(8.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+        ) {
+            Icon(imageVector = Icons.Default.Add, contentDescription = "Add Friend")
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Add Friend")
         }
+
+        // --- Friends List ---
+        LazyColumn(
+            modifier = Modifier.weight(1f), // Takes up the remaining space
+            contentPadding = PaddingValues(vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(friendsList) { friend ->
+                FriendCard(friend = friend)
+            }
+        }
+    }
+
+    // --- Add Friend Dialog ---
+    if (showAddDialog) {
+        AlertDialog(
+            onDismissRequest = { showAddDialog = false },
+            title = { Text("Add a Friend") },
+            text = {
+                OutlinedTextField(
+                    value = newFriendUsername,
+                    onValueChange = { newFriendUsername = it },
+                    placeholder = { Text("Enter username") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onAddFriend(newFriendUsername)
+                        newFriendUsername = ""
+                        showAddDialog = false
+                    }
+                ) {
+                    Text("Send Request")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        newFriendUsername = ""
+                        showAddDialog = false
+                    }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 
@@ -61,7 +131,6 @@ fun FriendCard(friend: FriendUiState) {
         ) {
             // --- 1. Avatar & Status Dot ---
             Box(contentAlignment = Alignment.BottomEnd) {
-                // Avatar Box
                 Box(
                     modifier = Modifier
                         .size(48.dp)
@@ -76,14 +145,13 @@ fun FriendCard(friend: FriendUiState) {
                     )
                 }
 
-                // Online Indicator
                 if (friend.isOnline) {
                     Box(
                         modifier = Modifier
                             .size(14.dp)
                             .clip(CircleShape)
                             .background(Color(0xFF4CAF50)) // Cozy Green
-                            .padding(2.dp) // Creates a tiny border effect if wrapped, or just leave solid
+                            .padding(2.dp)
                     )
                 }
             }
@@ -131,34 +199,6 @@ fun FriendCard(friend: FriendUiState) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-        }
-    }
-}
-
-// --- Preview with Mock Data ---
-@Preview(showBackground = true)
-@Composable
-fun FriendsPagePreview() {
-    MaterialTheme {
-        val mockFriends = listOf(
-            FriendUiState(
-                name = "Alex",
-                isOnline = true,
-                lastActiveText = "Focusing",
-                lastTask = "Writing email drafts",
-                totalLeaves = 450
-            ),
-            FriendUiState(
-                name = "Sam",
-                isOnline = false,
-                lastActiveText = "Resting",
-                lastTask = "Organized the desk",
-                totalLeaves = 1200
-            )
-        )
-        // Wrapped in a box with a background to simulate the Oasis lower half
-        Box(modifier = Modifier.height(400.dp).background(MaterialTheme.colorScheme.background)) {
-            FriendsPage(friendsList = mockFriends)
         }
     }
 }

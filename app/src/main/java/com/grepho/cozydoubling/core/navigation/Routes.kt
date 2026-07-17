@@ -16,7 +16,7 @@ sealed class Screen(val route: String) {
 // 2. Just the destinations that appear on the Bottom Bar
 enum class BottomTab(val route: String, val label: String, val icon: Int) {
     HOME(Screen.Home.route, "Home", R.drawable.ic_home),
-    OASIS(Screen.Oasis.route, "Oasis", R.drawable.ic_home) // TODO: Replace with shop/oasis icon
+    OASIS(Screen.Oasis.route, "Oasis", R.drawable.ic_account_box) // TODO: Replace with shop/oasis icon
 }
 
 // 3. Your helper function so the tabs don't stack up infinitely when clicked

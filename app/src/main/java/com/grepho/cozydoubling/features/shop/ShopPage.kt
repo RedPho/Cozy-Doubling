@@ -73,14 +73,16 @@ fun ThemeShopCard(
     val isEffectivelyOwned = theme.isOwned || userState.hasCozyPass
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth(), // Sabit 260.dp yüksekliği kaldırdık
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
         ),
         shape = RoundedCornerShape(16.dp)
     ) {
         Column(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier
+                .fillMaxWidth() // fillMaxSize() yerine tekrar fillMaxWidth() kullandık
+                .padding(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Box(
@@ -106,86 +108,100 @@ fun ThemeShopCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            // Yazı ile buton alanı arasında sabit, temiz bir boşluk
+            Spacer(modifier = Modifier.height(16.dp))
 
-            if (isEffectivelyOwned) {
-                Surface(
-                    color = MaterialTheme.colorScheme.secondaryContainer,
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier.padding(vertical = 8.dp),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = "Owned",
-                            modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "Owned",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
-                    }
-                }
-            } else if (!theme.isPremium) {
-                Button(
-                    onClick = onBuyWithLeaves,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text("${theme.leafPrice} Leaves")
-                }
-            } else {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Button(
-                        onClick = onBuyWithCash,
-                        modifier = Modifier.fillMaxWidth(),
+            // --- İŞTE ÇÖZÜM KUTUSU ---
+            // Bu Box, içeriği ne olursa olsun (1 buton, 2 buton veya etiket)
+            // her kartta tam olarak aynı yüksekliği kaplar.
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 104.dp), // Çift buton + boşluk yüksekliği
+                contentAlignment = Alignment.Center // Tekli butonu bu kutunun tam ortasına hizalar
+            ) {
+                if (isEffectivelyOwned) {
+                    // OWNED STATE
+                    Surface(
+                        color = MaterialTheme.colorScheme.secondaryContainer,
                         shape = RoundedCornerShape(8.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text(theme.iapPrice)
-                    }
-
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    if (userState.isSupporter) {
-                        OutlinedButton(
-                            onClick = onBuyWithLeaves,
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(8.dp)
+                        Row(
+                            modifier = Modifier.padding(vertical = 8.dp),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("${theme.leafPrice} Leaves")
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = "Owned",
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "Owned",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
                         }
-                    } else {
-                        Surface(
-                            onClick = { /* Open Supporter Upsell Dialog */ },
+                    }
+                } else if (!theme.isPremium) {
+                    // BASIC THEME
+                    Button(
+                        onClick = onBuyWithLeaves,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text("${theme.leafPrice} Leaves")
+                    }
+                } else {
+                    // PREMIUM THEME
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Button(
+                            onClick = onBuyWithCash,
+                            modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(8.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant,
-                            modifier = Modifier.fillMaxWidth()
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                         ) {
-                            Row(
-                                modifier = Modifier.padding(vertical = 8.dp),
-                                horizontalArrangement = Arrangement.Center,
-                                verticalAlignment = Alignment.CenterVertically
+                            Text(theme.iapPrice)
+                        }
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        if (userState.isSupporter) {
+                            OutlinedButton(
+                                onClick = onBuyWithLeaves,
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(8.dp)
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.Lock,
-                                    contentDescription = "Locked",
-                                    modifier = Modifier.size(14.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = "${theme.leafPrice} Leaves",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                Text("${theme.leafPrice} Leaves")
+                            }
+                        } else {
+                            Surface(
+                                onClick = { /* Open Supporter Upsell Dialog */ },
+                                shape = RoundedCornerShape(8.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(vertical = 8.dp),
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Lock,
+                                        contentDescription = "Locked",
+                                        modifier = Modifier.size(14.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "${theme.leafPrice} Leaves",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
                         }
                     }

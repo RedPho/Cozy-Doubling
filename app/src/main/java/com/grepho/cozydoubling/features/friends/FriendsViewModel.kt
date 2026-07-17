@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 
 class FriendsViewModel : ViewModel() {
 
@@ -40,5 +41,24 @@ class FriendsViewModel : ViewModel() {
                 totalLeaves = 85
             )
         )
+    }
+
+    // 2. Add Friend Logic
+    fun onAddFriendClicked(username: String) {
+        if (username.isBlank()) return
+
+        // TODO: Replace with Supabase logic to send a friend request.
+        // For now, we will just simulate adding a new friend to the local state.
+        val newFriend = FriendUiState(
+            name = username,
+            isOnline = false,
+            lastActiveText = "Added just now",
+            lastTask = "Ready to focus",
+            totalLeaves = 0
+        )
+
+        _friends.update { currentList ->
+            currentList + newFriend
+        }
     }
 }
