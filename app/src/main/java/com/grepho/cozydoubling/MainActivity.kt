@@ -22,6 +22,7 @@ import androidx.navigation.compose.rememberNavController
 import com.grepho.cozydoubling.ui.components.CozyTopBar
 import com.grepho.cozydoubling.ui.pages.HomePage
 import com.grepho.cozydoubling.ui.pages.OasisPage
+import com.grepho.cozydoubling.ui.pages.SettingsPage
 import com.grepho.cozydoubling.ui.theme.CozyDoublingTheme
 
 class MainActivity : ComponentActivity() {
@@ -81,11 +82,14 @@ fun AppNavHost(navController: NavHostController, modifier: Modifier = Modifier) 
                 topBar = {
                     CozyTopBar(
                         appName = "Cosy Doubling",
-                        currencyCount = 200,
-                        onShopClick = { navController.navigateToBottomTab(Screen.Oasis.route) },
-                        onProfileClick = { navController.navigate(Screen.Profile.route) },
-                        onSettingsClick = { navController.navigate(Screen.Settings.route) },
-                        onFriendsClick = { navController.navigate(Screen.Friends.route) }
+                        currencyCount = 1450, // Mock leaves
+                        onShopClick = {
+                            // Navigates to Oasis (where the Shop tab is)
+                            navController.navigateToBottomTab(Screen.Oasis.route)
+                        },
+                        onSettingsClick = {
+                            navController.navigate(Screen.Settings.route)
+                        }
                     )
                 }
             )
@@ -98,7 +102,7 @@ fun AppNavHost(navController: NavHostController, modifier: Modifier = Modifier) 
 
         // OTHER PAGES
         composable(Screen.Profile.route) { Text("Profile Page") }
-        composable(Screen.Settings.route) { Text("Settings Page") }
+        composable(Screen.Settings.route) { SettingsPage() }
         composable(Screen.Friends.route) { Text("Friends Page") }
     }
 }
