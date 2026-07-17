@@ -21,6 +21,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.grepho.cozydoubling.ui.components.CozyTopBar
 import com.grepho.cozydoubling.ui.pages.HomePage
+import com.grepho.cozydoubling.ui.pages.OasisPage
 import com.grepho.cozydoubling.ui.theme.CozyDoublingTheme
 
 class MainActivity : ComponentActivity() {
@@ -66,6 +67,7 @@ fun CozyDoublingApp() {
     }
 }
 
+
 @Composable
 fun AppNavHost(navController: NavHostController, modifier: Modifier = Modifier) {
     NavHost(
@@ -73,14 +75,15 @@ fun AppNavHost(navController: NavHostController, modifier: Modifier = Modifier) 
         startDestination = Screen.Home.route,
         modifier = modifier
     ) {
+        // HOME TAB (Has Top Bar)
         composable(Screen.Home.route) {
             HomePage(
                 topBar = {
                     CozyTopBar(
                         appName = "Cosy Doubling",
                         currencyCount = 200,
-                        onShopClick = { navController.navigate(Screen.Shop.route) },
-                        onProfileClick = { navController.navigateToBottomTab(Screen.Profile.route) },
+                        onShopClick = { navController.navigateToBottomTab(Screen.Oasis.route) },
+                        onProfileClick = { navController.navigate(Screen.Profile.route) },
                         onSettingsClick = { navController.navigate(Screen.Settings.route) },
                         onFriendsClick = { navController.navigate(Screen.Friends.route) }
                     )
@@ -88,11 +91,13 @@ fun AppNavHost(navController: NavHostController, modifier: Modifier = Modifier) 
             )
         }
 
-        composable(Screen.Favorites.route) { Text("Favorites Page") }
-        composable(Screen.Profile.route) { Text("Profile Page") }
+        // OASIS TAB (No Top Bar, Split Screen)
+        composable(Screen.Oasis.route) {
+            OasisPage()
+        }
 
-        // Fullscreen pages
-        composable(Screen.Shop.route) { Text("Shop Page - No Bottom Bar!") }
+        // OTHER PAGES
+        composable(Screen.Profile.route) { Text("Profile Page") }
         composable(Screen.Settings.route) { Text("Settings Page") }
         composable(Screen.Friends.route) { Text("Friends Page") }
     }

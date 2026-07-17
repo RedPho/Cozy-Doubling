@@ -1,21 +1,20 @@
 package com.grepho.cozydoubling
+
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
-import com.grepho.cozydoubling.R
 
 sealed class Screen(val route: String) {
     object Home : Screen("home")
-    object Favorites : Screen("favorites")
+    object Oasis : Screen("oasis")
     object Profile : Screen("profile")
-    object Shop : Screen("shop")
     object Settings : Screen("settings")
     object Friends : Screen("friends")
 }
 
+// Now only 2 tabs!
 enum class BottomTab(val route: String, val label: String, val icon: Int) {
     HOME(Screen.Home.route, "Home", R.drawable.ic_home),
-    FAVORITES(Screen.Favorites.route, "Favorites", R.drawable.ic_favorite),
-    PROFILE(Screen.Profile.route, "Profile", R.drawable.ic_account_box)
+    OASIS(Screen.Oasis.route, "Oasis", R.drawable.ic_home) // Replace with a shop/oasis icon
 }
 
 fun NavController.navigateToBottomTab(route: String) {
