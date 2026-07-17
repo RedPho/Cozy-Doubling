@@ -4,26 +4,22 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.tooling.preview.PreviewScreenSizes
-import androidx.compose.ui.unit.dp
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
+import com.grepho.cozydoubling.ui.components.CozyTopBar
 import com.grepho.cozydoubling.ui.pages.HomePage
 import com.grepho.cozydoubling.ui.theme.CozyDoublingTheme
 
@@ -39,73 +35,65 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@PreviewScreenSizes
 @Composable
 fun CozyDoublingApp() {
-    var currentDestination by rememberSaveable { mutableStateOf(AppDestinations.HOME) }
+    val navController = rememberNavController()
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route ?: Screen.Home.route
 
-    NavigationSuiteScaffold(
-        navigationSuiteItems = {
-            AppDestinations.entries.forEach {
-                item(
-                    icon = {
-                        Icon(
-                            painterResource(it.icon),
-                            contentDescription = it.label
+    val isBottomTab = BottomTab.entries.any { it.route == currentRoute }
+
+    Scaffold(
+        bottomBar = {
+            if (isBottomTab) {
+                NavigationBar {
+                    BottomTab.entries.forEach { tab ->
+                        NavigationBarItem(
+                            icon = { Icon(painterResource(tab.icon), contentDescription = tab.label) },
+                            label = { Text(tab.label) },
+                            selected = currentRoute == tab.route,
+                            onClick = { navController.navigateToBottomTab(tab.route) }
                         )
-                    },
-                    label = { Text(it.label) },
-                    selected = it == currentDestination,
-                    onClick = { currentDestination = it }
-                )
-            }
-        }
-    ) {
-        Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-            // A Box lets us apply the padding to whatever screen is currently active
-            Box(modifier = Modifier.padding(innerPadding)) {
-                when (currentDestination) {
-                    AppDestinations.HOME -> {
-                        // Call your Home Composable here
-                        HomePage()
-                    }
-                    AppDestinations.FAVORITES -> {
-                        // Call your Favorites Composable here
-                        Text("This is the Favorites Screen")
-                    }
-                    AppDestinations.PROFILE -> {
-                        // Call your Profile Composable here
-                        Text("This is the Profile Screen")
                     }
                 }
             }
         }
-    }
-}
-
-enum class AppDestinations(
-    val label: String,
-    val icon: Int,
-) {
-    HOME("Home", R.drawable.ic_home),
-    FAVORITES("Favorites", R.drawable.ic_favorite),
-    PROFILE("Profile", R.drawable.ic_account_box),
-}
-
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Surface(color = Color.Cyan) {
-        Text(
-            text = "Hello $name!",
-            modifier = modifier.padding(15.dp)
+    ) { innerPadding ->
+        AppNavHost(
+            navController = navController,
+            modifier = Modifier.padding(innerPadding)
         )
     }
 }
 
-@Preview(showBackground = true)
 @Composable
-fun GreetingPreview() {
-    CozyDoublingTheme {
-        Greeting("Android")
+fun AppNavHost(navController: NavHostController, modifier: Modifier = Modifier) {
+    NavHost(
+        navController = navController,
+        startDestination = Screen.Home.route,
+        modifier = modifier
+    ) {
+        composable(Screen.Home.route) {
+            HomePage(
+                topBar = {
+                    CozyTopBar(
+                        appName = "Cosy Doubling",
+                        currencyCount = 200,
+                        onShopClick = { navController.navigate(Screen.Shop.route) },
+                        onProfileClick = { navController.navigateToBottomTab(Screen.Profile.route) },
+                        onSettingsClick = { navController.navigate(Screen.Settings.route) },
+                        onFriendsClick = { navController.navigate(Screen.Friends.route) }
+                    )
+                }
+            )
+        }
+
+        composable(Screen.Favorites.route) { Text("Favorites Page") }
+        composable(Screen.Profile.route) { Text("Profile Page") }
+
+        // Fullscreen pages
+        composable(Screen.Shop.route) { Text("Shop Page - No Bottom Bar!") }
+        composable(Screen.Settings.route) { Text("Settings Page") }
+        composable(Screen.Friends.route) { Text("Friends Page") }
     }
 }
