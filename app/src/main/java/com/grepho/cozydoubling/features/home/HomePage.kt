@@ -1,25 +1,45 @@
-package com.grepho.cozydoubling.ui.pages
+package com.grepho.cozydoubling.features.home
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.grepho.cozydoubling.core.components.CozyTopBar
 
+// --- THE SCREEN ENTRY POINT ---
+@Composable
+fun HomeScreen(
+    onNavigateToFocus: () -> Unit,
+    onNavigateToShop: () -> Unit,
+    onNavigateToSettings: () -> Unit,
+    viewModel: HomeViewModel = viewModel()
+) {
+    // TODO: We will replace this with a state collected from the HomeViewModel later!
+    val mockCurrencyCount = 1450
+
+    HomePage(
+        topBar = {
+            CozyTopBar(
+                appName = "Cosy Doubling",
+                currencyCount = mockCurrencyCount,
+                onShopClick = onNavigateToShop,
+                onSettingsClick = onNavigateToSettings
+            )
+        },
+        onFocusClick = onNavigateToFocus
+    )
+}
+
+// --- THE UI COMPONENT ---
 @Composable
 fun HomePage(
     topBar: @Composable () -> Unit,
-    onFocusClick: () -> Unit // Pass the click action up
+    onFocusClick: () -> Unit
 ) {
     Scaffold(
         topBar = topBar
@@ -30,10 +50,9 @@ fun HomePage(
                 .fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
-            // Massive, inviting Focus button
             Button(
                 onClick = onFocusClick,
-                modifier = Modifier.size(200.dp), // Makes it a large circle
+                modifier = Modifier.size(200.dp),
                 shape = CircleShape,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary

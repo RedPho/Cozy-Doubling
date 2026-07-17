@@ -1,4 +1,4 @@
-package com.grepho.cozydoubling.ui.components
+package com.grepho.cozydoubling.core.components
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -19,7 +19,7 @@ fun CozyTopBar(
     appName: String,
     currencyCount: Int,
     onShopClick: () -> Unit,
-    onSettingsClick: () -> Unit // Only Settings and Shop are left!
+    onSettingsClick: () -> Unit
 ) {
     TopAppBar(
         title = {
@@ -30,7 +30,6 @@ fun CozyTopBar(
             )
         },
         actions = {
-            // 1. Currency / Leaves Button (Navigates to Oasis -> Shop)
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
@@ -39,7 +38,7 @@ fun CozyTopBar(
                     .padding(horizontal = 12.dp, vertical = 8.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Default.ShoppingCart, // Replace with your Leaf icon later
+                    imageVector = Icons.Default.ShoppingCart,
                     contentDescription = "Leaves",
                     tint = MaterialTheme.colorScheme.primary
                 )
@@ -52,7 +51,6 @@ fun CozyTopBar(
                 )
             }
 
-            // 2. Settings Icon Button
             IconButton(onClick = onSettingsClick) {
                 Icon(
                     imageVector = Icons.Default.Settings,

@@ -1,5 +1,4 @@
-package com.grepho.cozydoubling.ui.pages
-
+package com.grepho.cozydoubling.features.shop
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -13,35 +12,38 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.graphics.Color
+import androidx.lifecycle.viewmodel.compose.viewModel
 
-// Represents the user's current subscription/supporter status
-data class UserMonetizationState(
-    val isSupporter: Boolean,
-    val hasCozyPass: Boolean
-)
+// --- THE SCREEN ENTRY POINT ---
+@Composable
+fun ShopScreen(viewModel: ShopViewModel = viewModel()) {
+    // This connects the UI to the ViewModel's state
+    val themes by viewModel.themes.collectAsState()
+    val userState by viewModel.userState.collectAsState()
 
-data class ThemeItemUiState(
-    val id: String,
-    val name: String,
-    val primaryColor: Color, // Shows a preview of the theme
-    val leafPrice: Int,
-    val iapPrice: String,    // e.g., "$1.99"
-    val isPremium: Boolean,
-    val isOwned: Boolean,
-    val isEquipped: Boolean = false // Used for Inventory
-)
+    ShopPage(
+        themes = themes,
+        userState = userState,
+        onBuyWithLeaves = { themeId -> viewModel.onBuyWithLeavesClicked(themeId) },
+        onBuyWithCash = { themeId -> viewModel.onBuyWithCashClicked(themeId) }
+    )
+}
 
+// --- THE UI COMPONENT ---
 @Composable
 fun ShopPage(
     themes: List<ThemeItemUiState>,
-    userState: UserMonetizationState
+    userState: UserMonetizationState,
+    onBuyWithLeaves: (String) -> Unit,
+    onBuyWithCash: (String) -> Unit
 ) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
@@ -51,13 +53,23 @@ fun ShopPage(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         items(themes) { theme ->
-            ThemeShopCard(theme = theme, userState = userState)
+            ThemeShopCard(
+                theme = theme,
+                userState = userState,
+                onBuyWithLeaves = { onBuyWithLeaves(theme.id) },
+                onBuyWithCash = { onBuyWithCash(theme.id) }
+            )
         }
     }
 }
 
 @Composable
-fun ThemeShopCard(theme: ThemeItemUiState, userState: UserMonetizationState) {
+fun ThemeShopCard(
+    theme: ThemeItemUiState,
+    userState: UserMonetizationState,
+    onBuyWithLeaves: () -> Unit,
+    onBuyWithCash: () -> Unit
+) {
     val isEffectivelyOwned = theme.isOwned || userState.hasCozyPass
 
     Card(
@@ -71,7 +83,6 @@ fun ThemeShopCard(theme: ThemeItemUiState, userState: UserMonetizationState) {
             modifier = Modifier.padding(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Theme Color Preview
             Box(
                 modifier = Modifier
                     .size(64.dp)
@@ -97,9 +108,7 @@ fun ThemeShopCard(theme: ThemeItemUiState, userState: UserMonetizationState) {
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Purchase Logic
             if (isEffectivelyOwned) {
-                // OWNED STATE
                 Surface(
                     color = MaterialTheme.colorScheme.secondaryContainer,
                     shape = RoundedCornerShape(8.dp),
@@ -125,20 +134,17 @@ fun ThemeShopCard(theme: ThemeItemUiState, userState: UserMonetizationState) {
                     }
                 }
             } else if (!theme.isPremium) {
-                // BASIC THEME - Buy with leaves directly
                 Button(
-                    onClick = { /* Buy with leaves */ },
+                    onClick = onBuyWithLeaves,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text("${theme.leafPrice} Leaves")
                 }
             } else {
-                // PREMIUM THEME - Show IAP and conditional Leaf purchase
                 Column(modifier = Modifier.fillMaxWidth()) {
-                    // 1. Cash Purchase
                     Button(
-                        onClick = { /* Trigger IAP */ },
+                        onClick = onBuyWithCash,
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(8.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
@@ -148,17 +154,15 @@ fun ThemeShopCard(theme: ThemeItemUiState, userState: UserMonetizationState) {
 
                     Spacer(modifier = Modifier.height(4.dp))
 
-                    // 2. Leaf Purchase (Locked if not Supporter)
                     if (userState.isSupporter) {
                         OutlinedButton(
-                            onClick = { /* Buy with leaves */ },
+                            onClick = onBuyWithLeaves,
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(8.dp)
                         ) {
                             Text("${theme.leafPrice} Leaves")
                         }
                     } else {
-                        // Locked Supporter Perk
                         Surface(
                             onClick = { /* Open Supporter Upsell Dialog */ },
                             shape = RoundedCornerShape(8.dp),

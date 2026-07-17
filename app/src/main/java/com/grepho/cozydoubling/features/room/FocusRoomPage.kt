@@ -1,4 +1,4 @@
-package com.grepho.cozydoubling.ui.pages
+package com.grepho.cozydoubling.features.room
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
@@ -29,52 +29,65 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 
-data class FocusTask(
-    val id: String,
-    val text: String,
-    val isCompleted: Boolean = false
-)
-
-data class RoomParticipant(
-    val id: String,
-    val name: String,
-    val activeTaskText: String,
-    val completedTasks: Int,
-    val totalTasks: Int
-)
-
-
-@OptIn(ExperimentalMaterial3Api::class)
+// --- THE SCREEN ENTRY POINT ---
 @Composable
-fun FocusRoomPage(
-    onLeaveClick: () -> Unit
+fun FocusRoomScreen(
+    onLeaveClick: () -> Unit,
+    viewModel: FocusRoomViewModel = viewModel()
 ) {
-    // --- Mock State ---
-    var tasks by remember {
-        mutableStateOf(
-            listOf(
-                FocusTask("1", "Read chapter 4"),
-                FocusTask("2", "Reply to emails", isCompleted = true),
-                FocusTask("3", "Write introduction")
-            )
-        )
-    }
+    val uiState by viewModel.uiState.collectAsState()
 
-    // The active task is the one selected, default to the first incomplete one
-    var activeTaskId by remember { mutableStateOf(tasks.firstOrNull { !it.isCompleted }?.id) }
+    // Purely UI-driven states
     var isTaskListExpanded by remember { mutableStateOf(false) }
     var newTaskText by remember { mutableStateOf("") }
 
-    val participants = listOf(
-        RoomParticipant("1", "Alex", "Writing emails", 3, 7),
-        RoomParticipant("2", "Jamie", "Studying Math", 1, 4),
-        RoomParticipant("3", "You", tasks.find { it.id == activeTaskId }?.text ?: "No active task", tasks.count { it.isCompleted }, tasks.size),
-
+    // Dynamically calculate your own avatar stats based on the current task list
+    val currentUserParticipant = RoomParticipant(
+        id = "self",
+        name = "You",
+        activeTaskText = uiState.tasks.find { it.id == uiState.activeTaskId }?.text ?: "No active task",
+        completedTasks = uiState.tasks.count { it.isCompleted },
+        totalTasks = uiState.tasks.size
     )
 
+    // Combine mock users with yourself
+    val allParticipants = uiState.otherParticipants + currentUserParticipant
+
+    FocusRoomPage(
+        uiState = uiState,
+        allParticipants = allParticipants,
+        isTaskListExpanded = isTaskListExpanded,
+        newTaskText = newTaskText,
+        onToggleExpand = { isTaskListExpanded = !isTaskListExpanded },
+        onNewTaskTextChange = { newTaskText = it },
+        onTaskClick = { viewModel.onTaskClick(it) },
+        onTaskToggleStatus = { viewModel.onTaskToggleStatus(it) },
+        onAddTask = {
+            viewModel.onAddTask(newTaskText)
+            newTaskText = ""
+        },
+        onLeaveClick = onLeaveClick
+    )
+}
+
+// --- THE UI COMPONENT ---
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun FocusRoomPage(
+    uiState: FocusRoomUiState,
+    allParticipants: List<RoomParticipant>,
+    isTaskListExpanded: Boolean,
+    newTaskText: String,
+    onToggleExpand: () -> Unit,
+    onNewTaskTextChange: (String) -> Unit,
+    onTaskClick: (String) -> Unit,
+    onTaskToggleStatus: (String) -> Unit,
+    onAddTask: () -> Unit,
+    onLeaveClick: () -> Unit
+) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -91,42 +104,30 @@ fun FocusRoomPage(
         },
         bottomBar = {
             TaskBottomSheet(
-                tasks = tasks,
-                activeTaskId = activeTaskId,
+                tasks = uiState.tasks,
+                activeTaskId = uiState.activeTaskId,
                 isExpanded = isTaskListExpanded,
-                onToggleExpand = { isTaskListExpanded = !isTaskListExpanded },
-                onTaskClick = { activeTaskId = it.id },
-                onTaskToggleStatus = { toggledTask ->
-                    tasks = tasks.map {
-                        if (it.id == toggledTask.id) it.copy(isCompleted = !it.isCompleted) else it
-                    }
-                },
+                onToggleExpand = onToggleExpand,
+                onTaskClick = onTaskClick,
+                onTaskToggleStatus = onTaskToggleStatus,
                 newTaskText = newTaskText,
-                onNewTaskTextChange = { newTaskText = it },
-                onAddTask = {
-                    if (newTaskText.isNotBlank()) {
-                        val newTask = FocusTask(id = System.currentTimeMillis().toString(), text = newTaskText)
-                        tasks = tasks + newTask
-                        if (activeTaskId == null) activeTaskId = newTask.id
-                        newTaskText = ""
-                    }
-                }
+                onNewTaskTextChange = onNewTaskTextChange,
+                onAddTask = onAddTask
             )
         }
     ) { innerPadding ->
-        // --- The Canvas (Middle Area) ---
         Box(
             modifier = Modifier
                 .padding(innerPadding)
                 .fillMaxSize()
         ) {
             LazyVerticalGrid(
-                columns = GridCells.Fixed(3), // 3 users per row
+                columns = GridCells.Fixed(3),
                 modifier = Modifier.fillMaxSize().padding(16.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
-                items(participants) { participant ->
+                items(allParticipants) { participant ->
                     ParticipantAvatar(participant)
                 }
             }
@@ -146,16 +147,13 @@ fun ParticipantAvatar(participant: RoomParticipant) {
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.fillMaxWidth()
     ) {
-        // Avatar with Progress Ring
         Box(contentAlignment = Alignment.Center) {
-            // Background track (optional, makes it look nicer)
             CircularProgressIndicator(
                 progress = { 1f },
                 modifier = Modifier.size(72.dp),
                 color = MaterialTheme.colorScheme.surfaceVariant,
                 strokeWidth = 4.dp
             )
-            // Actual progress
             CircularProgressIndicator(
                 progress = { progress },
                 modifier = Modifier.size(72.dp),
@@ -164,7 +162,6 @@ fun ParticipantAvatar(participant: RoomParticipant) {
                 trackColor = Color.Transparent
             )
 
-            // The Circle Character
             Box(
                 modifier = Modifier
                     .size(56.dp)
@@ -182,7 +179,6 @@ fun ParticipantAvatar(participant: RoomParticipant) {
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Name
         Text(
             text = participant.name,
             style = MaterialTheme.typography.titleSmall,
@@ -191,7 +187,6 @@ fun ParticipantAvatar(participant: RoomParticipant) {
             overflow = TextOverflow.Ellipsis
         )
 
-        // Active Task
         Text(
             text = participant.activeTaskText,
             style = MaterialTheme.typography.labelSmall,
@@ -209,8 +204,8 @@ fun TaskBottomSheet(
     activeTaskId: String?,
     isExpanded: Boolean,
     onToggleExpand: () -> Unit,
-    onTaskClick: (FocusTask) -> Unit,
-    onTaskToggleStatus: (FocusTask) -> Unit,
+    onTaskClick: (String) -> Unit,
+    onTaskToggleStatus: (String) -> Unit,
     newTaskText: String,
     onNewTaskTextChange: (String) -> Unit,
     onAddTask: () -> Unit
@@ -227,7 +222,6 @@ fun TaskBottomSheet(
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            // --- Active Task Display & Expand Arrow ---
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -258,12 +252,11 @@ fun TaskBottomSheet(
                 )
             }
 
-            // --- Expanded Task List ---
             AnimatedVisibility(visible = isExpanded) {
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(max = 200.dp) // Prevents it from taking over the whole screen
+                        .heightIn(max = 200.dp)
                         .padding(vertical = 8.dp)
                 ) {
                     items(tasks) { task ->
@@ -274,13 +267,13 @@ fun TaskBottomSheet(
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(8.dp))
                                 .background(if (isActive) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f) else Color.Transparent)
-                                .clickable { onTaskClick(task) }
+                                .clickable { onTaskClick(task.id) }
                                 .padding(horizontal = 8.dp, vertical = 4.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Checkbox(
                                 checked = task.isCompleted,
-                                onCheckedChange = { onTaskToggleStatus(task) }
+                                onCheckedChange = { onTaskToggleStatus(task.id) }
                             )
                             Text(
                                 text = task.text,
@@ -297,7 +290,6 @@ fun TaskBottomSheet(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // --- Add Task Input ---
             OutlinedTextField(
                 value = newTaskText,
                 onValueChange = onNewTaskTextChange,

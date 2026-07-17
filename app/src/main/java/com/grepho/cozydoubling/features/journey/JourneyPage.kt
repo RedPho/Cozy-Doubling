@@ -1,30 +1,36 @@
-package com.grepho.cozydoubling.ui.pages
+package com.grepho.cozydoubling.features.journey
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 
+// --- THE SCREEN ENTRY POINT ---
+@Composable
+fun JourneyScreen(
+    modifier: Modifier = Modifier,
+    viewModel: JourneyViewModel = viewModel()
+) {
+    val uiState by viewModel.uiState.collectAsState()
 
-data class ProfileUiState(
-    val username: String,
-    val bio: String,
-    val totalLeaves: Int,
-    val totalFocusHours: Int,
-    val favoriteRooms: List<String>
-)
+    JourneyPage(
+        uiState = uiState,
+        modifier = modifier
+    )
+}
+
+// --- THE UI COMPONENT ---
 @Composable
 fun JourneyPage(
     uiState: ProfileUiState,
@@ -85,26 +91,6 @@ fun JourneyPage(
                 modifier = Modifier.weight(1f)
             )
         }
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // --- 3. Favorite Cozy Rooms ---
-        Column(modifier = Modifier.fillMaxWidth()) {
-            Text(
-                text = "Favorite Spaces",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(bottom = 12.dp)
-            )
-
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(uiState.favoriteRooms) { roomName ->
-                    RoomListItem(roomName = roomName)
-                }
-            }
-        }
     }
 }
 
@@ -139,33 +125,7 @@ fun GentleStatCard(title: String, value: String, modifier: Modifier = Modifier) 
     }
 }
 
-@Composable
-fun RoomListItem(roomName: String) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-        shape = RoundedCornerShape(12.dp)
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.Default.Star,
-                contentDescription = "Favorite Room",
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Text(
-                text = roomName,
-                style = MaterialTheme.typography.bodyLarge
-            )
-        }
-    }
-}
-
-// --- 4. Mock Preview ---
+// --- Mock Preview ---
 @Preview(showBackground = true)
 @Composable
 fun ProfilePagePreview() {
@@ -175,8 +135,7 @@ fun ProfilePagePreview() {
                 username = "CozyPanda",
                 bio = "Just here to get things done slowly.",
                 totalLeaves = 1450,
-                totalFocusHours = 42,
-                favoriteRooms = listOf("Quiet Library", "Lofi Beats Lounge", "Morning Coffee Club")
+                totalFocusHours = 42
             )
         )
     }

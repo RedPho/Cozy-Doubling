@@ -1,11 +1,10 @@
-package com.grepho.cozydoubling.ui.pages
+package com.grepho.cozydoubling.features.summary
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ShoppingCart // Replace with Leaf Icon later
@@ -15,17 +14,31 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+// --- THE SCREEN ENTRY POINT ---
+@Composable
+fun SummaryScreen(
+    onContinueClick: () -> Unit,
+    viewModel: SummaryViewModel = viewModel()
+) {
+    val uiState by viewModel.uiState.collectAsState()
+
+    SummaryPage(
+        uiState = uiState,
+        onContinueClick = onContinueClick
+    )
+}
+
+// --- THE UI COMPONENT ---
 @Composable
 fun SummaryPage(
-    focusedMinutes: Int = 125, // Example: 2 hours 5 mins
-    tasksFinished: Int = 3,
-    leavesEarned: Int = 15,
+    uiState: SummaryUiState,
     onContinueClick: () -> Unit
 ) {
     // --- Animation States ---
@@ -49,7 +62,7 @@ fun SummaryPage(
 
         // Count up the leaves
         animatedLeafCount.animateTo(
-            targetValue = leavesEarned.toFloat(),
+            targetValue = uiState.leavesEarned.toFloat(),
             animationSpec = tween(
                 durationMillis = 1500, // Takes 1.5 seconds to count up
                 easing = FastOutSlowInEasing
@@ -58,8 +71,8 @@ fun SummaryPage(
     }
 
     // --- Time Formatting ---
-    val hours = focusedMinutes / 60
-    val minutes = focusedMinutes % 60
+    val hours = uiState.focusedMinutes / 60
+    val minutes = uiState.focusedMinutes % 60
     val timeString = if (hours > 0) "${hours}h ${minutes}m" else "${minutes}m"
 
     Column(
@@ -74,7 +87,7 @@ fun SummaryPage(
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            textAlign = TextAlign.Center
         )
 
         Spacer(modifier = Modifier.height(48.dp))
@@ -101,7 +114,7 @@ fun SummaryPage(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
-                    text = "Tasks finished: $tasksFinished",
+                    text = "Tasks finished: ${uiState.tasksFinished}",
                     style = MaterialTheme.typography.titleMedium
                 )
 

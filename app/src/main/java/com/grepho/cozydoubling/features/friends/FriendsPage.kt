@@ -1,4 +1,4 @@
-package com.grepho.cozydoubling.ui.pages
+package com.grepho.cozydoubling.features.friends
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -8,6 +8,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -16,15 +18,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 
-data class FriendUiState(
-    val name: String,
-    val isOnline: Boolean,
-    val lastActiveText: String, // e.g., "Online now", "Resting", "Active 2h ago"
-    val lastTask: String,
-    val totalLeaves: Int
-)
+// --- THE SCREEN ENTRY POINT ---
+@Composable
+fun FriendsScreen(viewModel: FriendsViewModel = viewModel()) {
+    val friendsList by viewModel.friends.collectAsState()
 
+    FriendsPage(friendsList = friendsList)
+}
+
+// --- THE UI COMPONENT ---
 @Composable
 fun FriendsPage(friendsList: List<FriendUiState>) {
     LazyColumn(
@@ -150,13 +154,6 @@ fun FriendsPagePreview() {
                 lastActiveText = "Resting",
                 lastTask = "Organized the desk",
                 totalLeaves = 1200
-            ),
-            FriendUiState(
-                name = "Jamie",
-                isOnline = true,
-                lastActiveText = "Focusing",
-                lastTask = "Reading chapter 4",
-                totalLeaves = 85
             )
         )
         // Wrapped in a box with a background to simulate the Oasis lower half
