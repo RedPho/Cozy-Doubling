@@ -24,6 +24,7 @@ import com.grepho.cozydoubling.ui.pages.HomePage
 import com.grepho.cozydoubling.ui.pages.OasisPage
 import com.grepho.cozydoubling.ui.pages.SettingsPage
 import com.grepho.cozydoubling.ui.theme.CozyDoublingTheme
+import com.grepho.cozydoubling.ui.pages.FocusRoomPage
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -69,6 +70,8 @@ fun CozyDoublingApp() {
 }
 
 
+
+
 @Composable
 fun AppNavHost(navController: NavHostController, modifier: Modifier = Modifier) {
     NavHost(
@@ -76,33 +79,41 @@ fun AppNavHost(navController: NavHostController, modifier: Modifier = Modifier) 
         startDestination = Screen.Home.route,
         modifier = modifier
     ) {
-        // HOME TAB (Has Top Bar)
+        // HOME TAB
         composable(Screen.Home.route) {
             HomePage(
                 topBar = {
                     CozyTopBar(
                         appName = "Cosy Doubling",
-                        currencyCount = 1450, // Mock leaves
+                        currencyCount = 1450,
                         onShopClick = {
-                            // Navigates to Oasis (where the Shop tab is)
                             navController.navigateToBottomTab(Screen.Oasis.route)
                         },
                         onSettingsClick = {
                             navController.navigate(Screen.Settings.route)
                         }
                     )
+                },
+                onFocusClick = {
+                    navController.navigate(Screen.FocusRoom.route)
                 }
             )
         }
 
-        // OASIS TAB (No Top Bar, Split Screen)
+        // OASIS TAB
         composable(Screen.Oasis.route) {
             OasisPage()
         }
 
         // OTHER PAGES
-        composable(Screen.Profile.route) { Text("Profile Page") }
         composable(Screen.Settings.route) { SettingsPage() }
         composable(Screen.Friends.route) { Text("Friends Page") }
+
+        // FOCUS ROOM (No bottom bar or top bar by default, totally immersive)
+        composable(Screen.FocusRoom.route) {
+            FocusRoomPage(
+                onLeaveClick = { navController.popBackStack() }
+            )
+        }
     }
 }
