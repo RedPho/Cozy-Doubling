@@ -10,6 +10,7 @@ sealed class Screen(val route: String) {
     object Settings : Screen("settings")
     object Friends : Screen("friends")
     object FocusRoom : Screen("focus_room")
+    object Summary : Screen("summary")
 }
 
 // Now only 2 tabs!

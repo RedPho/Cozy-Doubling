@@ -26,6 +26,7 @@ import com.grepho.cozydoubling.ui.pages.OasisPage
 import com.grepho.cozydoubling.ui.pages.SettingsPage
 import com.grepho.cozydoubling.ui.theme.CozyDoublingTheme
 import com.grepho.cozydoubling.ui.pages.FocusRoomPage
+import com.grepho.cozydoubling.ui.pages.SummaryPage
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -113,7 +114,21 @@ fun AppNavHost(navController: NavHostController, modifier: Modifier = Modifier) 
         // FOCUS ROOM (No bottom bar or top bar by default, totally immersive)
         composable(Screen.FocusRoom.route) {
             FocusRoomPage(
-                onLeaveClick = { navController.popBackStack() }
+                onLeaveClick = {
+                    navController.navigate(Screen.Summary.route) {
+                        // This prevents them from hitting the back button to re-enter the room
+                        popUpTo(Screen.FocusRoom.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable(Screen.Summary.route) {
+            SummaryPage(
+                onContinueClick = {
+                    // Go back to the Home screen and clear the summary off the stack
+                    navController.popBackStack(Screen.Home.route, inclusive = false)
+                }
             )
         }
     }
