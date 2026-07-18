@@ -1,7 +1,6 @@
 package com.grepho.cozydoubling.features.shop
 
 import androidx.compose.ui.graphics.Color
-import kotlinx.serialization.Serializable
 
 // Represents the user's current subscription/supporter status
 data class UserMonetizationState(
@@ -58,48 +57,4 @@ data class ThemeItemUiState(
     val isPremium: Boolean,
     val isOwned: Boolean,
     val isEquipped: Boolean = false
-)
-
-// =========================================================
-// Supabase DTOs — raw rows come back as hex strings, not Color.
-// Keep parsing at the network boundary; the rest of the app
-// only ever touches ThemePalette / androidx.compose.ui.graphics.Color.
-// =========================================================
-
-@Serializable
-data class ThemeColorsDto(
-    val primary: String,
-    val onPrimary: String,
-    val primaryContainer: String,
-    val onPrimaryContainer: String,
-    val secondaryContainer: String,
-    val onSecondaryContainer: String,
-    val surfaceVariant: String,
-    val onSurfaceVariant: String,
-    val onSurface: String,
-    val background: String
-)
-
-@Serializable
-data class ThemeDto(
-    val id: String,
-    val name: String,
-    val is_premium: Boolean,
-    val leaf_price: Int,
-    val iap_product_id: String? = null,
-    val sort_order: Int = 0,
-    val colors: ThemeColorsDto
-)
-
-fun ThemeColorsDto.toPalette(): ThemePalette = ThemePalette(
-    primary = Color(android.graphics.Color.parseColor(primary)),
-    onPrimary = Color(android.graphics.Color.parseColor(onPrimary)),
-    primaryContainer = Color(android.graphics.Color.parseColor(primaryContainer)),
-    onPrimaryContainer = Color(android.graphics.Color.parseColor(onPrimaryContainer)),
-    secondaryContainer = Color(android.graphics.Color.parseColor(secondaryContainer)),
-    onSecondaryContainer = Color(android.graphics.Color.parseColor(onSecondaryContainer)),
-    surfaceVariant = Color(android.graphics.Color.parseColor(surfaceVariant)),
-    onSurfaceVariant = Color(android.graphics.Color.parseColor(onSurfaceVariant)),
-    onSurface = Color(android.graphics.Color.parseColor(onSurface)),
-    background = Color(android.graphics.Color.parseColor(background))
 )
