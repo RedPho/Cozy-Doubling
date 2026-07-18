@@ -11,6 +11,7 @@ sealed class Screen(val route: String) {
     object Settings : Screen("settings")
     object FocusRoom : Screen("focus_room")
     object Summary : Screen("summary")
+    object Login : Screen("login")
 }
 
 // 2. Just the destinations that appear on the Bottom Bar

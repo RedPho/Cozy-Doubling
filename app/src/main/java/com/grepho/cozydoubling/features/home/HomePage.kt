@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -19,19 +21,23 @@ fun HomeScreen(
     onNavigateToSettings: () -> Unit,
     viewModel: HomeViewModel = viewModel()
 ) {
-    // TODO: We will replace this with a state collected from the HomeViewModel later!
-    val mockCurrencyCount = 1450
+    // 1. Collect the profile state from the ViewModel
+    // We use a default value while it's loading
+    val profile by viewModel.profile.collectAsState()
 
     HomePage(
         topBar = {
             CozyTopBar(
-                appName = "Cosy Doubling",
-                currencyCount = mockCurrencyCount,
+                appName = "Cozy Doubling",
+                // 2. Use the real leaves count!
+                currencyCount = profile?.leaves?.toInt() ?: 0,
                 onShopClick = onNavigateToShop,
                 onSettingsClick = onNavigateToSettings
             )
         },
-        onFocusClick = onNavigateToFocus
+        onFocusClick = onNavigateToFocus,
+        // 3. Pass the player tag so we can display it
+        playerTag = profile?.playerTag ?: ""
     )
 }
 
@@ -39,17 +45,28 @@ fun HomeScreen(
 @Composable
 fun HomePage(
     topBar: @Composable () -> Unit,
-    onFocusClick: () -> Unit
+    onFocusClick: () -> Unit,
+    playerTag: String
 ) {
     Scaffold(
         topBar = topBar
     ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .padding(innerPadding)
-                .fillMaxSize(),
-            contentAlignment = Alignment.Center
+        Column(
+            modifier = Modifier.padding(innerPadding).fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
+            // Display the Supercell-style tag
+            if (playerTag.isNotEmpty()) {
+                Text(
+                    text = "#$playerTag",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.secondary
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             Button(
                 onClick = onFocusClick,
                 modifier = Modifier.size(200.dp),
