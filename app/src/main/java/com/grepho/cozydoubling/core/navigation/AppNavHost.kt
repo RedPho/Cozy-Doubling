@@ -68,7 +68,7 @@ fun AppNavHost(navController: NavHostController, modifier: Modifier = Modifier, 
 
         composable(Screen.FocusRoom.route) {
             FocusRoomScreen(
-                onLeaveClick = {
+                onNavigateToSummary = {
                     navController.navigate(Screen.Summary.route) {
                         popUpTo(Screen.FocusRoom.route) { inclusive = true }
                     }

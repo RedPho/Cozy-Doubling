@@ -1,46 +1,52 @@
 package com.grepho.cozydoubling.features.room
 
 import androidx.lifecycle.ViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
-
-// We create a single state class to hold everything the room needs
-data class FocusRoomUiState(
-    val tasks: List<FocusTask> = emptyList(),
-    val activeTaskId: String? = null,
-    val otherParticipants: List<RoomParticipant> = emptyList()
-)
+import androidx.lifecycle.viewModelScope
+import com.grepho.cozydoubling.core.profile.ProfileRepository
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
 
 class FocusRoomViewModel : ViewModel() {
+
+    // 1. Initialize Repo with the ViewModel's scope
+    private val roomRepository = FocusRoomRepository(viewModelScope)
 
     private val _uiState = MutableStateFlow(FocusRoomUiState())
     val uiState: StateFlow<FocusRoomUiState> = _uiState.asStateFlow()
 
+    private var currentSessionId: String? = null
+
     init {
-        loadInitialState()
+        // 2. Start the Room Logic
+        viewModelScope.launch {
+            currentSessionId = roomRepository.startSession()
+            roomRepository.joinRoom()
+        }
+
+        // 3. Observe the "Other Participants" directly from the Repository
+        roomRepository.otherParticipants
+            .onEach { participants ->
+                _uiState.update { it.copy(otherParticipants = participants) }
+            }
+            .launchIn(viewModelScope)
     }
 
-    private fun loadInitialState() {
-        val initialTasks = listOf(
-            FocusTask("1", "Read chapter 4"),
-            FocusTask("2", "Reply to emails", isCompleted = true),
-            FocusTask("3", "Write introduction")
-        )
+    private fun syncWithOthers() {
+        val currentProfile = ProfileRepository.profile.value ?: return
+        val state = _uiState.value
 
-        _uiState.value = FocusRoomUiState(
-            tasks = initialTasks,
-            activeTaskId = initialTasks.firstOrNull { !it.isCompleted }?.id,
-            otherParticipants = listOf(
-                RoomParticipant("1", "Alex", "Writing emails", 3, 7),
-                RoomParticipant("2", "Jamie", "Studying Math", 1, 4)
-            )
+        val action = ParticipantAction(
+            id = currentProfile.id,
+            activeTaskText = state.tasks.find { it.id == state.activeTaskId }?.text ?: "Focusing...",
+            completedTasks = state.tasks.count { it.isCompleted },
+            totalTasks = state.tasks.size
         )
+        roomRepository.broadcastUpdate(action)
     }
 
     fun onTaskClick(taskId: String) {
         _uiState.update { it.copy(activeTaskId = taskId) }
+        syncWithOthers()
     }
 
     fun onTaskToggleStatus(taskId: String) {
@@ -50,22 +56,43 @@ class FocusRoomViewModel : ViewModel() {
             }
             state.copy(tasks = updatedTasks)
         }
+        syncWithOthers()
     }
 
     fun onAddTask(text: String) {
         if (text.isBlank()) return
-
-        val newTask = FocusTask(
-            id = System.currentTimeMillis().toString(),
-            text = text
-        )
+        val newTask = FocusTask(id = System.currentTimeMillis().toString(), text = text)
 
         _uiState.update { state ->
             val updatedTasks = state.tasks + newTask
             state.copy(
                 tasks = updatedTasks,
-                activeTaskId = state.activeTaskId ?: newTask.id // Set as active if none exists
+                activeTaskId = state.activeTaskId ?: newTask.id
             )
+        }
+        syncWithOthers()
+    }
+
+    fun finishWork(onComplete: () -> Unit) {
+        val sessionId = currentSessionId ?: return
+        val completedCount = _uiState.value.tasks.count { it.isCompleted }
+
+        viewModelScope.launch {
+            try {
+                roomRepository.finishSession(sessionId, completedCount)
+                ProfileRepository.refreshProfile()
+                onComplete()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        // 4. Lean Cleanup: Just tell the repo to leave
+        viewModelScope.launch {
+            roomRepository.leaveRoom()
         }
     }
 }

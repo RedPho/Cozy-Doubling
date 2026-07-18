@@ -8,15 +8,14 @@ import io.github.jan.supabase.auth.auth
 import kotlinx.coroutines.launch
 
 class HomeViewModel : ViewModel() {
-    private val repository = ProfileRepository()
 
     // We expose the StateFlow from the repository directly to the UI
-    val profile = repository.profile
+    val profile = ProfileRepository.profile
 
     init {
         // Fetch the data from Supabase immediately
         viewModelScope.launch {
-            repository.refreshProfile()
+            ProfileRepository.refreshProfile()
         }
     }
 }

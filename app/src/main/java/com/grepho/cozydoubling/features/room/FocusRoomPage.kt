@@ -1,5 +1,6 @@
 package com.grepho.cozydoubling.features.room
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -14,7 +15,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -31,14 +34,23 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.grepho.cozydoubling.core.profile.ProfileRepository
 
 // --- THE SCREEN ENTRY POINT ---
 @Composable
 fun FocusRoomScreen(
-    onLeaveClick: () -> Unit,
+    onNavigateToSummary: () -> Unit,
     viewModel: FocusRoomViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val profile by ProfileRepository.profile.collectAsState()
+    val myName = profile?.displayName ?: "You"
+
+    val handleExit = {
+        viewModel.finishWork {
+            onNavigateToSummary() // Now it's a function call!
+        }
+    }
 
     // Purely UI-driven states
     var isTaskListExpanded by remember { mutableStateOf(false) }
@@ -47,11 +59,13 @@ fun FocusRoomScreen(
     // Dynamically calculate your own avatar stats based on the current task list
     val currentUserParticipant = RoomParticipant(
         id = "self",
-        name = "You",
+        name = myName,
         activeTaskText = uiState.tasks.find { it.id == uiState.activeTaskId }?.text ?: "No active task",
         completedTasks = uiState.tasks.count { it.isCompleted },
         totalTasks = uiState.tasks.size
     )
+
+    BackHandler(onBack = handleExit)
 
     // Combine mock users with yourself
     val allParticipants = uiState.otherParticipants + currentUserParticipant
@@ -69,7 +83,7 @@ fun FocusRoomScreen(
             viewModel.onAddTask(newTaskText)
             newTaskText = ""
         },
-        onLeaveClick = onLeaveClick
+        onExitClick = handleExit
     )
 }
 
@@ -86,15 +100,15 @@ fun FocusRoomPage(
     onTaskClick: (String) -> Unit,
     onTaskToggleStatus: (String) -> Unit,
     onAddTask: () -> Unit,
-    onLeaveClick: () -> Unit
+    onExitClick: () -> Unit
 ) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Cozy Cafe Room") },
+                title = { Text("Cozy Room") },
                 navigationIcon = {
-                    IconButton(onClick = onLeaveClick) {
-                        Icon(Icons.Default.Close, contentDescription = "Leave Room")
+                    IconButton(onClick = onExitClick) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Leave Room")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(

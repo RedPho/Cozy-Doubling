@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-class ProfileRepository {
+object ProfileRepository {
 
     // 1. This is the local "cache" that the UI observes
     private val _profile = MutableStateFlow<Profile?>(null)
