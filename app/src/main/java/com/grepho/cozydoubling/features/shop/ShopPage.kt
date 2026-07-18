@@ -1,6 +1,7 @@
 package com.grepho.cozydoubling.features.shop
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -17,6 +18,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -25,7 +27,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 // --- THE SCREEN ENTRY POINT ---
 @Composable
 fun ShopScreen(viewModel: ShopViewModel = viewModel()) {
-    // This connects the UI to the ViewModel's state
     val themes by viewModel.themes.collectAsState()
     val userState by viewModel.userState.collectAsState()
 
@@ -73,7 +74,7 @@ fun ThemeShopCard(
     val isEffectivelyOwned = theme.isOwned || userState.hasCozyPass
 
     Card(
-        modifier = Modifier.fillMaxWidth(), // Sabit 260.dp yüksekliği kaldırdık
+        modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
         ),
@@ -81,15 +82,17 @@ fun ThemeShopCard(
     ) {
         Column(
             modifier = Modifier
-                .fillMaxWidth() // fillMaxSize() yerine tekrar fillMaxWidth() kullandık
+                .fillMaxWidth()
                 .padding(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Box(
+            // Replaces the single-hue circle: a truthful mini mockup
+            // rendered straight from the theme's full palette.
+            ThemeMiniPreview(
+                palette = theme.palette,
                 modifier = Modifier
-                    .size(64.dp)
-                    .clip(CircleShape)
-                    .background(theme.primaryColor)
+                    .fillMaxWidth()
+                    .height(84.dp)
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -108,20 +111,15 @@ fun ThemeShopCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            // Yazı ile buton alanı arasında sabit, temiz bir boşluk
             Spacer(modifier = Modifier.height(16.dp))
 
-            // --- İŞTE ÇÖZÜM KUTUSU ---
-            // Bu Box, içeriği ne olursa olsun (1 buton, 2 buton veya etiket)
-            // her kartta tam olarak aynı yüksekliği kaplar.
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 104.dp), // Çift buton + boşluk yüksekliği
-                contentAlignment = Alignment.Center // Tekli butonu bu kutunun tam ortasına hizalar
+                    .heightIn(min = 104.dp),
+                contentAlignment = Alignment.Center
             ) {
                 if (isEffectivelyOwned) {
-                    // OWNED STATE
                     Surface(
                         color = MaterialTheme.colorScheme.secondaryContainer,
                         shape = RoundedCornerShape(8.dp),
@@ -147,7 +145,6 @@ fun ThemeShopCard(
                         }
                     }
                 } else if (!theme.isPremium) {
-                    // BASIC THEME
                     Button(
                         onClick = onBuyWithLeaves,
                         modifier = Modifier.fillMaxWidth(),
@@ -156,7 +153,6 @@ fun ThemeShopCard(
                         Text("${theme.leafPrice} Leaves")
                     }
                 } else {
-                    // PREMIUM THEME
                     Column(modifier = Modifier.fillMaxWidth()) {
                         Button(
                             onClick = onBuyWithCash,
@@ -206,6 +202,131 @@ fun ThemeShopCard(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+/**
+ * A tiny, truthful preview built out of MINIATURES OF THE REAL COMPONENTS,
+ * not an invented mockup. Every shape here corresponds to something that
+ * actually renders somewhere in the app with these exact roles:
+ *
+ *   - the circle  -> ParticipantAvatar / Friends / Journey (primaryContainer / onPrimaryContainer)
+ *   - the pill     -> the "Owned" badge (secondaryContainer / onSecondaryContainer)
+ *   - the small solid button -> HomePage CTA (primary / onPrimary) — the
+ *     riskiest pairing to preview, since it's a solid fill rather than a
+ *     soft container: bad contrast here is the most likely way a theme
+ *     "doesn't preview well"
+ *   - the bottom bar -> TaskBottomSheet surface (surfaceVariant / onSurfaceVariant)
+ *   - the two text bars -> task list text (onSurface) on `background`
+ *   - the ring stroke -> progress ring (primary)
+ *
+ * If this composable ever uses a color that isn't ThemePalette, that's a bug —
+ * it means the preview is showing something the app can't actually produce.
+ */
+@Composable
+fun ThemeMiniPreview(
+    palette: ThemePalette,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(palette.background)
+            .border(1.dp, palette.primary.copy(alpha = 0.15f), RoundedCornerShape(10.dp))
+            .padding(8.dp)
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Mini avatar — same visual as ParticipantAvatar
+                Box(contentAlignment = Alignment.Center) {
+                    Box(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clip(CircleShape)
+                            .background(palette.primaryContainer),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Y",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = palette.onPrimaryContainer,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    // progress ring hint, same role as the real ring (`primary`)
+                    Box(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clip(CircleShape)
+                            .border(2.dp, palette.primary, CircleShape)
+                    )
+                }
+
+                // Mini "Owned" badge — same roles as the real badge
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(palette.secondaryContainer)
+                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                ) {
+                    Text(
+                        text = "Owned",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = palette.onSecondaryContainer
+                    )
+                }
+
+                Spacer(modifier = Modifier.weight(1f))
+
+                // Mini solid CTA — same roles as the HomePage button.
+                // Solid fills are where a bad on/container pairing is most
+                // visible, so this is the single most important swatch here.
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(palette.primary)
+                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                ) {
+                    Text(
+                        text = "Go",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = palette.onPrimary,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            // Mini task sheet strip — same roles as TaskBottomSheet
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(palette.surfaceVariant)
+                    .padding(6.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(30.dp)
+                        .height(4.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(palette.onSurfaceVariant.copy(alpha = 0.9f))
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Box(
+                    modifier = Modifier
+                        .width(18.dp)
+                        .height(4.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(palette.onSurface.copy(alpha = 0.6f))
+                )
             }
         }
     }

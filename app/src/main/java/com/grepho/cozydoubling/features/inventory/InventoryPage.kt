@@ -1,12 +1,10 @@
 package com.grepho.cozydoubling.features.inventory
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -14,18 +12,17 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.grepho.cozydoubling.features.shop.ThemeItemUiState
+import com.grepho.cozydoubling.features.shop.ThemeMiniPreview
 
 // --- THE SCREEN ENTRY POINT ---
 @Composable
 fun InventoryScreen(viewModel: InventoryViewModel = viewModel()) {
     val ownedThemes by viewModel.ownedThemes.collectAsState()
-
     InventoryPage(
         ownedThemes = ownedThemes,
         onEquipClick = { themeId -> viewModel.onEquipClicked(themeId) }
@@ -74,11 +71,14 @@ fun ThemeInventoryCard(
             modifier = Modifier.padding(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Box(
+            // Same truthful preview as the Shop — a theme should look
+            // identical here and in the shop card, since it's built from
+            // the same palette either way.
+            ThemeMiniPreview(
+                palette = theme.palette,
                 modifier = Modifier
-                    .size(64.dp)
-                    .clip(CircleShape)
-                    .background(theme.primaryColor)
+                    .fillMaxWidth()
+                    .height(84.dp)
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -98,7 +98,17 @@ fun ThemeInventoryCard(
                     onClick = { /* Do nothing, already equipped */ },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                    // Was: containerColor = colorScheme.secondary with no
+                    // contentColor override, so text silently fell back to
+                    // the default onPrimary. Fine by luck with the stock
+                    // palette, but a custom theme could easily make that
+                    // combination unreadable. Using the container/on-container
+                    // pair (same convention as everywhere else in the app)
+                    // fixes it for good, no new palette role needed.
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
                 ) {
                     Text("Equipped")
                 }
