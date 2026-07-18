@@ -19,6 +19,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.grepho.cozydoubling.features.shop.ThemeItemUiState
 import com.grepho.cozydoubling.features.shop.ThemeMiniPreview
 
+
 // --- THE SCREEN ENTRY POINT ---
 @Composable
 fun InventoryScreen(viewModel: InventoryViewModel = viewModel()) {

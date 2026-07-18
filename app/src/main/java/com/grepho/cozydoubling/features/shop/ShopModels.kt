@@ -1,6 +1,7 @@
 package com.grepho.cozydoubling.features.shop
 
 import androidx.compose.ui.graphics.Color
+import com.grepho.cozydoubling.core.theming.ThemePalette
 
 // Represents the user's current subscription/supporter status
 data class UserMonetizationState(
@@ -35,18 +36,7 @@ data class UserMonetizationState(
  * If a new screen reads a role not listed here, add it before shipping
  * any theme that would leave that screen with an undefined color.
  */
-data class ThemePalette(
-    val primary: Color,
-    val onPrimary: Color,
-    val primaryContainer: Color,
-    val onPrimaryContainer: Color,
-    val secondaryContainer: Color,
-    val onSecondaryContainer: Color,
-    val surfaceVariant: Color,
-    val onSurfaceVariant: Color,
-    val onSurface: Color,
-    val background: Color
-)
+
 
 data class ThemeItemUiState(
     val id: String,

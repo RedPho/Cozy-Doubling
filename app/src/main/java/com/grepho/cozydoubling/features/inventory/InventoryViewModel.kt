@@ -2,8 +2,8 @@ package com.grepho.cozydoubling.features.inventory
 
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
+import com.grepho.cozydoubling.core.theming.ThemePalette
 import com.grepho.cozydoubling.features.shop.ThemeItemUiState
-import com.grepho.cozydoubling.features.shop.ThemePalette
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

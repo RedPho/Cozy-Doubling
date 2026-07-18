@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import com.grepho.cozydoubling.core.theming.ThemePalette
 
 // NOTE: mock data for now. When Supabase is wired up, swap loadThemes()
 // for a call into SupabaseThemeRepository.fetchThemes() + fetchOwnedThemeIds(),
