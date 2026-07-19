@@ -2,6 +2,7 @@ package com.grepho.cozydoubling.features.room
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -19,6 +20,9 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Eco
+import androidx.compose.material.icons.filled.FlashOn
+import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.*
@@ -27,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
@@ -105,23 +110,20 @@ fun FocusRoomPage(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Cozy Room") },
+                title = { /* Empty or very minimal as per design */ },
                 navigationIcon = {
                     IconButton(onClick = onExitClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Leave Room")
+                        // Leaf logo as back button (or use a standard back icon)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Leave", tint = MaterialTheme.colorScheme.primary)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent
-                )
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
         },
         bottomBar = {
             TaskBottomSheet(
                 tasks = uiState.tasks,
                 activeTaskId = uiState.activeTaskId,
-                isExpanded = isTaskListExpanded,
-                onToggleExpand = onToggleExpand,
                 onTaskClick = onTaskClick,
                 onTaskToggleStatus = onTaskToggleStatus,
                 newTaskText = newTaskText,
@@ -130,19 +132,44 @@ fun FocusRoomPage(
             )
         }
     ) { innerPadding ->
-        Box(
+        Column(
             modifier = Modifier
                 .padding(innerPadding)
                 .fillMaxSize()
+                .padding(horizontal = 20.dp)
         ) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Cozy Room",
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.Groups,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = "${allParticipants.size} focusing now",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // The Grid
             LazyVerticalGrid(
-                columns = GridCells.Fixed(3),
-                modifier = Modifier.fillMaxSize().padding(16.dp),
+                columns = GridCells.Fixed(2),
+                modifier = Modifier.fillMaxSize(),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalArrangement = Arrangement.spacedBy(24.dp)
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 items(allParticipants) { participant ->
-                    ParticipantAvatar(participant)
+                    ParticipantCard(participant)
                 }
             }
         }
@@ -150,65 +177,69 @@ fun FocusRoomPage(
 }
 
 @Composable
-fun ParticipantAvatar(participant: RoomParticipant) {
+fun ParticipantCard(participant: RoomParticipant) {
     val progress = if (participant.totalTasks > 0) {
         participant.completedTasks.toFloat() / participant.totalTasks.toFloat()
-    } else {
-        0f
-    }
+    } else 0f
 
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.fillMaxWidth()
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surface,
+        shadowElevation = 2.dp
     ) {
-        Box(contentAlignment = Alignment.Center) {
-            CircularProgressIndicator(
-                progress = { 1f },
-                modifier = Modifier.size(72.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                strokeWidth = 4.dp
-            )
-            CircularProgressIndicator(
-                progress = { progress },
-                modifier = Modifier.size(72.dp),
-                color = MaterialTheme.colorScheme.primary,
-                strokeWidth = 4.dp,
-                trackColor = Color.Transparent
-            )
-
-            Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primaryContainer),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = participant.name.take(1).uppercase(),
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    fontWeight = FontWeight.Bold
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                // Progress Ring
+                CircularProgressIndicator(
+                    progress = { 1f },
+                    modifier = Modifier.size(80.dp),
+                    color = Color.LightGray.copy(alpha = 0.2f),
+                    strokeWidth = 6.dp
                 )
+                CircularProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier.size(80.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                    strokeWidth = 6.dp,
+                    strokeCap = StrokeCap.Round
+                )
+                // Initials Circle
+                Box(
+                    modifier = Modifier
+                        .size(60.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.secondaryContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = participant.name.take(2).uppercase(),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                text = participant.name,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+
+            Text(
+                text = "${participant.activeTaskText} • ${participant.completedTasks}/${participant.totalTasks} done",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                maxLines = 2
+            )
         }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = participant.name,
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-
-        Text(
-            text = participant.activeTaskText,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis
-        )
     }
 }
 
@@ -216,73 +247,70 @@ fun ParticipantAvatar(participant: RoomParticipant) {
 fun TaskBottomSheet(
     tasks: List<FocusTask>,
     activeTaskId: String?,
-    isExpanded: Boolean,
-    onToggleExpand: () -> Unit,
     onTaskClick: (String) -> Unit,
     onTaskToggleStatus: (String) -> Unit,
     newTaskText: String,
     onNewTaskTextChange: (String) -> Unit,
     onAddTask: () -> Unit
 ) {
-    val activeTask = tasks.find { it.id == activeTaskId }
+    val completedCount = tasks.count { it.isCompleted }
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surfaceVariant,
-        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+        color = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
+        shadowElevation = 16.dp
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
+        Column(modifier = Modifier.padding(24.dp)) {
+            // --- Title & Progress Pill ---
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onToggleExpand() }
-                    .padding(vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "My Focus Tasks",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Surface(
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
+                    shape = CircleShape
+                ) {
                     Text(
-                        text = "Current Focus",
+                        text = "$completedCount/${tasks.size} Done",
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                         style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Text(
-                        text = activeTask?.text ?: "No active task. Add one below!",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 }
-
-                Icon(
-                    imageVector = if (isExpanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp,
-                    contentDescription = "Toggle Task List",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
 
-            AnimatedVisibility(visible = isExpanded) {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 200.dp)
-                        .padding(vertical = 8.dp)
-                ) {
-                    items(tasks) { task ->
-                        val isActive = task.id == activeTaskId
+            Spacer(modifier = Modifier.height(16.dp))
 
+            // --- Task List ---
+            LazyColumn(modifier = Modifier.heightIn(max = 240.dp)) {
+                items(tasks) { task ->
+                    val isActive = task.id == activeTaskId
+
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp)
+                            .clickable { onTaskClick(task.id) },
+                        shape = RoundedCornerShape(16.dp),
+                        color = when {
+                            isActive -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
+                            task.isCompleted -> Color.Transparent
+                            else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.1f)
+                        },
+                        border = if (isActive)
+                            BorderStroke(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
+                        else BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.2f))
+                    ) {
                         Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(if (isActive) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f) else Color.Transparent)
-                                .clickable { onTaskClick(task.id) }
-                                .padding(horizontal = 8.dp, vertical = 4.dp),
+                            modifier = Modifier.padding(12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Checkbox(
@@ -292,33 +320,55 @@ fun TaskBottomSheet(
                             Text(
                                 text = task.text,
                                 modifier = Modifier.weight(1f),
-                                style = MaterialTheme.typography.bodyMedium.copy(
-                                    textDecoration = if (task.isCompleted) TextDecoration.LineThrough else TextDecoration.None
+                                style = MaterialTheme.typography.bodyLarge.copy(
+                                    textDecoration = if (task.isCompleted) TextDecoration.LineThrough else null,
+                                    fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal
                                 ),
-                                color = if (task.isCompleted) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f) else MaterialTheme.colorScheme.onSurface
+                                color = if (task.isCompleted) Color.Gray else Color.Unspecified
                             )
+
+                            if (isActive && !task.isCompleted) {
+                                Icon(
+                                    imageVector = Icons.Default.FlashOn,
+                                    contentDescription = "Active",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
                         }
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            OutlinedTextField(
-                value = newTaskText,
-                onValueChange = onNewTaskTextChange,
-                placeholder = { Text("What are you working on?") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { onAddTask() }),
-                trailingIcon = {
-                    IconButton(onClick = onAddTask) {
-                        Icon(Icons.Default.Add, contentDescription = "Add Task")
-                    }
-                },
-                shape = RoundedCornerShape(16.dp)
-            )
+            // --- Input Area ---
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                TextField(
+                    value = newTaskText,
+                    onValueChange = onNewTaskTextChange,
+                    placeholder = { Text("What are you working on next?") },
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(56.dp),
+                    shape = CircleShape,
+                    colors = TextFieldDefaults.colors(
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        disabledIndicatorColor = Color.Transparent
+                    )
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                FloatingActionButton(
+                    onClick = onAddTask,
+                    shape = CircleShape,
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = Color.White,
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Add")
+                }
+            }
         }
     }
 }

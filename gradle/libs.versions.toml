@@ -13,6 +13,7 @@ runtime = "1.11.4"
 supabase = "3.6.0"
 ktor = "3.0.3"
 kotlinxSerialization = "1.7.3"
+foundation = "1.11.4"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -40,6 +41,7 @@ supabase-realtime = { group = "io.github.jan-tennert.supabase", name = "realtime
 supabase-compose-auth = { group = "io.github.jan-tennert.supabase", name = "compose-auth" }
 ktor-client-okhttp = { group = "io.ktor", name = "ktor-client-okhttp", version.ref = "ktor" }
 androidx-compose-ui-text-google-fonts = { group = "androidx.compose.ui", name = "ui-text-google-fonts" }
+androidx-compose-foundation = { group = "androidx.compose.foundation", name = "foundation", version.ref = "foundation" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
