@@ -1,29 +1,29 @@
-# Implementation Plan - Summary Screen Design Refresh
+# Implementation Plan - Login Screen Refresh
 
-We will update the Summary screen to match the provided design, focusing on the high-contrast "Leaves Earned" card, the structured "Session Summary" list, and the stylized "Continue" button.
+We will update the Login screen to match the provided design, focusing on the soft branding and the stylized "Sign in with Google" button.
 
 ## Proposed Changes
 
-### Summary Feature
+### Auth Feature
 
-#### [MODIFY] [SummaryPage.kt](file:///home/emin/repos/android-repos/CozyDoubling/app/src/main/java/com/grepho/cozydoubling/features/summary/SummaryPage.kt)
-- **Header:** Update the title to "Great job showing up today!" in `PrimarySage` and add the subtitle "Your cozy garden is growing.".
-- **Reward Card:**
-    - Create a large white surface with soft shadows and rounded corners (32dp).
-    - Implement a central circular graphic with a leaf icon (`Icons.Default.Eco`) and orbiting small circles.
-    - Display the animated leaf count in a large, bold font above the "LEAVES EARNED" label.
-- **Session Summary Container:**
-    - Add a `Surface` with `SurfaceVariantGrey` background and large rounded corners.
-    - Title it "Session Summary" in `PrimarySage`.
-    - Create white cards for "Time Focused" and "Tasks Finished".
-    - Each row will have a circular icon container, a label, and a bold value.
-- **Continue Button:**
-    - Style it as a `PrimarySage` capsule with the text "Continue" and `Icons.AutoMirrored.Filled.ArrowForward`.
+#### [MODIFY] [LoginPage.kt](file:///home/emin/repos/android-repos/CozyDoubling/app/src/main/java/com/grepho/cozydoubling/features/auth/LoginPage.kt)
+- **Background:** Implement a soft background with subtle concentric circles (using `Canvas` or multiple `Box` layers).
+- **Branding:**
+    - Add the leaf logo (`Icons.Default.Eco`) inside a small circular surface with a subtle shadow.
+    - Display the app name "Cozy Doubling" in `PrimarySage` using `titleLarge`.
+- **Text Content:**
+    - Add "Welcome to Cozy Doubling" as the main headline.
+    - Add the sub-text: "A quiet space to focus together, unhurried and calm."
+- **Google Sign-In Button:**
+    - Design a custom `Surface` that looks like a capsule.
+    - White background, light outline.
+    - Include the Google "G" logo and the text "Sign in with Google".
+- **Footer:** Add the privacy policy and quiet hours notice at the bottom.
 
 ## Verification Plan
 
 ### Manual Verification
-- Deploy the app and navigate to the Summary screen (after finishing a focus session).
-- Compare the layout and colors with the design image.
-- Verify the leaf counting animation still works within the new circular graphic.
-- Check the button's appearance and clickability.
+- Deploy the app and view the Login screen (if already logged in, you might need to sign out or clear data).
+- Compare the visuals with the design image.
+- Verify the "Sign in with Google" button remains functional and looks like the design.
+- Check that colors are correctly pulling from `MaterialTheme.colorScheme`.
