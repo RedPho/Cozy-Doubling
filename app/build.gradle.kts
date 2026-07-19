@@ -67,6 +67,7 @@ dependencies {
     implementation(libs.supabase.realtime)
     implementation(libs.supabase.compose.auth)
     implementation(libs.ktor.client.okhttp)
+    implementation(libs.androidx.compose.ui.text.google.fonts)
 
 
 }

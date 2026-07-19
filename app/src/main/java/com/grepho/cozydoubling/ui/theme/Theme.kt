@@ -12,39 +12,56 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import com.grepho.cozydoubling.core.theming.ThemePalette
 
+
 private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
+    primary = PrimarySage,
+    onPrimary = OnPrimaryWhite,
+    primaryContainer = PrimaryContainerSage,
+    onPrimaryContainer = OnPrimaryContainerDark,
+    secondary = SecondaryBrown,
+    onSecondary = OnSecondaryWhite,
+    secondaryContainer = SecondaryContainerPeach,
+    onSecondaryContainer = OnSecondaryContainerBrown,
+    tertiary = TertiaryGold,
+    tertiaryContainer = TertiaryContainerGold,
+    background = DarkBackground,
+    surface = DarkSurface,
+    onBackground = DarkOnSurface,
+    onSurface = DarkOnSurface,
+    error = ErrorRed,
+    outline = OutlineGrey
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
-
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
+    primary = PrimarySage,
+    onPrimary = OnPrimaryWhite,
+    primaryContainer = PrimaryContainerSage,
+    onPrimaryContainer = OnPrimaryContainerDark,
+    secondary = SecondaryBrown,
+    onSecondary = OnSecondaryWhite,
+    secondaryContainer = SecondaryContainerPeach,
+    onSecondaryContainer = OnSecondaryContainerBrown,
+    tertiary = TertiaryGold,
+    tertiaryContainer = TertiaryContainerGold,
+    background = BackgroundCream,
+    surface = SurfaceWhite,
+    onBackground = OnBackgroundCharcoal,
+    onSurface = OnSurfaceCharcoal,
+    error = ErrorRed,
+    outline = OutlineGrey
 )
+
 
 @Composable
 fun CozyDoublingTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = false,
     // Add this parameter!
     customPalette: ThemePalette? = null,
     content: @Composable () -> Unit
 ) {
     // 1. Logic to pick the color scheme
     val colorScheme = when {
-        // A. Use the custom palette if available (This is the Magic!)
         customPalette != null -> {
             lightColorScheme(
                 primary = customPalette.primary,
@@ -59,12 +76,6 @@ fun CozyDoublingTheme(
                 background = customPalette.background,
                 surface = customPalette.background // Map surface to background for a cozy look
             )
-        }
-
-        // B. Fallback to Dynamic/System colors
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
 
         darkTheme -> DarkColorScheme

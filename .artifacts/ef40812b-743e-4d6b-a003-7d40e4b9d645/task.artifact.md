@@ -1,0 +1,4 @@
+- [/] Update `Color.kt` with design palette
+- [ ] Update `Theme.kt` to set "Cozy" as default and simplify logic
+- [ ] Update `Type.kt` to match design typography
+- [ ] Verify UI consistency

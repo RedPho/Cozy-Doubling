@@ -1,14 +1,21 @@
 package com.grepho.cozydoubling.features.home
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PaintingStyle.Companion.Stroke
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.grepho.cozydoubling.core.components.CozyTopBar
@@ -35,9 +42,7 @@ fun HomeScreen(
                 onSettingsClick = onNavigateToSettings
             )
         },
-        onFocusClick = onNavigateToFocus,
-        // 3. Pass the player tag so we can display it
-        playerTag = profile?.playerTag ?: ""
+        onFocusClick = onNavigateToFocus
     )
 }
 
@@ -46,46 +51,69 @@ fun HomeScreen(
 fun HomePage(
     topBar: @Composable () -> Unit,
     onFocusClick: () -> Unit,
-    playerTag: String
 ) {
     Scaffold(
-        topBar = topBar
+        topBar = topBar,
+        containerColor = Color.Transparent
     ) { innerPadding ->
         Column(
-            modifier = Modifier.padding(innerPadding).fillMaxSize(),
+            modifier = Modifier
+                .padding(innerPadding)
+                .fillMaxSize()
+                .padding(horizontal = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // Display the Supercell-style tag
-            if (playerTag.isNotEmpty()) {
-                Text(
-                    text = "#$playerTag",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.secondary
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Button(
-                onClick = onFocusClick,
-                modifier = Modifier.size(200.dp),
-                shape = CircleShape,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary
-                ),
-                elevation = ButtonDefaults.buttonElevation(
-                    defaultElevation = 8.dp,
-                    pressedElevation = 2.dp
-                )
+            // The Central Ring
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(300.dp)
+                // Optional: Add a subtle glow/shadow here
             ) {
-                Text(
-                    text = "FOCUS",
-                    style = MaterialTheme.typography.headlineLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onPrimary
-                )
+                // Outer Ring
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    drawCircle(
+                        color = Color.LightGray.copy(alpha = 0.2f),
+                        style = Stroke(width = 12.dp.toPx())
+                    )
+                }
+
+                // Start Focus Capsule Button
+                Button(
+                    onClick = onFocusClick,
+                    shape = CircleShape,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                    ),
+                    contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.PlayArrow,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Start Focus",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
             }
+
+            Spacer(modifier = Modifier.height(48.dp))
+
+            // Description Text
+            Text(
+                text = "Ready for a quiet session? Lets focus together.",
+                style = MaterialTheme.typography.bodyLarge,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+            )
         }
     }
 }
