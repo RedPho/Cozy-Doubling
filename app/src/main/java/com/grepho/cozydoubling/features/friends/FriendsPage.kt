@@ -1,6 +1,9 @@
 package com.grepho.cozydoubling.features.friends
 
+import android.content.ClipData
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -8,17 +11,25 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.MailOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.grepho.cozydoubling.core.profile.Profile
 import com.grepho.cozydoubling.core.profile.ProfileRepository
+import kotlinx.coroutines.launch
 
 // --- THE SCREEN ENTRY POINT ---
 @Composable
@@ -48,98 +59,102 @@ fun FriendsPage(
     onAddFriend: (String) -> Unit,
     onAcceptRequest: (String) -> Unit
 ) {
-    // Dialog state
+    // 1. Add state for the Add Friend dialog
     var showAddDialog by remember { mutableStateOf(false) }
     var newFriendTag by remember { mutableStateOf("") }
+    val clipboard = LocalClipboard.current
+    val scope = rememberCoroutineScope()
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp)
-    ) {
-        if (myTag.isNotEmpty()) {
-            Surface(
-                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
-                color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(text = "Your Friend Code:", style = MaterialTheme.typography.labelLarge)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "#$myTag",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-            }
-        }
-
-
-        // --- Add Friend Button ---
-        Button(
-            onClick = { showAddDialog = true },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 16.dp),
-            shape = RoundedCornerShape(8.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-            )
-        ) {
-            Icon(imageVector = Icons.Default.Add, contentDescription = "Add Friend")
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Add Friend")
-        }
-
-        // --- Friends List ---
+    Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
-            modifier = Modifier.weight(1f),
-            contentPadding = PaddingValues(vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
+            contentPadding = PaddingValues(top = 24.dp, bottom = 100.dp) // Extra padding for the FAB
         ) {
-            // 1. SHOW PENDING REQUESTS
+            // --- 1. Connect Code Capsule ---
+            item {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f),
+                    shape = RoundedCornerShape(32.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(text = "YOUR CONNECT CODE", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Surface(
+                            shape = CircleShape,
+                            color = Color.White,
+                            border = BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.3f)),
+                            modifier = Modifier.clickable {
+                                scope.launch {
+                                    val clipData = ClipData.newPlainText("Friend Code", myTag)
+                                    clipboard.setClipEntry(ClipEntry(clipData))
+                                }
+                            }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(text = myTag, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Icon(Icons.Default.ContentCopy, contentDescription = "Copy", modifier = Modifier.size(18.dp), tint = Color.Gray)
+                            }
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(32.dp))
+            }
+
+            // --- 2. Pending Requests ---
             if (pendingRequests.isNotEmpty()) {
                 item {
-                    Text(
-                        text = "Pending Requests",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.MailOutline, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color.Gray)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(text = "Pending Requests (${pendingRequests.size})", style = MaterialTheme.typography.titleSmall)
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
                 items(pendingRequests) { request ->
-                    PendingRequestCard(
-                        name = request.displayName,
-                        tag = request.playerTag,
-                        onAccept = { onAcceptRequest(request.id) }
-                    )
+                    PendingRequestCard(request.displayName, request.playerTag) { onAcceptRequest(request.id) }
+                    Spacer(modifier = Modifier.height(12.dp))
                 }
-                item {
-                    Divider(modifier = Modifier.padding(vertical = 8.dp))
-                }
+                item { Spacer(modifier = Modifier.height(24.dp)) }
             }
 
-            // 2. SHOW REAL FRIENDS
+            // --- 3. Your Garden (Friend List) ---
             item {
-                Text(
-                    text = "Your Friends",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Groups, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color.Gray)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(text = "Your Garden (${friendsList.size})", style = MaterialTheme.typography.titleSmall)
+                }
+                Spacer(modifier = Modifier.height(16.dp))
             }
             items(friendsList) { friend ->
                 FriendCard(friend = friend)
+                Spacer(modifier = Modifier.height(12.dp))
             }
+        }
+
+        // 2. Add the Floating Action Button
+        FloatingActionButton(
+            onClick = { showAddDialog = true },
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(24.dp),
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = Color.White,
+            shape = CircleShape
+        ) {
+            Icon(Icons.Default.Add, contentDescription = "Add Friend")
         }
     }
 
-    // --- Add Friend Dialog ---
+    // 3. Add Friend Dialog
     if (showAddDialog) {
         AlertDialog(
             onDismissRequest = { showAddDialog = false },
@@ -150,7 +165,8 @@ fun FriendsPage(
                     onValueChange = { newFriendTag = it },
                     placeholder = { Text("Enter Friend Code") },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp)
                 )
             },
             confirmButton = {
@@ -159,7 +175,8 @@ fun FriendsPage(
                         onAddFriend(newFriendTag)
                         newFriendTag = ""
                         showAddDialog = false
-                    }
+                    },
+                    shape = CircleShape
                 ) {
                     Text("Send Request")
                 }

@@ -71,7 +71,7 @@ fun AppNavHost(navController: NavHostController, modifier: Modifier = Modifier, 
         }
 
         composable(Screen.Settings.route) {
-            SettingsScreen()
+            SettingsScreen(onBackClick = {navController.popBackStack()})
         }
 
         composable(Screen.FocusRoom.route) {

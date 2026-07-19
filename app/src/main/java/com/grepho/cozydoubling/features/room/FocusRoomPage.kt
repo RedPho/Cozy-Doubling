@@ -142,7 +142,7 @@ fun FocusRoomPage(
             Text(
                 text = "Cozy Room",
                 style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onBackground
+                color = MaterialTheme.colorScheme.primary
             )
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
