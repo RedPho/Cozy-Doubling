@@ -1,34 +1,29 @@
 package com.grepho.cozydoubling.features.journey
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.grepho.cozydoubling.core.profile.ProfileRepository
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 
 class JourneyViewModel : ViewModel() {
 
-    // Initialize with a loading/default state
-    private val _uiState = MutableStateFlow(
-        ProfileUiState(
-            username = "Loading...",
-            bio = "",
-            totalLeaves = 0,
-            totalFocusHours = 0
+    val uiState: StateFlow<ProfileUiState> = ProfileRepository.profile
+        .map { profile ->
+            ProfileUiState(
+                username = profile?.displayName ?: "Loading...",
+                bio = "Cozy Doubler since ${profile?.createdAt?.take(7) ?: "..."}",
+                totalLeaves = profile?.leaves?.toInt() ?: 0,
+                totalFocusMinutes = profile?.totalMinutesFocused?.toInt() ?: 0 // Map real minutes!
+            )
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = ProfileUiState("Loading...", "", 0, 0)
         )
-    )
-    val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
-
-    init {
-        loadProfileStats()
-    }
-
-    private fun loadProfileStats() {
-        // TODO: Replace with Supabase fetch from 'profiles' table
-        _uiState.value = ProfileUiState(
-            username = "CozyPanda",
-            bio = "Just here to get things done slowly.",
-            totalLeaves = 1450,
-            totalFocusHours = 42
-        )
-    }
 }

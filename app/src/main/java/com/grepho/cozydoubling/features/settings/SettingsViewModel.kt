@@ -1,33 +1,48 @@
 package com.grepho.cozydoubling.features.settings
 
 import androidx.lifecycle.ViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
+import androidx.lifecycle.viewModelScope
+import com.grepho.cozydoubling.core.profile.ProfileRepository
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
 
 class SettingsViewModel : ViewModel() {
 
-    private val _uiState = MutableStateFlow(SettingsUiState(username = "Loading..."))
-    val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
-
-    init {
-        loadSettings()
-    }
-
-    private fun loadSettings() {
-        // TODO: Fetch the current user's profile from Supabase
-        _uiState.value = SettingsUiState(username = "CozyPanda")
-    }
+    // 1. Map the real profile into the Settings UI State
+    val uiState: StateFlow<SettingsUiState> = ProfileRepository.profile
+        .map { profile ->
+            SettingsUiState(username = profile?.displayName ?: "Loading...")
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = SettingsUiState(username = "Loading...")
+        )
 
     fun onUpdateUsername(newName: String) {
         if (newName.isBlank()) return
+        viewModelScope.launch {
+            try {
+                ProfileRepository.updateDisplayName(newName)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
 
-        // TODO: Push the new username to the Supabase 'profiles' table
-        _uiState.update { it.copy(username = newName) }
+    fun onSignOut() {
+        viewModelScope.launch {
+            ProfileRepository.signOut()
+        }
     }
 
     fun onDeleteAccount() {
-        // TODO: Call Supabase Auth to delete user, then navigate to login screen
+        viewModelScope.launch {
+            try {
+                ProfileRepository.deleteAccount()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
     }
 }

@@ -36,6 +36,12 @@ fun JourneyPage(
     uiState: ProfileUiState,
     modifier: Modifier = Modifier
 ) {
+    val totalMinutes = uiState.totalFocusMinutes
+    val hours = totalMinutes / 60
+    val minutes = totalMinutes % 60
+    val timeString = if (hours > 0) "${hours}h ${minutes}m" else "${minutes}m"
+
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -86,8 +92,8 @@ fun JourneyPage(
             )
             Spacer(modifier = Modifier.width(16.dp))
             GentleStatCard(
-                title = "Hours Focused",
-                value = uiState.totalFocusHours.toString(),
+                title = "Time Focused",
+                value = timeString, // Use the formatted string
                 modifier = Modifier.weight(1f)
             )
         }
@@ -135,7 +141,7 @@ fun ProfilePagePreview() {
                 username = "CozyPanda",
                 bio = "Just here to get things done slowly.",
                 totalLeaves = 1450,
-                totalFocusHours = 42
+                totalFocusMinutes = 124
             )
         )
     }

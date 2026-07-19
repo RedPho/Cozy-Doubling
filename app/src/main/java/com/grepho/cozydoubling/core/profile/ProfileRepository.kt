@@ -37,4 +37,33 @@ object ProfileRepository {
             e.printStackTrace()
         }
     }
+
+    suspend fun updateDisplayName(newName: String) {
+        val myId = Supabase.client.auth.currentUserOrNull()?.id ?: return
+
+        Supabase.client.postgrest["profiles"].update(
+            mapOf("display_name" to newName)
+        ) {
+            filter { eq("id", myId) }
+        }
+
+        // Refresh instantly so every screen sees the new name
+        refreshProfile()
+    }
+
+    suspend fun signOut() {
+        Supabase.client.auth.signOut()
+        _profile.emit(null) // Clear local cache
+    }
+
+    /**
+     * Completely wipes the user's account and data from the server.
+     */
+    suspend fun deleteAccount() {
+        // 1. Call the secure RPC to delete from the DB
+        Supabase.client.postgrest.rpc("delete_own_account")
+
+        // 2. Clear local session
+        signOut()
+    }
 }

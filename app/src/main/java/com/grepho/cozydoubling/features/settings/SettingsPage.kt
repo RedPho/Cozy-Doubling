@@ -15,7 +15,8 @@ fun SettingsScreen(viewModel: SettingsViewModel = viewModel()) {
 
     SettingsPage(
         uiState = uiState,
-        onSaveUsername = { newName -> viewModel.onUpdateUsername(newName) },
+        onSaveUsername = { viewModel.onUpdateUsername(it) },
+        onSignOut = { viewModel.onSignOut() },
         onDeleteAccount = { viewModel.onDeleteAccount() }
     )
 }
@@ -25,6 +26,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = viewModel()) {
 fun SettingsPage(
     uiState: SettingsUiState,
     onSaveUsername: (String) -> Unit,
+    onSignOut: () -> Unit,
     onDeleteAccount: () -> Unit
 ) {
     // Local UI states for showing dialogs
@@ -46,6 +48,13 @@ fun SettingsPage(
                 tempUsername = uiState.username
                 showUsernameDialog = true
             }
+        )
+
+        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+        ListItem(
+            headlineContent = { Text("Sign Out") },
+            modifier = Modifier.clickable { onSignOut() }
         )
 
         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))

@@ -3,5 +3,5 @@ data class ProfileUiState(
     val username: String,
     val bio: String,
     val totalLeaves: Int,
-    val totalFocusHours: Int
+    val totalFocusMinutes: Int
 )

@@ -10,9 +10,11 @@ data class Profile(
     val displayName: String,
     @SerialName("player_tag")
     val playerTag: String,
-    @SerialName("equipped_theme_id") // Add this line
+    @SerialName("equipped_theme_id")
     val equippedThemeId: String? = null,
     val leaves: Long = 0,
     @SerialName("created_at")
-    val createdAt: String? = null
+    val createdAt: String? = null,
+    @SerialName("total_minutes_focused")
+    val totalMinutesFocused: Long = 0,
 )
