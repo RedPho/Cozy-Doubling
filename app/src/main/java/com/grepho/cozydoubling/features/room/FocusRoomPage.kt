@@ -39,7 +39,7 @@ import com.grepho.cozydoubling.core.profile.ProfileRepository
 // --- THE SCREEN ENTRY POINT ---
 @Composable
 fun FocusRoomScreen(
-    onNavigateToSummary: () -> Unit,
+    onNavigateToSummary: (String) -> Unit,
     viewModel: FocusRoomViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -47,8 +47,8 @@ fun FocusRoomScreen(
     val myName = profile?.displayName ?: "You"
 
     val handleExit = {
-        viewModel.finishWork {
-            onNavigateToSummary() // Now it's a function call!
+        viewModel.finishWork { id ->
+            onNavigateToSummary(id)
         }
     }
 

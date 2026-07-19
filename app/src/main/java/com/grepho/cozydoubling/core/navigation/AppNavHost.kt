@@ -5,8 +5,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
 import com.grepho.cozydoubling.features.auth.LoginScreen
 import com.grepho.cozydoubling.features.auth.LoginViewModel
 import com.grepho.cozydoubling.features.home.HomeScreen
@@ -21,18 +23,24 @@ fun AppNavHost(navController: NavHostController, modifier: Modifier = Modifier, 
 
     LaunchedEffect(Unit) {
         authViewModel.sessionStatus.collect { status ->
+            val currentRoute = navController.currentDestination?.route
+
             when (status) {
                 is SessionStatus.Authenticated -> {
-                    // User is logged in! Send them home and clear the login from the backstack
-                    navController.navigate(Screen.Home.route) {
-                        popUpTo(Screen.Login.route) { inclusive = true }
+                    // ONLY navigate to Home if we are currently stuck on the Login screen
+                    if (currentRoute == Screen.Login.route || currentRoute == null) {
+                        navController.navigate(Screen.Home.route) {
+                            popUpTo(Screen.Login.route) { inclusive = true }
+                        }
                     }
                 }
                 is SessionStatus.NotAuthenticated -> {
                     // User is logged out! Send them to Login
-                    navController.navigate(Screen.Login.route) {
-                        popUpTo(0) // Clear everything to prevent going "back" to Home while logged out
-                    }
+                        if (currentRoute != Screen.Login.route) {
+                            navController.navigate(Screen.Login.route) {
+                                popUpTo(0)
+                            }
+                        }
                 }
                 else -> { /* Loading... we can just wait or show a splash */ }
             }
@@ -68,16 +76,21 @@ fun AppNavHost(navController: NavHostController, modifier: Modifier = Modifier, 
 
         composable(Screen.FocusRoom.route) {
             FocusRoomScreen(
-                onNavigateToSummary = {
-                    navController.navigate(Screen.Summary.route) {
+                onNavigateToSummary = { sessionId ->
+                    navController.navigate(Screen.Summary.createRoute(sessionId)) {
                         popUpTo(Screen.FocusRoom.route) { inclusive = true }
                     }
                 }
             )
         }
 
-        composable(Screen.Summary.route) {
+        composable(
+            route = Screen.Summary.route,
+            arguments = listOf(navArgument("sessionId") {type = NavType.StringType})
+        ) { backStackEntry ->
+            val sessionId = backStackEntry.arguments?.getString("sessionId") ?: ""
             SummaryScreen(
+                sessionId,
                 onContinueClick = {
                     navController.popBackStack(Screen.Home.route, inclusive = false)
                 }

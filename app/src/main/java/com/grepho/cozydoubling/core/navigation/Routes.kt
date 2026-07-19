@@ -10,7 +10,9 @@ sealed class Screen(val route: String) {
     object Oasis : Screen("oasis")
     object Settings : Screen("settings")
     object FocusRoom : Screen("focus_room")
-    object Summary : Screen("summary")
+    object Summary : Screen("summary/{sessionId}") {
+        fun createRoute(sessionId: String) = "summary/$sessionId"
+    }
     object Login : Screen("login")
 }
 

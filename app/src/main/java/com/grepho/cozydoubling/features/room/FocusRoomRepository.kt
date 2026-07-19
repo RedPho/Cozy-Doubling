@@ -126,4 +126,14 @@ class FocusRoomRepository(private val scope: CoroutineScope) {
             )
         )
     }
+
+    suspend fun fetchSession(sessionId: String): FocusSession {
+        return Supabase.client.postgrest["focus_sessions"]
+            .select {
+                filter {
+                    eq("id", sessionId)
+                }
+            }
+            .decodeSingle<FocusSession>()
+    }
 }

@@ -24,10 +24,15 @@ import kotlinx.coroutines.launch
 // --- THE SCREEN ENTRY POINT ---
 @Composable
 fun SummaryScreen(
+    sessionId: String,
     onContinueClick: () -> Unit,
     viewModel: SummaryViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+
+    LaunchedEffect(sessionId) {
+        viewModel.loadSessionStats(sessionId)
+    }
 
     SummaryPage(
         uiState = uiState,
@@ -46,28 +51,32 @@ fun SummaryPage(
     val iconScale = remember { Animatable(1f) }
 
     // Start the animation when the screen opens
-    LaunchedEffect(key1 = Unit) {
-        delay(300) // Small pause before animation starts so the user is ready
+    LaunchedEffect(uiState.leavesEarned) {
+        // 1. Safety check: Don't animate if we don't have data yet
+        if (uiState.leavesEarned == 0) return@LaunchedEffect
 
-        // Launch the pulse animation in a parallel coroutine
-        launch {
-            // Keep pulsing as long as the number is still counting
-            while (animatedLeafCount.isRunning) {
-                iconScale.animateTo(1.3f, animationSpec = tween(200))
-                iconScale.animateTo(1f, animationSpec = tween(200))
-            }
-            // Ensure it settles exactly at 1x scale when done
-            iconScale.animateTo(1f, animationSpec = tween(200))
+        delay(300) // Small breather for the user
+
+        // 2. We capture the 'counting' animation in a variable
+        val countJob = launch {
+            animatedLeafCount.animateTo(
+                targetValue = uiState.leavesEarned.toFloat(),
+                animationSpec = tween(
+                    durationMillis = 1000, // Slightly faster (1s) feels snappier
+                    easing = FastOutSlowInEasing
+                )
+            )
         }
 
-        // Count up the leaves
-        animatedLeafCount.animateTo(
-            targetValue = uiState.leavesEarned.toFloat(),
-            animationSpec = tween(
-                durationMillis = 1500, // Takes 1.5 seconds to count up
-                easing = FastOutSlowInEasing
-            )
-        )
+        // 3. Pulse only while the counting is actually happening
+        launch {
+            while (countJob.isActive) {
+                iconScale.animateTo(1.3f, animationSpec = tween(150))
+                iconScale.animateTo(1f, animationSpec = tween(150))
+            }
+            // Final settle to make sure it's exactly 1x
+            iconScale.animateTo(1f, animationSpec = tween(100))
+        }
     }
 
     // --- Time Formatting ---

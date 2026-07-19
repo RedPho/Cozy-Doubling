@@ -3,6 +3,9 @@ package com.grepho.cozydoubling.features.room
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.grepho.cozydoubling.core.profile.ProfileRepository
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -73,7 +76,7 @@ class FocusRoomViewModel : ViewModel() {
         syncWithOthers()
     }
 
-    fun finishWork(onComplete: () -> Unit) {
+    fun finishWork(onComplete: (String) -> Unit) {
         val sessionId = currentSessionId ?: return
         val completedCount = _uiState.value.tasks.count { it.isCompleted }
 
@@ -81,7 +84,7 @@ class FocusRoomViewModel : ViewModel() {
             try {
                 roomRepository.finishSession(sessionId, completedCount)
                 ProfileRepository.refreshProfile()
-                onComplete()
+                onComplete(sessionId)
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -90,9 +93,17 @@ class FocusRoomViewModel : ViewModel() {
 
     override fun onCleared() {
         super.onCleared()
-        // 4. Lean Cleanup: Just tell the repo to leave
-        viewModelScope.launch {
-            roomRepository.leaveRoom()
+        // We use GlobalScope here because the ViewModelScope is already cancelled
+        // and we MUST ensure this network call finishes.
+        @OptIn(DelicateCoroutinesApi::class)
+        GlobalScope.launch(Dispatchers.IO) {
+            try {
+                println("DEBUG: RoomViewModel - Starting global cleanup...")
+                roomRepository.leaveRoom()
+                println("DEBUG: RoomViewModel - Channel cleaned up successfully.")
+            } catch (e: Exception) {
+                println("DEBUG: Cleanup error: ${e.message}")
+            }
         }
     }
 }

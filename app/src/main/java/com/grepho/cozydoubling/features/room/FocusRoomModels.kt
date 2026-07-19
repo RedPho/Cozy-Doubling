@@ -26,7 +26,7 @@ data class RoomParticipant(
     val name: String,
     val activeTaskText: String,
     val completedTasks: Int,
-    val totalTasks: Int
+    val totalTasks: Int,
 )
 
 @Serializable
@@ -40,8 +40,13 @@ data class FocusSession(
     val endTime: String? = null,
     @SerialName("tasks_completed")
     val tasksCompleted: Int = 0,
+    @SerialName("earned_leaves")
+    val earnedLeaves: Long = 0,
     @SerialName("is_processed")
-    val isProcessed: Boolean = false
+    val isProcessed: Boolean = false,
+    @SerialName("duration_minutes")
+    val durationMinutes: Int = 0
+
 )
 
 @Serializable
@@ -52,7 +57,7 @@ data class ParticipantAction(
     @SerialName("completed_tasks")
     val completedTasks: Int,
     @SerialName("total_tasks")
-    val totalTasks: Int
+    val totalTasks: Int,
 )
 
 @Serializable
