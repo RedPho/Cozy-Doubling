@@ -10,6 +10,7 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
+import com.grepho.cozydoubling.core.theming.ThemePalette
 
 private val DarkColorScheme = darkColorScheme(
     primary = Purple80,
@@ -36,11 +37,31 @@ private val LightColorScheme = lightColorScheme(
 @Composable
 fun CozyDoublingTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
     dynamicColor: Boolean = true,
+    // Add this parameter!
+    customPalette: ThemePalette? = null,
     content: @Composable () -> Unit
 ) {
+    // 1. Logic to pick the color scheme
     val colorScheme = when {
+        // A. Use the custom palette if available (This is the Magic!)
+        customPalette != null -> {
+            lightColorScheme(
+                primary = customPalette.primary,
+                onPrimary = customPalette.onPrimary,
+                primaryContainer = customPalette.primaryContainer,
+                onPrimaryContainer = customPalette.onPrimaryContainer,
+                secondaryContainer = customPalette.secondaryContainer,
+                onSecondaryContainer = customPalette.onSecondaryContainer,
+                surfaceVariant = customPalette.surfaceVariant,
+                onSurfaceVariant = customPalette.onSurfaceVariant,
+                onSurface = customPalette.onSurface,
+                background = customPalette.background,
+                surface = customPalette.background // Map surface to background for a cozy look
+            )
+        }
+
+        // B. Fallback to Dynamic/System colors
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)

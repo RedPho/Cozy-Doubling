@@ -12,11 +12,13 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.grepho.cozydoubling.core.economy.EconomyRepository
 import com.grepho.cozydoubling.core.navigation.AppNavHost
 import com.grepho.cozydoubling.core.navigation.BottomTab
 import com.grepho.cozydoubling.core.navigation.Screen
@@ -29,7 +31,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            CozyDoublingTheme {
+            val activePalette by EconomyRepository.activePalette.collectAsState()
+
+            CozyDoublingTheme(customPalette = activePalette) {
                 CozyDoublingApp()
             }
         }

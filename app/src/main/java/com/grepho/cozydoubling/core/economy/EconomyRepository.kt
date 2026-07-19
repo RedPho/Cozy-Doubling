@@ -9,61 +9,102 @@ import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.postgrest.rpc
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
+
 object EconomyRepository {
+    private val repoScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
+    val activePalette: StateFlow<ThemePalette?> = ProfileRepository.profile
+        .map { profile ->
+            val themeId = profile?.equippedThemeId ?: return@map null
+            fetchThemePalette(themeId)
+        }
+        .stateIn(
+            scope = repoScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = null
+        )
+
+    private suspend fun fetchThemePalette(themeId: String): ThemePalette? {
+        return try {
+            Supabase.client.postgrest["theme_details"]
+                .select { filter { eq("item_id", themeId) } }
+                .decodeSingle<ThemeDetailsDto>()
+                .toPalette()
+        } catch (e: Exception) {
+            null
+        }
+    }
 
     /**
      * Fetches all themes and their color details from Supabase.
      */
     suspend fun fetchThemes(): List<ThemeItemUiState> {
+        println("DEBUG: EconomyRepo - Starting fetchThemes...")
+        val myId = Supabase.client.auth.currentUserOrNull()?.id
+        if (myId == null) {
+            println("DEBUG: EconomyRepo - USER ID IS NULL. Aborting.")
+            return emptyList()
+        }
+
+
+        val profile = ProfileRepository.profile.value
+        println("DEBUG: EconomyRepo - User ID: $myId, Profile Loaded: ${profile != null}")
+
+
         return try {
-            val profile = ProfileRepository.profile.value
+            val ownedIds = Supabase.client.postgrest["user_inventory"]
+                .select { filter { eq("user_id", myId) } }
+                .decodeList<UserInventoryDto>()
+                .map { it.itemId }
+                .toSet()
+
             val rawItems = Supabase.client.postgrest["items"]
                 .select(Columns.raw("*, theme_details(*)")) {
                     filter { eq("category_id", "theme") }
                 }
                 .decodeList<ThemeItemDto>()
 
-            return rawItems.map { dto ->
-                dto.toUiState(
-                    isOwned = checkIfOwned(dto.id),
-                    // CHECK: Is this the theme currently in our profile?
-                    isEquipped = dto.id == profile?.equippedThemeId
-                )
+            println("DEBUG: EconomyRepo - Found ${rawItems.size} themes in database.")
+
+            rawItems.mapNotNull { dto ->
+                val details = dto.details
+
+                if (details == null) {
+                    // If an item has no colors, skip it
+                    null
+                } else {
+                    // Otherwise, convert it to a UI state
+                    dto.toUiState(
+                        details = details,
+                        isOwned = ownedIds.contains(dto.id),
+                        isEquipped = dto.id == profile?.equippedThemeId
+                    )
+                }
             }
         } catch (e: Exception) {
+            println("DEBUG: EconomyRepo Error: ${e.message}")
             e.printStackTrace()
             emptyList()
-        }
-    }
-
-    private suspend fun checkIfOwned(itemId: String): Boolean {
-        val myId = Supabase.client.auth.currentUserOrNull()?.id ?: return false
-        return try {
-            val response = Supabase.client.postgrest["user_inventory"]
-                .select {
-                    filter {
-                        eq("user_id", myId)
-                        eq("item_id", itemId)
-                    }
-                }
-            !response.data.isNullOrBlank() && response.data != "[]"
-        } catch (e: Exception) {
-            false
         }
     }
 
     suspend fun equipTheme(themeId: String) {
         val myId = Supabase.client.auth.currentUserOrNull()?.id ?: return
 
-        // Update the 'profiles' table with the new theme ID
-        Supabase.client.postgrest["profiles"].update(
-            mapOf("equipped_theme_id" to themeId)
-        ) {
-            filter { eq("id", myId) }
-        }
+        Supabase.client.postgrest.rpc(
+            function = "equip_item",
+            parameters = mapOf("target_item_id" to themeId)
+        )
 
         // REACTIVE REFRESH: Tell the app to fetch the updated profile
         // so the whole app theme changes instantly!
@@ -89,7 +130,7 @@ data class ThemeItemDto(
     @SerialName("leaf_price") val leafPrice: Int,
     @SerialName("is_premium") val isPremium: Boolean,
     @SerialName("iap_id") val iapId: String?,
-    @SerialName("theme_details") val details: ThemeDetailsDto
+    @SerialName("theme_details") val details: ThemeDetailsDto? = null
 )
 
 @Serializable
@@ -110,7 +151,7 @@ data class ThemeDetailsDto(
 // MAPPING LOGIC
 // =========================================================
 
-fun ThemeItemDto.toUiState(isOwned: Boolean, isEquipped: Boolean): ThemeItemUiState = ThemeItemUiState(
+fun ThemeItemDto.toUiState(details: ThemeDetailsDto, isOwned: Boolean, isEquipped: Boolean): ThemeItemUiState = ThemeItemUiState(
     id = id,
     name = name,
     palette = details.toPalette(),
@@ -133,3 +174,6 @@ fun ThemeDetailsDto.toPalette(): ThemePalette = ThemePalette(
     onSurface = Color(android.graphics.Color.parseColor(onSurface)),
     background = Color(android.graphics.Color.parseColor(background))
 )
+
+@Serializable
+data class UserInventoryDto(@SerialName("item_id") val itemId: String)
