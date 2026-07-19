@@ -116,13 +116,14 @@ class FocusRoomRepository(private val scope: CoroutineScope) {
         return session.id
     }
 
-    suspend fun finishSession(sessionId: String, tasksCompleted: Int) {
+    suspend fun finishSession(sessionId: String, tasksCompleted: Int, taskText: String) {
         // This calls the secure 'finish_session' RPC function on the server
         Supabase.client.postgrest.rpc(
             function = "finish_session",
             parameters = FinishSessionParams(
                 sessionId = sessionId,
-                tasksDone = tasksCompleted
+                tasksDone = tasksCompleted,
+                taskText = taskText
             )
         )
     }

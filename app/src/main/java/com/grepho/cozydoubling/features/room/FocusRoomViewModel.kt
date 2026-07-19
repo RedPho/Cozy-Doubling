@@ -78,11 +78,15 @@ class FocusRoomViewModel : ViewModel() {
 
     fun finishWork(onComplete: (String) -> Unit) {
         val sessionId = currentSessionId ?: return
-        val completedCount = _uiState.value.tasks.count { it.isCompleted }
+        val state = _uiState.value
+
+        // Find the text of your current active focus
+        val lastTask = state.tasks.find { it.id == state.activeTaskId }?.text ?: "Focusing"
 
         viewModelScope.launch {
             try {
-                roomRepository.finishSession(sessionId, completedCount)
+                // Pass the text to the repository here!
+                roomRepository.finishSession(sessionId, state.tasks.count { it.isCompleted }, lastTask)
                 ProfileRepository.refreshProfile()
                 onComplete(sessionId)
             } catch (e: Exception) {

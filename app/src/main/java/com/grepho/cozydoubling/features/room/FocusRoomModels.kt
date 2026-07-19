@@ -65,7 +65,10 @@ data class FinishSessionParams(
     @SerialName("session_id")
     val sessionId: String,
     @SerialName("tasks_done")
-    val tasksDone: Int
+    val tasksDone: Int,
+    @SerialName("task_text") // Add this line!
+    val taskText: String
+
 )
 
 
