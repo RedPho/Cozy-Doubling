@@ -4,26 +4,31 @@ import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.grepho.cozydoubling.core.economy.EconomyRepository
+import com.grepho.cozydoubling.core.profile.ProfileRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import com.grepho.cozydoubling.core.theming.ThemePalette
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-// NOTE: mock data for now. When Supabase is wired up, swap loadThemes()
-// for a call into SupabaseThemeRepository.fetchThemes() + fetchOwnedThemeIds(),
-// mapping ThemeDto -> ThemeItemUiState via ThemeDto.colors.toPalette()
-// (see ThemeModels.kt / SupabaseThemeRepository.kt). The ThemePalette shape
-// below is already the real, grep-verified role set the whole app consumes,
-// so no changes should be needed here beyond swapping the data source.
 class ShopViewModel : ViewModel() {
 
-    private val _themes = MutableStateFlow<List<ThemeItemUiState>>(emptyList())
-    val themes: StateFlow<List<ThemeItemUiState>> = _themes.asStateFlow()
+    private val _items = MutableStateFlow<List<ShopItemUiState>>(emptyList())
+    val items: StateFlow<List<ShopItemUiState>> = _items.asStateFlow()
 
-    private val _userState = MutableStateFlow(UserMonetizationState(isSupporter = false, hasCozyPass = false))
-    val userState: StateFlow<UserMonetizationState> = _userState.asStateFlow()
+
+
+    val isSupporter: StateFlow<Boolean> = ProfileRepository.profile
+        .map { it?.isSupporter ?: false }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = false
+        )
 
     init {
         refreshShop()
@@ -31,15 +36,15 @@ class ShopViewModel : ViewModel() {
 
     fun refreshShop() {
         viewModelScope.launch {
-            _themes.value = EconomyRepository.fetchThemes()
+            _items.value = EconomyRepository.fetchShopItems()
         }
     }
 
     // 2. Handle Actions
-    fun onBuyWithLeavesClicked(themeId: String) {
+    fun onBuyWithLeavesClicked(itemId: String) {
         viewModelScope.launch {
             try {
-                EconomyRepository.purchaseWithLeaves(themeId)
+                EconomyRepository.purchaseWithLeaves(itemId)
                 // Refresh to show the "Owned" badge
                 refreshShop()
             } catch (e: Exception) {
@@ -49,7 +54,7 @@ class ShopViewModel : ViewModel() {
         }
     }
 
-    fun onBuyWithCashClicked(themeId: String) {
+    fun onBuyWithCashClicked(itemId: String) {
         // TODO: Logic to trigger Google Play Billing goes here
     }
 }

@@ -4,7 +4,7 @@ import androidx.compose.ui.graphics.Color
 import com.grepho.cozydoubling.core.Supabase
 import com.grepho.cozydoubling.core.profile.ProfileRepository
 import com.grepho.cozydoubling.core.theming.ThemePalette
-import com.grepho.cozydoubling.features.shop.ThemeItemUiState
+import com.grepho.cozydoubling.features.shop.ShopItemUiState
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Columns
@@ -45,59 +45,6 @@ object EconomyRepository {
         }
     }
 
-    /**
-     * Fetches all themes and their color details from Supabase.
-     */
-    suspend fun fetchThemes(): List<ThemeItemUiState> {
-        println("DEBUG: EconomyRepo - Starting fetchThemes...")
-        val myId = Supabase.client.auth.currentUserOrNull()?.id
-        if (myId == null) {
-            println("DEBUG: EconomyRepo - USER ID IS NULL. Aborting.")
-            return emptyList()
-        }
-
-
-        val profile = ProfileRepository.profile.value
-        println("DEBUG: EconomyRepo - User ID: $myId, Profile Loaded: ${profile != null}")
-
-
-        return try {
-            val ownedIds = Supabase.client.postgrest["user_inventory"]
-                .select { filter { eq("user_id", myId) } }
-                .decodeList<UserInventoryDto>()
-                .map { it.itemId }
-                .toSet()
-
-            val rawItems = Supabase.client.postgrest["items"]
-                .select(Columns.raw("*, theme_details(*)")) {
-                    filter { eq("category_id", "theme") }
-                }
-                .decodeList<ThemeItemDto>()
-
-            println("DEBUG: EconomyRepo - Found ${rawItems.size} themes in database.")
-
-            rawItems.mapNotNull { dto ->
-                val details = dto.details
-
-                if (details == null) {
-                    // If an item has no colors, skip it
-                    null
-                } else {
-                    // Otherwise, convert it to a UI state
-                    dto.toUiState(
-                        details = details,
-                        isOwned = ownedIds.contains(dto.id),
-                        isEquipped = dto.id == profile?.equippedThemeId
-                    )
-                }
-            }
-        } catch (e: Exception) {
-            println("DEBUG: EconomyRepo Error: ${e.message}")
-            e.printStackTrace()
-            emptyList()
-        }
-    }
-
     suspend fun equipTheme(themeId: String) {
         val myId = Supabase.client.auth.currentUserOrNull()?.id ?: return
 
@@ -117,6 +64,55 @@ object EconomyRepository {
             parameters = mapOf("target_item_id" to itemId)
         )
     }
+
+    suspend fun fetchShopItems(): List<ShopItemUiState> {
+        val myId = Supabase.client.auth.currentUserOrNull()?.id ?: return emptyList()
+        val profile = ProfileRepository.profile.value
+
+        return try {
+            val ownedIds = Supabase.client.postgrest["user_inventory"]
+                .select { filter { eq("user_id", myId) } }
+                .decodeList<UserInventoryDto>()
+                .map { it.itemId }
+                .toSet()
+
+            val rawItems = Supabase.client.postgrest["items"]
+                .select(Columns.raw("*, theme_details(*)"))
+                .decodeList<ThemeItemDto>()
+
+            rawItems.map { dto ->
+                val isOwned = ownedIds.contains(dto.id)
+                val details = dto.details
+
+                if (details == null) {
+                    // No details means it's a Pass
+                    ShopItemUiState.Pass(
+                        id = dto.id,
+                        name = dto.name,
+                        isPremium = true,
+                        isOwned = isOwned,
+                        iapId = dto.iapId ?: "",
+                        priceString = "..." // To be hydrated by Play Billing
+                    )
+                } else {
+                    // Has details means it's a Theme
+                    ShopItemUiState.Theme(
+                        id = dto.id,
+                        name = dto.name,
+                        isPremium = dto.isPremium,
+                        isOwned = isOwned,
+                        palette = details.toPalette(),
+                        leafPrice = dto.leafPrice,
+                        isEquipped = dto.id == profile?.equippedThemeId
+                    )
+                }
+            }
+        } catch (e: Exception) {
+            println("DEBUG: Shop Error: ${e.message}")
+            e.printStackTrace()
+            emptyList()
+        }
+    }
 }
 
 // =========================================================
@@ -133,33 +129,30 @@ data class ThemeItemDto(
     @SerialName("theme_details") val details: ThemeDetailsDto? = null
 )
 
-@Serializable
-data class ThemeDetailsDto(
-    @SerialName("primary_color") val primary: String,
-    @SerialName("on_primary") val onPrimary: String,
-    @SerialName("primary_container") val primaryContainer: String,
-    @SerialName("on_primary_container") val onPrimaryContainer: String,
-    @SerialName("secondary_container") val secondaryContainer: String,
-    @SerialName("on_secondary_container") val onSecondaryContainer: String,
-    @SerialName("surface_variant") val surfaceVariant: String,
-    @SerialName("on_surface_variant") val onSurfaceVariant: String,
-    @SerialName("on_surface") val onSurface: String,
-    val background: String
-)
-
 // =========================================================
 // MAPPING LOGIC
 // =========================================================
 
-fun ThemeItemDto.toUiState(details: ThemeDetailsDto, isOwned: Boolean, isEquipped: Boolean): ThemeItemUiState = ThemeItemUiState(
-    id = id,
-    name = name,
-    palette = details.toPalette(),
-    leafPrice = leafPrice,
-    iapPrice = "...", // Will be hydrated by RevenueCat later
-    isPremium = isPremium,
-    isOwned = isOwned,
-    isEquipped = isEquipped
+
+@Serializable
+data class ThemeDetailsDto(
+    @SerialName("primary") val primary: String, // Matches DB column
+    @SerialName("on_primary") val onPrimary: String,
+    @SerialName("primary_container") val primaryContainer: String,
+    @SerialName("on_primary_container") val onPrimaryContainer: String,
+    @SerialName("secondary") val secondary: String,
+    @SerialName("on_secondary") val onSecondary: String,
+    @SerialName("secondary_container") val secondaryContainer: String,
+    @SerialName("on_secondary_container") val onSecondaryContainer: String,
+    @SerialName("tertiary") val tertiary: String,
+    @SerialName("on_tertiary") val onTertiary: String,
+    @SerialName("tertiary_container") val tertiaryContainer: String,
+    @SerialName("surface") val surface: String,
+    @SerialName("on_background") val onBackground: String,
+    @SerialName("surface_variant") val surfaceVariant: String,
+    @SerialName("on_surface_variant") val onSurfaceVariant: String,
+    @SerialName("on_surface") val onSurface: String,
+    @SerialName("background") val background: String
 )
 
 fun ThemeDetailsDto.toPalette(): ThemePalette = ThemePalette(
@@ -167,13 +160,19 @@ fun ThemeDetailsDto.toPalette(): ThemePalette = ThemePalette(
     onPrimary = Color(android.graphics.Color.parseColor(onPrimary)),
     primaryContainer = Color(android.graphics.Color.parseColor(primaryContainer)),
     onPrimaryContainer = Color(android.graphics.Color.parseColor(onPrimaryContainer)),
+    secondary = Color(android.graphics.Color.parseColor(secondary)),
+    onSecondary = Color(android.graphics.Color.parseColor(onSecondary)),
     secondaryContainer = Color(android.graphics.Color.parseColor(secondaryContainer)),
     onSecondaryContainer = Color(android.graphics.Color.parseColor(onSecondaryContainer)),
-    surfaceVariant = Color(android.graphics.Color.parseColor(surfaceVariant)),
-    onSurfaceVariant = Color(android.graphics.Color.parseColor(onSurfaceVariant)),
+    tertiary = Color(android.graphics.Color.parseColor(tertiary)),
+    onTertiary = Color(android.graphics.Color.parseColor(onTertiary)),
+    tertiaryContainer = Color(android.graphics.Color.parseColor(tertiaryContainer)),
+    surface = Color(android.graphics.Color.parseColor(surface)),
     onSurface = Color(android.graphics.Color.parseColor(onSurface)),
-    background = Color(android.graphics.Color.parseColor(background))
+    background = Color(android.graphics.Color.parseColor(background)),
+    onBackground = Color(android.graphics.Color.parseColor(onBackground)),
+    surfaceVariant = Color(android.graphics.Color.parseColor(surfaceVariant)),
+    onSurfaceVariant = Color(android.graphics.Color.parseColor(onSurfaceVariant))
 )
-
 @Serializable
 data class UserInventoryDto(@SerialName("item_id") val itemId: String)

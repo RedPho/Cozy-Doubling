@@ -1,13 +1,12 @@
 package com.grepho.cozydoubling.features.inventory
 
-import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.grepho.cozydoubling.core.Supabase
 import com.grepho.cozydoubling.core.economy.EconomyRepository
 import com.grepho.cozydoubling.core.profile.ProfileRepository
-import com.grepho.cozydoubling.core.theming.ThemePalette
-import com.grepho.cozydoubling.features.shop.ThemeItemUiState
+import com.grepho.cozydoubling.features.shop.ShopItemUiState
+import com.grepho.cozydoubling.ui.theme.CozyPalettes
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,8 +17,9 @@ private const val DEFAULT_THEME_ID = "system_default"
 
 class InventoryViewModel : ViewModel() {
 
-    private val _ownedThemes = MutableStateFlow<List<ThemeItemUiState>>(emptyList())
-    val ownedThemes: StateFlow<List<ThemeItemUiState>> = _ownedThemes.asStateFlow()
+    private val _ownedThemes = MutableStateFlow<List<ShopItemUiState.Theme>>(emptyList())
+    val ownedThemes: StateFlow<List<ShopItemUiState.Theme>> = _ownedThemes.asStateFlow()
+
 
     init {
         refreshInventory()
@@ -29,35 +29,27 @@ class InventoryViewModel : ViewModel() {
 
     private fun refreshInventory() {
         viewModelScope.launch {
-            // 1. Fetch all themes from the repository
-            val allThemes = EconomyRepository.fetchThemes()
+            // 1. Fetch EVERYTHING (Themes and Passes)
+            val allShopItems = EconomyRepository.fetchShopItems()
             val profile = ProfileRepository.profile.value
+            val isSupporter = profile?.isSupporter ?: false
 
-            val defaultTheme = ThemeItemUiState(
+            val defaultTheme = ShopItemUiState.Theme(
                 id = DEFAULT_THEME_ID,
                 name = "System Default",
-                palette = ThemePalette(
-                    // Use some neutral colors for the preview
-                    primary = Color.White,
-                    onPrimary = Color.White,
-                    primaryContainer = Color.White,
-                    onPrimaryContainer = Color.White,
-                    secondaryContainer = Color.White,
-                    onSecondaryContainer = Color.White,
-                    surfaceVariant = Color.White,
-                    onSurfaceVariant = Color.White,
-                    onSurface = Color.White,
-                    background = Color.White
-                ),
+                palette = CozyPalettes.SystemDefault,
                 leafPrice = 0,
-                iapPrice = "",
                 isPremium = false,
                 isOwned = true,
-                isEquipped = profile?.equippedThemeId == null // It's equipped if no other ID is set
+                isEquipped = profile?.equippedThemeId == null
             )
 
-            // 2. Filter to show only the ones the user actually owns
-            _ownedThemes.value = listOf(defaultTheme) + allThemes.filter { it.isOwned }
+            // 2. Filter: Show if it's a Theme AND (User owns it OR it's a Premium Theme and user is a Supporter)
+            val ownedThemes = allShopItems.filterIsInstance<ShopItemUiState.Theme>().filter { theme ->
+                if (theme.isPremium) isSupporter else theme.isOwned
+            }
+
+            _ownedThemes.value = listOf(defaultTheme) + ownedThemes
         }
     }
 

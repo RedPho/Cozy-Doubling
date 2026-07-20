@@ -11,6 +11,7 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import com.grepho.cozydoubling.core.theming.ThemePalette
+import com.grepho.cozydoubling.core.theming.toColorScheme
 
 
 private val DarkColorScheme = darkColorScheme(
@@ -62,21 +63,7 @@ fun CozyDoublingTheme(
 ) {
     // 1. Logic to pick the color scheme
     val colorScheme = when {
-        customPalette != null -> {
-            lightColorScheme(
-                primary = customPalette.primary,
-                onPrimary = customPalette.onPrimary,
-                primaryContainer = customPalette.primaryContainer,
-                onPrimaryContainer = customPalette.onPrimaryContainer,
-                secondaryContainer = customPalette.secondaryContainer,
-                onSecondaryContainer = customPalette.onSecondaryContainer,
-                surfaceVariant = customPalette.surfaceVariant,
-                onSurfaceVariant = customPalette.onSurfaceVariant,
-                onSurface = customPalette.onSurface,
-                background = customPalette.background,
-                surface = customPalette.background // Map surface to background for a cozy look
-            )
-        }
+        customPalette != null -> customPalette.toColorScheme()
 
         darkTheme -> DarkColorScheme
         else -> LightColorScheme

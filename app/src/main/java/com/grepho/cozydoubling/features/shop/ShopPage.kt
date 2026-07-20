@@ -1,16 +1,14 @@
 package com.grepho.cozydoubling.features.shop
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -20,187 +18,119 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.grepho.cozydoubling.core.theming.ThemePalette
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.filled.Stars
 
 // --- THE SCREEN ENTRY POINT ---
 @Composable
 fun ShopScreen(viewModel: ShopViewModel = viewModel()) {
-    val themes by viewModel.themes.collectAsState()
-    val userState by viewModel.userState.collectAsState()
+    // 1. Collect the correct flow (items, not themes)
+    val items by viewModel.items.collectAsState()
+    val isSupporter by viewModel.isSupporter.collectAsState()
 
     ShopPage(
-        themes = themes,
-        userState = userState,
-        onBuyWithLeaves = { themeId -> viewModel.onBuyWithLeavesClicked(themeId) },
-        onBuyWithCash = { themeId -> viewModel.onBuyWithCashClicked(themeId) }
+        items = items,
+        isSupporter = isSupporter,
+        onBuyWithLeaves = { id -> viewModel.onBuyWithLeavesClicked(id) },
+        onBuyWithCash = { id -> viewModel.onBuyWithCashClicked(id) }
     )
 }
 
 // --- THE UI COMPONENT ---
 @Composable
 fun ShopPage(
-    themes: List<ThemeItemUiState>,
-    userState: UserMonetizationState,
+    items: List<ShopItemUiState>, // Changed from themes
+    isSupporter: Boolean,
     onBuyWithLeaves: (String) -> Unit,
     onBuyWithCash: (String) -> Unit
 ) {
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(2),
-        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
-        contentPadding = PaddingValues(vertical = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
+        contentPadding = PaddingValues(vertical = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        items(themes) { theme ->
-            ThemeShopCard(
-                theme = theme,
-                userState = userState,
-                onBuyWithLeaves = { onBuyWithLeaves(theme.id) },
-                onBuyWithCash = { onBuyWithCash(theme.id) }
-            )
+        items(items) { item ->
+            when (item) {
+                is ShopItemUiState.Pass -> {
+                    SupporterPassCard(item, onBuy = { onBuyWithCash(item.id) })
+                }
+                is ShopItemUiState.Theme -> {
+                    ThemeShopCard(item, isSupporter, onBuyWithLeaves, onBuyWithCash)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SupporterPassCard(pass: ShopItemUiState.Pass, onBuy: () -> Unit) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(32.dp),
+        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
+        border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
+    ) {
+        Row(
+            modifier = Modifier.padding(24.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.Default.Stars, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(40.dp))
+            Spacer(Modifier.width(16.dp))
+            Column(Modifier.weight(1f)) {
+                Text(text = pass.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(text = "Unlocks all Premium Themes", style = MaterialTheme.typography.bodySmall)
+            }
+            Button(onClick = onBuy, shape = CircleShape) {
+                Text(pass.priceString)
+            }
         }
     }
 }
 
 @Composable
 fun ThemeShopCard(
-    theme: ThemeItemUiState,
-    userState: UserMonetizationState,
-    onBuyWithLeaves: () -> Unit,
-    onBuyWithCash: () -> Unit
+    theme: ShopItemUiState.Theme, // Changed to use the new sealed class variant
+    isSupporter: Boolean,
+    onBuyWithLeaves: (String) -> Unit,
+    onBuyWithCash: (String) -> Unit
 ) {
-    val isEffectivelyOwned = theme.isOwned || userState.hasCozyPass
+    // NEW LOGIC: Available if owned (basic) OR user has a pass (premium)
+    val isAvailable = if (theme.isPremium) isSupporter else theme.isOwned
 
-    Card(
+    Surface(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-        ),
-        shape = RoundedCornerShape(16.dp)
+        shape = RoundedCornerShape(32.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // Replaces the single-hue circle: a truthful mini mockup
-            // rendered straight from the theme's full palette.
-            ThemeMiniPreview(
-                palette = theme.palette,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(84.dp)
-            )
+        Column(modifier = Modifier.padding(16.dp)) {
+            ThemeMockupPreview(palette = theme.palette, modifier = Modifier.fillMaxWidth().height(200.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Text(
-                text = theme.name,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                textAlign = TextAlign.Center,
-                maxLines = 1
-            )
-
-            Text(
-                text = if (theme.isPremium) "Premium Theme" else "Basic Theme",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 104.dp),
-                contentAlignment = Alignment.Center
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                if (isEffectivelyOwned) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.secondaryContainer,
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(vertical = 8.dp),
-                            horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Check,
-                                contentDescription = "Owned",
-                                modifier = Modifier.size(16.dp),
-                                tint = MaterialTheme.colorScheme.onSecondaryContainer
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "Owned",
-                                style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer
-                            )
-                        }
-                    }
-                } else if (!theme.isPremium) {
-                    Button(
-                        onClick = onBuyWithLeaves,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Text("${theme.leafPrice} Leaves")
-                    }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(text = theme.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text(text = if (theme.isPremium) "Premium Theme" else "Basic Theme", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                }
+
+                if (isAvailable) {
+                    Icon(Icons.Default.CheckCircle, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
                 } else {
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        Button(
-                            onClick = onBuyWithCash,
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(8.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                        ) {
-                            Text(theme.iapPrice)
-                        }
-
-                        Spacer(modifier = Modifier.height(4.dp))
-
-                        if (userState.isSupporter) {
-                            OutlinedButton(
-                                onClick = onBuyWithLeaves,
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(8.dp)
-                            ) {
-                                Text("${theme.leafPrice} Leaves")
-                            }
-                        } else {
-                            Surface(
-                                onClick = { /* Open Supporter Upsell Dialog */ },
-                                shape = RoundedCornerShape(8.dp),
-                                color = MaterialTheme.colorScheme.surfaceVariant,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(vertical = 8.dp),
-                                    horizontalArrangement = Arrangement.Center,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Lock,
-                                        contentDescription = "Locked",
-                                        modifier = Modifier.size(14.dp),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(
-                                        text = "${theme.leafPrice} Leaves",
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                        }
+                    Button(
+                        onClick = { if (theme.isPremium) onBuyWithCash(theme.id) else onBuyWithLeaves(theme.id) },
+                        shape = CircleShape,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (theme.isPremium) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = if (theme.isPremium) Color.White else MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    ) {
+                        Text(if (theme.isPremium) "Get Pass" else "${theme.leafPrice} Leaves")
                     }
                 }
             }
@@ -208,127 +138,65 @@ fun ThemeShopCard(
     }
 }
 
-/**
- * A tiny, truthful preview built out of MINIATURES OF THE REAL COMPONENTS,
- * not an invented mockup. Every shape here corresponds to something that
- * actually renders somewhere in the app with these exact roles:
- *
- *   - the circle  -> ParticipantAvatar / Friends / Journey (primaryContainer / onPrimaryContainer)
- *   - the pill     -> the "Owned" badge (secondaryContainer / onSecondaryContainer)
- *   - the small solid button -> HomePage CTA (primary / onPrimary) — the
- *     riskiest pairing to preview, since it's a solid fill rather than a
- *     soft container: bad contrast here is the most likely way a theme
- *     "doesn't preview well"
- *   - the bottom bar -> TaskBottomSheet surface (surfaceVariant / onSurfaceVariant)
- *   - the two text bars -> task list text (onSurface) on `background`
- *   - the ring stroke -> progress ring (primary)
- *
- * If this composable ever uses a color that isn't ThemePalette, that's a bug —
- * it means the preview is showing something the app can't actually produce.
- */
 @Composable
-fun ThemeMiniPreview(
+fun ThemeMockupPreview(
     palette: ThemePalette,
     modifier: Modifier = Modifier
 ) {
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(10.dp))
-            .background(palette.background)
-            .border(1.dp, palette.primary.copy(alpha = 0.15f), RoundedCornerShape(10.dp))
-            .padding(8.dp)
+            .clip(RoundedCornerShape(32.dp))
+            .background(palette.background) // This will now show the greenish-mint correctly
+            .border(1.dp, Color.LightGray.copy(alpha = 0.2f), RoundedCornerShape(32.dp))
+            .padding(16.dp)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                // Mini avatar — same visual as ParticipantAvatar
-                Box(contentAlignment = Alignment.Center) {
-                    Box(
-                        modifier = Modifier
-                            .size(28.dp)
-                            .clip(CircleShape)
-                            .background(palette.primaryContainer),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "Y",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = palette.onPrimaryContainer,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                    // progress ring hint, same role as the real ring (`primary`)
-                    Box(
-                        modifier = Modifier
-                            .size(28.dp)
-                            .clip(CircleShape)
-                            .border(2.dp, palette.primary, CircleShape)
-                    )
-                }
-
-                // Mini "Owned" badge — same roles as the real badge
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(palette.secondaryContainer)
-                        .padding(horizontal = 8.dp, vertical = 3.dp)
-                ) {
-                    Text(
-                        text = "Owned",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = palette.onSecondaryContainer
-                    )
-                }
-
-                Spacer(modifier = Modifier.weight(1f))
-
-                // Mini solid CTA — same roles as the HomePage button.
-                // Solid fills are where a bad on/container pairing is most
-                // visible, so this is the single most important swatch here.
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(palette.primary)
-                        .padding(horizontal = 8.dp, vertical = 3.dp)
-                ) {
-                    Text(
-                        text = "Go",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = palette.onPrimary,
-                        fontWeight = FontWeight.Bold
-                    )
+            // 1. Swatches (Shows the Browns clearly)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(palette.primary, palette.secondary, palette.tertiary).forEach { color ->
+                    Box(modifier = Modifier.size(24.dp).clip(CircleShape).background(color))
                 }
             }
 
             Spacer(modifier = Modifier.weight(1f))
 
-            // Mini task sheet strip — same roles as TaskBottomSheet
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(palette.surfaceVariant)
-                    .padding(6.dp)
-            ) {
+            // 2. Realistic Mini Components
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                // Mini Focus Ring (Dominant Primary)
                 Box(
-                    modifier = Modifier
-                        .width(30.dp)
-                        .height(4.dp)
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(palette.onSurfaceVariant.copy(alpha = 0.9f))
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Box(
-                    modifier = Modifier
-                        .width(18.dp)
-                        .height(4.dp)
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(palette.onSurface.copy(alpha = 0.6f))
-                )
+                    modifier = Modifier.size(70.dp).border(4.dp, palette.primary, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Box(modifier = Modifier.size(50.dp).background(palette.primaryContainer.copy(alpha = 0.4f), CircleShape))
+                }
+
+                Spacer(modifier = Modifier.width(16.dp))
+
+                // Mini Card (Surface - now smaller to not hide the background)
+                Surface(
+                    modifier = Modifier.size(70.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    color = palette.surface, // This is the White part
+                    shadowElevation = 2.dp
+                ) {
+                    // Small Reward Badge using Tertiary (Brown)
+                    Box(contentAlignment = Alignment.Center) {
+                        Box(modifier = Modifier.size(24.dp).background(palette.tertiary, CircleShape))
+                    }
+                }
             }
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            // 3. Mini App Bar / Selection Pill using Secondary (Brown)
+            Box(
+                modifier = Modifier
+                    .width(100.dp)
+                    .height(20.dp)
+                    .align(Alignment.CenterHorizontally)
+                    .clip(CircleShape)
+                    .background(palette.secondary.copy(alpha = 0.2f))
+            )
         }
     }
 }

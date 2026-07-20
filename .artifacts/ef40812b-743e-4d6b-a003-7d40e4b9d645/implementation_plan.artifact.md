@@ -1,52 +1,42 @@
-# Implementation Plan - Oasis Hub (Journey & Friends) Refresh
+# Implementation Plan - Diverse Marketplace & Supporter Pass
 
-We will update the Oasis Hub, Journey, and Friends pages to match the provided designs, maintaining existing data logic while significantly upgrading the UI styling.
+We will expand the Shop to include "Supporter Passes" and refine the ownership logic. Premium themes will now be "unlocked" by an active pass, while Basic themes remain individual leaf purchases.
+
+## User Review Required
+
+> [!IMPORTANT]
+> - **Premium Themes** will no longer show a "Buy" button if the user has a Supporter Pass. They will instantly become available in the Inventory.
+> - **Supporter Passes** will be listed at the top of the Shop and purchased with cash (IAP).
 
 ## Proposed Changes
 
-### Oasis Hub Container
+### Core: Economy Data
 
-#### [MODIFY] [OasisPage.kt](file:///home/emin/repos/android-repos/CozyDoubling/app/src/main/java/com/grepho/cozydoubling/features/oasis/OasisPage.kt)
-- Add the "Oasis Hub" title below the top bar (visible for all sub-tabs).
-- Style the `SecondaryTabRow` to match the design (centered indicator, sage green accents).
-- Ensure the background is `BackgroundCream`.
+#### [MODIFY] [EconomyRepository.kt](file:///home/emin/repos/android-repos/CozyDoubling/app/src/main/java/com/grepho/cozydoubling/core/economy/EconomyRepository.kt)
+- Complete `fetchShopItems()` to map database items to `ShopItemUiState.Theme` or `ShopItemUiState.Pass`.
+- Implement `isOwned` logic for both types based on the `user_inventory` table.
 
-### Journey Page
+### Feature: Shop
 
-#### [MODIFY] [JourneyPage.kt](file:///home/emin/repos/android-repos/CozyDoubling/app/src/main/java/com/grepho/cozydoubling/features/journey/JourneyPage.kt)
-- **Profile Section:**
-    - Large circular avatar with a subtle ring/glow.
-    - Title: "[Name]'s Oasis" using `titleLarge`.
-    - Subtitle: "Cozy Doubler since [Date]" in `onSurfaceVariant`.
-- **Stats Cards:**
-    - Replace the horizontal `GentleStatCard` with two large vertical `Surface` cards.
-    - Card 1: "Total Leaves Collected" with a circular icon container (sage/gold) and leaf icon.
-    - Card 2: "Time in Deep Focus" with a circular icon container (sage green) and clock icon.
-    - Use `SurfaceWhite` with rounded corners and soft shadows.
+#### [MODIFY] [ShopViewModel.kt](file:///home/emin/repos/android-repos/CozyDoubling/app/src/main/java/com/grepho/cozydoubling/features/shop/ShopViewModel.kt)
+- Update `themes` flow to `items` (List of `ShopItemUiState`).
+- Call `fetchShopItems()` on refresh.
 
-### Friends Page
+#### [MODIFY] [ShopPage.kt](file:///home/emin/repos/android-repos/CozyDoubling/app/src/main/java/com/grepho/cozydoubling/features/shop/ShopPage.kt)
+- Update `ShopPage` to iterate over `ShopItemUiState` list.
+- **[NEW] `SupporterPassCard`**: A high-end card for monthly/yearly/lifetime passes.
+- **`ThemeShopCard`**: Refine `isAvailable` logic: `isPremium ? isSupporter : isOwned`.
 
-#### [MODIFY] [FriendsPage.kt](file:///home/emin/repos/android-repos/CozyDoubling/app/src/main/java/com/grepho/cozydoubling/features/friends/FriendsPage.kt)
-- **Connect Code:**
-    - Style as a light cream capsule/box with "YOUR CONNECT CODE" label.
-    - The code itself in `PrimarySage` with a copy icon.
-- **Pending Requests:**
-    - Header: "Pending Requests (X)" in `onSurfaceVariant`.
-    - Card: White surface, profile pic, "Accept" button (sage green capsule), and "X" decline button.
-- **Your Garden:**
-    - Header: "Your Garden (X)" with a group icon.
-    - Friend Cards:
-        - Large white surface with rounded corners.
-        - Circular avatar placeholder.
-        - Name and tag.
-        - Use existing "Last Session" data but style it as per the design.
-        - **Note:** No new features (Nudge, Send Leaf, Online Status) will be added to the logic.
+### Feature: Inventory
+
+#### [MODIFY] [InventoryViewModel.kt](file:///home/emin/repos/android-repos/CozyDoubling/app/src/main/java/com/grepho/cozydoubling/features/inventory/InventoryViewModel.kt)
+- Use `fetchShopItems()` and filter for `Theme` items only.
+- Include Premium themes in the list if `isSupporter` is true.
 
 ## Verification Plan
 
 ### Manual Verification
-- Deploy the app and navigate to the Oasis Hub.
-- Switch between Journey and Friends tabs.
-- Verify the Journey page matches Image 4 (Profile, Stats Cards).
-- Verify the Friends page matches Image 2 (Connect Code, Pending Requests, Friend Cards).
-- Ensure all buttons (Accept, Decline, Copy Code) remain functional.
+- Verify the Shop displays "Supporter Passes" correctly.
+- Verify that Basic themes can still be bought with leaves.
+- Verify that Premium themes show as "Locked" for non-supporters.
+- Test (mocking) that buying a pass instantly populates the Inventory with Premium themes.

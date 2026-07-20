@@ -4,10 +4,6 @@ import androidx.compose.ui.graphics.Color
 import com.grepho.cozydoubling.core.theming.ThemePalette
 
 // Represents the user's current subscription/supporter status
-data class UserMonetizationState(
-    val isSupporter: Boolean,
-    val hasCozyPass: Boolean
-)
 
 /**
  * A full color role palette for a theme.
@@ -38,13 +34,29 @@ data class UserMonetizationState(
  */
 
 
-data class ThemeItemUiState(
-    val id: String,
-    val name: String,
-    val palette: ThemePalette,
-    val leafPrice: Int,
-    val iapPrice: String,        // formatted, localized price string from Billing (e.g. "$1.99")
-    val isPremium: Boolean,
-    val isOwned: Boolean,
-    val isEquipped: Boolean = false
-)
+
+sealed class ShopItemUiState {
+    abstract val id: String
+    abstract val name: String
+    abstract val isPremium: Boolean
+    abstract val isOwned: Boolean
+
+    data class Theme(
+        override val id: String,
+        override val name: String,
+        override val isPremium: Boolean,
+        override val isOwned: Boolean,
+        val palette: ThemePalette,
+        val leafPrice: Int,
+        val isEquipped: Boolean = false
+    ) : ShopItemUiState()
+
+    data class Pass(
+        override val id: String,
+        override val name: String,
+        override val isPremium: Boolean,
+        override val isOwned: Boolean,
+        val iapId: String,
+        val priceString: String // e.g. "$4.99"
+    ) : ShopItemUiState()
+}
