@@ -69,20 +69,6 @@ fun InventoryPage(
             ThemeInventoryCard(theme, onEquipClick = { onEquipClick(theme.id) })
             Spacer(modifier = Modifier.height(16.dp))
         }
-
-        item {
-            // "Get More Themes" Bottom Button
-            Button(
-                onClick = { /* Navigate to Shop Tab */ },
-                modifier = Modifier.fillMaxWidth().height(64.dp).padding(vertical = 8.dp),
-                shape = CircleShape,
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f), contentColor = Color.Black)
-            ) {
-                Icon(Icons.Default.Storefront, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Get More Themes")
-            }
-        }
     }
 }
 

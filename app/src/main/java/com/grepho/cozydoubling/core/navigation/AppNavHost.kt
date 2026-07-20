@@ -12,7 +12,7 @@ import androidx.navigation.navArgument
 import com.grepho.cozydoubling.features.auth.LoginScreen
 import com.grepho.cozydoubling.features.auth.LoginViewModel
 import com.grepho.cozydoubling.features.home.HomeScreen
-import com.grepho.cozydoubling.features.oasis.OasisPage
+import com.grepho.cozydoubling.features.oasis.OasisScreen
 import com.grepho.cozydoubling.features.room.FocusRoomScreen
 import com.grepho.cozydoubling.features.settings.SettingsScreen
 import com.grepho.cozydoubling.features.summary.SummaryScreen
@@ -67,7 +67,9 @@ fun AppNavHost(navController: NavHostController, modifier: Modifier = Modifier, 
         }
 
         composable(Screen.Oasis.route) {
-            OasisPage()
+            OasisScreen(
+                onNavigateToSettings = { navController.navigate(Screen.Settings.route) }
+            )
         }
 
         composable(Screen.Settings.route) {
