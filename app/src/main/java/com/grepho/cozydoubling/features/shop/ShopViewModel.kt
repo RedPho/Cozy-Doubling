@@ -17,7 +17,20 @@ import kotlinx.coroutines.launch
 
 class ShopViewModel : ViewModel() {
 
-    val items = EconomyRepository.shopItems
+    val items: StateFlow<List<ShopItemUiState>> = EconomyRepository.shopItems
+        .map { rawItems ->
+            val themes = rawItems.filterIsInstance<ShopItemUiState.Theme>()
+            val passes = rawItems.filterIsInstance<ShopItemUiState.Pass>()
+
+            val list = mutableListOf<ShopItemUiState>()
+            if (passes.isNotEmpty()) {
+                list.add(ShopItemUiState.SupporterSection(passes))
+            }
+            list.addAll(themes)
+            list
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
 
 
 

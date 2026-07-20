@@ -59,4 +59,13 @@ sealed class ShopItemUiState {
         val iapId: String,
         val priceString: String // e.g. "$4.99"
     ) : ShopItemUiState()
+
+    data class SupporterSection(
+        val passes: List<Pass>
+    ) : ShopItemUiState() {
+        override val id: String = "supporter_section"
+        override val name: String = "Supporter"
+        override val isPremium: Boolean = true
+        override val isOwned: Boolean = false
+    }
 }

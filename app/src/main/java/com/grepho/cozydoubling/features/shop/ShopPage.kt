@@ -22,7 +22,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.grepho.cozydoubling.core.theming.ThemePalette
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.filled.Stars
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
 
 // --- THE SCREEN ENTRY POINT ---
 @Composable
@@ -47,44 +51,37 @@ fun ShopPage(
     onBuyWithLeaves: (String) -> Unit,
     onBuyWithCash: (String) -> Unit
 ) {
+    val listState = rememberLazyListState()
+    val coroutineScope = rememberCoroutineScope()
+
+
     LazyColumn(
+        state = listState,
         modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
         contentPadding = PaddingValues(vertical = 24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         items(items) { item ->
             when (item) {
-                is ShopItemUiState.Pass -> {
-                    SupporterPassCard(item, onBuy = { onBuyWithCash(item.id) })
+                is ShopItemUiState.SupporterSection -> {
+                    SupporterSectionCard(item, onBuy = { onBuyWithCash(it) })
                 }
                 is ShopItemUiState.Theme -> {
-                    ThemeShopCard(item, isSupporter, onBuyWithLeaves, onBuyWithCash)
+                    ThemeShopCard(
+                        theme = item,
+                        isSupporter = isSupporter,
+                        onBuyWithLeaves = onBuyWithLeaves,
+                        onBuyWithCash = {
+                            // 2. SCROLL TO TOP when clicking "Get Pass"
+                            coroutineScope.launch {
+                                listState.animateScrollToItem(0)
+                            }
+                        }
+                    )
                 }
-            }
-        }
-    }
-}
-
-@Composable
-fun SupporterPassCard(pass: ShopItemUiState.Pass, onBuy: () -> Unit) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(32.dp),
-        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
-        border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
-    ) {
-        Row(
-            modifier = Modifier.padding(24.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(Icons.Default.Stars, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(40.dp))
-            Spacer(Modifier.width(16.dp))
-            Column(Modifier.weight(1f)) {
-                Text(text = pass.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Text(text = "Unlocks all Premium Themes", style = MaterialTheme.typography.bodySmall)
-            }
-            Button(onClick = onBuy, shape = CircleShape) {
-                Text(pass.priceString)
+                is ShopItemUiState.Pass -> {
+                    null
+                }
             }
         }
     }
@@ -197,6 +194,73 @@ fun ThemeMockupPreview(
                     .clip(CircleShape)
                     .background(palette.secondary.copy(alpha = 0.2f))
             )
+        }
+    }
+}
+
+@Composable
+fun SupporterSectionCard(section: ShopItemUiState.SupporterSection, onBuy: (String) -> Unit) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(32.dp),
+        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
+        border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
+    ) {
+        Column(modifier = Modifier.padding(24.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.Stars,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(40.dp)
+                )
+                Spacer(Modifier.width(16.dp))
+                Text(
+                    text = "Cozy Supporter",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Simplified and clear text
+            Text(
+                text = "Support independent development and unlock all premium themes for the duration of your pass. Your contribution helps keep Cozy Doubling ad-free and calm.\uD83C\uDF31",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                lineHeight = 22.sp
+            )
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Duration Buttons
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                section.passes.forEach { pass ->
+                    Button(
+                        onClick = { onBuy(pass.id) },
+                        modifier = Modifier.weight(1f),
+                        shape = CircleShape,
+                        contentPadding = PaddingValues(vertical = 12.dp)
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            // Extracts "Monthly", "Yearly", etc. from name
+                            Text(
+                                text = pass.name.split(" ")[0],
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                            Text(
+                                text = pass.priceString,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }

@@ -125,12 +125,12 @@ fun FriendsPage(
                 item { Spacer(modifier = Modifier.height(24.dp)) }
             }
 
-            // --- 3. Your Garden (Friend List) ---
+            // --- 3. Your Neighbourhood (Friend List) ---
             item {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.Groups, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color.Gray)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = "Your Garden (${friendsList.size})", style = MaterialTheme.typography.titleSmall)
+                    Text(text = "Your Neighbourhood (${friendsList.size})", style = MaterialTheme.typography.titleSmall)
                 }
                 Spacer(modifier = Modifier.height(16.dp))
             }
