@@ -58,22 +58,22 @@ fun JourneyPage(
         Surface(
             modifier = Modifier.size(140.dp),
             shape = CircleShape,
-            color = Color.White,
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
             shadowElevation = 4.dp
         ) {
             Box(contentAlignment = Alignment.Center) {
                 // Background image/gradient circle
                 Box(
                     modifier = Modifier
-                        .fillMaxSize(0.9f)
+                        .fillMaxSize(0.98f)
                         .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f))
+                        .background(MaterialTheme.colorScheme.primaryContainer)
                 )
                 // Existing initial avatar logic
                 Text(
                     text = uiState.username.take(1).uppercase(),
                     style = MaterialTheme.typography.displayMedium,
-                    color = MaterialTheme.colorScheme.primary,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -94,14 +94,13 @@ fun JourneyPage(
 //            color = MaterialTheme.colorScheme.onSurfaceVariant
 //        )
 //
-//        Spacer(modifier = Modifier.height(40.dp))
+        Spacer(modifier = Modifier.height(40.dp))
 
         // --- 2. Stats Cards (Vertical Stack) ---
         JourneyStatCard(
             title = "Total Leaves",
             value = String.format("%,d", uiState.totalLeaves),
-            icon = Icons.Default.Eco,
-            iconBgColor = MaterialTheme.colorScheme.tertiaryContainer
+            icon = Icons.Default.Eco
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -109,8 +108,7 @@ fun JourneyPage(
         JourneyStatCard(
             title = "Time in Deep Focus",
             value = timeString,
-            icon = Icons.Default.AccessTime,
-            iconBgColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
+            icon = Icons.Default.AccessTime
         )
     }
 }
@@ -119,13 +117,12 @@ fun JourneyPage(
 fun JourneyStatCard(
     title: String,
     value: String,
-    icon: ImageVector,
-    iconBgColor: Color
+    icon: ImageVector
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(32.dp),
-        color = Color.White,
+        color = MaterialTheme.colorScheme.surface,
         shadowElevation = 2.dp
     ) {
         Column(
@@ -136,14 +133,14 @@ fun JourneyStatCard(
                 modifier = Modifier
                     .size(48.dp)
                     .clip(CircleShape)
-                    .background(iconBgColor),
+                    .background(MaterialTheme.colorScheme.tertiary),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(24.dp))
+                Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onTertiary, modifier = Modifier.size(24.dp))
             }
             Spacer(modifier = Modifier.height(16.dp))
-            Text(text = value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Text(text = title, style = MaterialTheme.typography.labelLarge, color = Color.Gray)
+            Text(text = value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+            Text(text = title, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

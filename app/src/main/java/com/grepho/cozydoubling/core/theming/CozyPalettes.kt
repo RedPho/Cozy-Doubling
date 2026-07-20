@@ -21,6 +21,7 @@ object CozyPalettes {
         surface = SurfaceWhite,
         onSurface = OnSurfaceCharcoal,
         surfaceVariant = SurfaceVariantGrey,
-        onSurfaceVariant = OnSurfaceVariantSage
+        onSurfaceVariant = OnSurfaceVariantSage,
+        onTertiaryContainer = OnPrimaryWhite
     )
 }

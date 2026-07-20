@@ -52,6 +52,9 @@ fun HomePage(
     topBar: @Composable () -> Unit,
     onFocusClick: () -> Unit,
 ) {
+
+    val ringColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+
     Scaffold(
         topBar = topBar,
         containerColor = Color.Transparent
@@ -74,7 +77,7 @@ fun HomePage(
                 // Outer Ring
                 Canvas(modifier = Modifier.fillMaxSize()) {
                     drawCircle(
-                        color = Color.LightGray.copy(alpha = 0.2f),
+                        color = ringColor,
                         style = Stroke(width = 12.dp.toPx())
                     )
                 }
@@ -84,7 +87,7 @@ fun HomePage(
                     onClick = onFocusClick,
                     shape = CircleShape,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                        containerColor = MaterialTheme.colorScheme.tertiary
                     ),
                     contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp)
                 ) {
@@ -92,14 +95,14 @@ fun HomePage(
                         Icon(
                             imageVector = Icons.Default.PlayArrow,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            tint = MaterialTheme.colorScheme.onTertiary,
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "Start Focus",
                             style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onTertiary
                         )
                     }
                 }

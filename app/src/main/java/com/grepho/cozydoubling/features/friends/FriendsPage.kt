@@ -81,12 +81,12 @@ fun FriendsPage(
                         modifier = Modifier.padding(24.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text(text = "YOUR CONNECT CODE", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                        Text(text = "YOUR CONNECT CODE", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(modifier = Modifier.height(8.dp))
                         Surface(
                             shape = CircleShape,
-                            color = Color.White,
-                            border = BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.3f)),
+                            color = MaterialTheme.colorScheme.surface,
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                             modifier = Modifier.clickable {
                                 scope.launch {
                                     val clipData = ClipData.newPlainText("Friend Code", myTag)
@@ -147,7 +147,7 @@ fun FriendsPage(
                 .align(Alignment.BottomEnd)
                 .padding(24.dp),
             containerColor = MaterialTheme.colorScheme.primary,
-            contentColor = Color.White,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
             shape = CircleShape
         ) {
             Icon(Icons.Default.Add, contentDescription = "Add Friend")

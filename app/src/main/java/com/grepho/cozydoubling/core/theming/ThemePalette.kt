@@ -15,6 +15,7 @@ data class ThemePalette(
     val tertiary: Color,           // Added
     val onTertiary: Color,         // Added
     val tertiaryContainer: Color,
+    val onTertiaryContainer: Color,
     val background: Color,
     val onBackground: Color,       // Added
     val surface: Color,            // Added

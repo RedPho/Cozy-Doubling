@@ -146,8 +146,8 @@ fun ThemeMockupPreview(
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(32.dp))
-            .background(palette.background) // This will now show the greenish-mint correctly
-            .border(1.dp, Color.LightGray.copy(alpha = 0.2f), RoundedCornerShape(32.dp))
+            .background(palette.background)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(32.dp))
             .padding(16.dp)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {

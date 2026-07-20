@@ -121,7 +121,7 @@ fun SummaryPage(
                 .fillMaxWidth()
                 .aspectRatio(1.1f),
             shape = RoundedCornerShape(48.dp),
-            color = Color.White,
+            color = MaterialTheme.colorScheme.surface,
             shadowElevation = 8.dp
         ) {
             Column(
@@ -138,14 +138,14 @@ fun SummaryPage(
                         modifier = Modifier
                             .size(120.dp)
                             .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.tertiaryContainer),
+                            .background(MaterialTheme.colorScheme.primaryContainer),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Default.Eco,
-                            contentDescription = null,
+                            contentDescription = "leaf icon",
                             modifier = Modifier.size(64.dp),
-                            tint = MaterialTheme.colorScheme.onTertiaryContainer
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
                         )
                     }
                 }
@@ -156,12 +156,12 @@ fun SummaryPage(
                     text = "${animatedLeafCount.value.toInt()}",
                     style = MaterialTheme.typography.displayMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Black
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = "LEAVES EARNED",
                     style = MaterialTheme.typography.labelLarge,
-                    color = Color.Gray,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     letterSpacing = 2.sp
                 )
             }
@@ -225,7 +225,7 @@ fun SummaryRow(label: String, value: String, icon: ImageVector) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        color = Color.White
+        color = MaterialTheme.colorScheme.surface
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
@@ -241,8 +241,8 @@ fun SummaryRow(label: String, value: String, icon: ImageVector) {
                 Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
             }
             Spacer(modifier = Modifier.width(16.dp))
-            Text(label, style = MaterialTheme.typography.bodyMedium, color = Color.Gray, modifier = Modifier.weight(1f))
-            Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+            Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
         }
     }
 }

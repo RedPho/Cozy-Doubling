@@ -147,7 +147,7 @@ fun ThemeInventoryCard(
                         Icon(
                             imageVector = Icons.Default.Checkroom, // The "Hanger" icon from design
                             contentDescription = "Apply",
-                            tint = Color.Black
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }

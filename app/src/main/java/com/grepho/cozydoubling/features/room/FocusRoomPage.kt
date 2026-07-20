@@ -324,7 +324,7 @@ fun TaskBottomSheet(
                                     textDecoration = if (task.isCompleted) TextDecoration.LineThrough else null,
                                     fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal
                                 ),
-                                color = if (task.isCompleted) Color.Gray else Color.Unspecified
+                                color = if (task.isCompleted) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f) else MaterialTheme.colorScheme.onSurface
                             )
 
                             if (isActive && !task.isCompleted) {
@@ -353,9 +353,15 @@ fun TaskBottomSheet(
                         .height(56.dp),
                     shape = CircleShape,
                     colors = TextFieldDefaults.colors(
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
                         focusedIndicatorColor = Color.Transparent,
                         unfocusedIndicatorColor = Color.Transparent,
-                        disabledIndicatorColor = Color.Transparent
+                        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        focusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                        unfocusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                     )
                 )
                 Spacer(modifier = Modifier.width(12.dp))
