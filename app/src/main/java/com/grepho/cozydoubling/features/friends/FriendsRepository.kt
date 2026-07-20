@@ -2,14 +2,38 @@ package com.grepho.cozydoubling.features.friends
 
 import com.grepho.cozydoubling.core.Supabase
 import com.grepho.cozydoubling.core.profile.Profile
+import com.grepho.cozydoubling.core.profile.ProfileRepository
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.postgrest.rpc
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 
 object FriendsRepository {
+
+    private val repoScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
+    // 1. Pre-loaded Friends list
+    val friends: StateFlow<List<FriendUiState>> = ProfileRepository.profile
+        .filterNotNull()
+        .map { fetchFriendsWithStories() }
+        .stateIn(repoScope, SharingStarted.Eagerly, emptyList())
+
+    // 2. Pre-loaded Pending Requests
+    val pendingRequests: StateFlow<List<Profile>> = ProfileRepository.profile
+        .filterNotNull()
+        .map { fetchIncomingRequests() }
+        .stateIn(repoScope, SharingStarted.Eagerly, emptyList())
+
 
     /**
      * Sends a request by player tag (e.g. #XA4K6E9F)

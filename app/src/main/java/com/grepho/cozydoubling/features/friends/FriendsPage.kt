@@ -267,7 +267,7 @@ fun FriendCard(friend: FriendUiState) {
                 // The "Story" logic
                 val storyText = if (friend.lastTaskText != null) {
                     // TODO: Format 'lastSessionDate' to be relative like "Yesterday" later
-                    "${friend.lastSessionDate?.take(10)} focused ${friend.lastSessionDuration}m on ${friend.lastTaskText}"
+                    "Last focus time: ${friend.lastSessionDate?.take(10)} \nFocused: ${friend.lastSessionDuration}m \nLast Task: ${friend.lastTaskText}"
                 } else {
                     "Just joined! No sessions yet."
                 }
@@ -276,7 +276,7 @@ fun FriendCard(friend: FriendUiState) {
                     text = storyText,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2,
+                    maxLines = 4,
                     overflow = TextOverflow.Ellipsis
                 )
             }

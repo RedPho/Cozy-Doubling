@@ -4,7 +4,10 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -23,10 +26,12 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.grepho.cozydoubling.core.economy.EconomyRepository
+import com.grepho.cozydoubling.core.economy.ThemeState
 import com.grepho.cozydoubling.core.navigation.AppNavHost
 import com.grepho.cozydoubling.core.navigation.BottomTab
 import com.grepho.cozydoubling.core.navigation.Screen
 import com.grepho.cozydoubling.core.navigation.navigateToBottomTab
+import com.grepho.cozydoubling.ui.theme.BackgroundCream
 import com.grepho.cozydoubling.ui.theme.CozyDoublingTheme
 
 
@@ -35,10 +40,19 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            val activePalette by EconomyRepository.activePalette.collectAsState()
+            val themeState by EconomyRepository.themeState.collectAsState()
 
-            CozyDoublingTheme(customPalette = activePalette) {
-                CozyDoublingApp()
+            // 1. Hold on a Splash screen while Loading
+            if (themeState is ThemeState.Loading) {
+                // Show a solid background matching your brand (BackgroundCream)
+                Box(modifier = Modifier.fillMaxSize().background(BackgroundCream))
+            } else {
+                // 2. Resolve the palette (Custom or Default)
+                val customPalette = (themeState as? ThemeState.Custom)?.palette
+
+                CozyDoublingTheme(customPalette = customPalette) {
+                    CozyDoublingApp()
+                }
             }
         }
     }

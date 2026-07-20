@@ -11,11 +11,4 @@ class HomeViewModel : ViewModel() {
 
     // We expose the StateFlow from the repository directly to the UI
     val profile = ProfileRepository.profile
-
-    init {
-        // Fetch the data from Supabase immediately
-        viewModelScope.launch {
-            ProfileRepository.refreshProfile()
-        }
-    }
 }

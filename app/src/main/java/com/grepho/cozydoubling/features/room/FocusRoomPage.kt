@@ -256,7 +256,7 @@ fun TaskBottomSheet(
     val completedCount = tasks.count { it.isCompleted }
 
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().imePadding(),
         color = MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
         shadowElevation = 16.dp

@@ -17,8 +17,7 @@ import kotlinx.coroutines.launch
 
 class ShopViewModel : ViewModel() {
 
-    private val _items = MutableStateFlow<List<ShopItemUiState>>(emptyList())
-    val items: StateFlow<List<ShopItemUiState>> = _items.asStateFlow()
+    val items = EconomyRepository.shopItems
 
 
 
@@ -30,27 +29,16 @@ class ShopViewModel : ViewModel() {
             initialValue = false
         )
 
-    init {
-        refreshShop()
-    }
 
-    fun refreshShop() {
-        viewModelScope.launch {
-            _items.value = EconomyRepository.fetchShopItems()
-        }
-    }
 
     // 2. Handle Actions
     fun onBuyWithLeavesClicked(itemId: String) {
         viewModelScope.launch {
             try {
                 EconomyRepository.purchaseWithLeaves(itemId)
-                // Refresh to show the "Owned" badge
-                refreshShop()
-            } catch (e: Exception) {
-                e.printStackTrace()
-                // TODO: Show "Not enough leaves" toast
-            }
+                // This triggers the repo to re-fetch and all UIs update automatically!
+                ProfileRepository.refreshProfile()
+            } catch (e: Exception) { e.printStackTrace() }
         }
     }
 

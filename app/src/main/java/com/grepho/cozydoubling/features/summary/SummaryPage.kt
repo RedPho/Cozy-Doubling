@@ -5,8 +5,10 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.AccessTime
@@ -96,125 +98,131 @@ fun SummaryPage(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .padding(horizontal = 24.dp, vertical = 48.dp),
+            .systemBarsPadding(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // --- Header ---
-        Text(
-            text = "Great job showing up today!",
-            style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.primary,
-            textAlign = TextAlign.Center
-        )
-        Text(
-            text = "Your garden is growing.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-            textAlign = TextAlign.Center
-        )
-
-        Spacer(modifier = Modifier.height(40.dp))
-
-        // --- Leaves Earned Card ---
-        Surface(
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(1.1f),
-            shape = RoundedCornerShape(48.dp),
-            color = MaterialTheme.colorScheme.surface,
-            shadowElevation = 8.dp
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp, vertical = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+            // --- Header ---
+            Text(
+                text = "Great job showing up today!",
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.primary,
+                textAlign = TextAlign.Center
+            )
+            Text(
+                text = "Your garden is growing.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(40.dp))
+
+            // --- Leaves Earned Card ---
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1.1f),
+                shape = RoundedCornerShape(48.dp),
+                color = MaterialTheme.colorScheme.surface,
+                shadowElevation = 8.dp
             ) {
-                // Central Graphic (Simplified orbit effect)
-                Box(contentAlignment = Alignment.Center) {
-                    // Outer orbit path (optional dashed circle)
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    // Central Graphic (Simplified orbit effect)
+                    Box(contentAlignment = Alignment.Center) {
+                        // Outer orbit path (optional dashed circle)
 
-                    // The main leaf circle
-                    Box(
-                        modifier = Modifier
-                            .size(120.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primaryContainer),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Eco,
-                            contentDescription = "leaf icon",
-                            modifier = Modifier.size(64.dp),
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                        )
+                        // The main leaf circle
+                        Box(
+                            modifier = Modifier
+                                .size(120.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.primaryContainer),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Eco,
+                                contentDescription = "leaf icon",
+                                modifier = Modifier.size(64.dp),
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            )
+                        }
                     }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    Text(
+                        text = "${animatedLeafCount.value.toInt()}",
+                        style = MaterialTheme.typography.displayMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "LEAVES EARNED",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        letterSpacing = 2.sp
+                    )
                 }
+            }
 
-                Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(32.dp))
 
-                Text(
-                    text = "${animatedLeafCount.value.toInt()}",
-                    style = MaterialTheme.typography.displayMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = "LEAVES EARNED",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    letterSpacing = 2.sp
-                )
+            // --- Session Summary Card ---
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(32.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+            ) {
+                Column(modifier = Modifier.padding(24.dp)) {
+                    Text(
+                        text = "Session Summary",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Time Row
+                    SummaryRow(
+                        label = "Time Focused",
+                        value = timeString,
+                        icon = Icons.Default.AccessTime
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    // Tasks Row
+                    SummaryRow(
+                        label = "Tasks Finished",
+                        value = "${uiState.tasksFinished} tasks",
+                        icon = Icons.Default.CheckCircleOutline
+                    )
+                }
             }
         }
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // --- Session Summary Card ---
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(32.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-        ) {
-            Column(modifier = Modifier.padding(24.dp)) {
-                Text(
-                    text = "Session Summary",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Time Row
-                SummaryRow(
-                    label = "Time Focused",
-                    value = timeString,
-                    icon = Icons.Default.AccessTime
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                // Tasks Row
-                SummaryRow(
-                    label = "Tasks Finished",
-                    value = "${uiState.tasksFinished} tasks",
-                    icon = Icons.Default.CheckCircleOutline
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.weight(1f))
 
         // --- Continue Button ---
-        Button(
-            onClick = onContinueClick,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(64.dp),
-            shape = CircleShape,
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Continue", style = MaterialTheme.typography.titleMedium)
-                Spacer(modifier = Modifier.width(8.dp))
-                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null)
+        Box(modifier = Modifier.padding(top = 0.dp, start = 24.dp, end = 24.dp, bottom = 24.dp)) {
+            Button(
+                onClick = onContinueClick,
+                modifier = Modifier.fillMaxWidth().height(64.dp),
+                shape = CircleShape,
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Continue", style = MaterialTheme.typography.titleMedium)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null)
+                }
             }
         }
     }

@@ -9,49 +9,50 @@ import com.grepho.cozydoubling.features.shop.ShopItemUiState
 import com.grepho.cozydoubling.ui.theme.CozyPalettes
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 private const val DEFAULT_THEME_ID = "system_default"
 
 class InventoryViewModel : ViewModel() {
+    private fun computeOwnedThemes(): List<ShopItemUiState.Theme> {
+        val allItems = EconomyRepository.shopItems.value
+        val profile = ProfileRepository.profile.value
+        val isSupporter = profile?.isSupporter ?: false
 
-    private val _ownedThemes = MutableStateFlow<List<ShopItemUiState.Theme>>(emptyList())
-    val ownedThemes: StateFlow<List<ShopItemUiState.Theme>> = _ownedThemes.asStateFlow()
+        val defaultTheme = ShopItemUiState.Theme(
+            id = "system_default",
+            name = "System Default",
+            palette = CozyPalettes.SystemDefault,
+            leafPrice = 0,
+            isPremium = false,
+            isOwned = true,
+            isEquipped = profile?.equippedThemeId == null
+        )
 
-
-    init {
-        refreshInventory()
-    }
-
-
-
-    private fun refreshInventory() {
-        viewModelScope.launch {
-            // 1. Fetch EVERYTHING (Themes and Passes)
-            val allShopItems = EconomyRepository.fetchShopItems()
-            val profile = ProfileRepository.profile.value
-            val isSupporter = profile?.isSupporter ?: false
-
-            val defaultTheme = ShopItemUiState.Theme(
-                id = DEFAULT_THEME_ID,
-                name = "System Default",
-                palette = CozyPalettes.SystemDefault,
-                leafPrice = 0,
-                isPremium = false,
-                isOwned = true,
-                isEquipped = profile?.equippedThemeId == null
-            )
-
-            // 2. Filter: Show if it's a Theme AND (User owns it OR it's a Premium Theme and user is a Supporter)
-            val ownedThemes = allShopItems.filterIsInstance<ShopItemUiState.Theme>().filter { theme ->
-                if (theme.isPremium) isSupporter else theme.isOwned
-            }
-
-            _ownedThemes.value = listOf(defaultTheme) + ownedThemes
+        val ownedFromShop = allItems.filterIsInstance<ShopItemUiState.Theme>().filter { theme ->
+            if (theme.isPremium) isSupporter else theme.isOwned
         }
+
+        return listOf(defaultTheme) + ownedFromShop
     }
+
+    // 2. Use the helper for both the reactive flow AND the initial value
+    val ownedThemes: StateFlow<List<ShopItemUiState.Theme>> = combine(
+        EconomyRepository.shopItems,
+        ProfileRepository.profile
+    ) { _, _ ->
+        computeOwnedThemes()
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = computeOwnedThemes() // FIXED: No more emptyList()!
+    )
+
 
     // 2. Handle Actions
     fun onEquipClicked(themeId: String) {
@@ -63,7 +64,6 @@ class InventoryViewModel : ViewModel() {
             } else {
                 EconomyRepository.equipTheme(themeId)
             }
-            refreshInventory()
         }
     }
 }

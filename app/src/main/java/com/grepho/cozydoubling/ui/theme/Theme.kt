@@ -55,7 +55,6 @@ private val LightColorScheme = lightColorScheme(
 
 @Composable
 fun CozyDoublingTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = false,
     // Add this parameter!
     customPalette: ThemePalette? = null,
@@ -64,8 +63,6 @@ fun CozyDoublingTheme(
     // 1. Logic to pick the color scheme
     val colorScheme = when {
         customPalette != null -> customPalette.toColorScheme()
-
-        darkTheme -> DarkColorScheme
         else -> LightColorScheme
     }
 

@@ -6,6 +6,7 @@ import com.grepho.cozydoubling.core.profile.ProfileRepository
 import com.grepho.cozydoubling.core.theming.ThemePalette
 import com.grepho.cozydoubling.features.shop.ShopItemUiState
 import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.auth.status.SessionStatus
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.postgrest.rpc
@@ -14,25 +15,44 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
+sealed class ThemeState {
+    object Loading : ThemeState()
+    object Default : ThemeState()
+    data class Custom(val palette: ThemePalette) : ThemeState()
+}
 
 object EconomyRepository {
     private val repoScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
-    val activePalette: StateFlow<ThemePalette?> = ProfileRepository.profile
-        .map { profile ->
-            val themeId = profile?.equippedThemeId ?: return@map null
-            fetchThemePalette(themeId)
+    // 1. Pre-loaded Shop Items (Eagerly starts loading on app start)
+    val shopItems: StateFlow<List<ShopItemUiState>> = ProfileRepository.profile
+        .filterNotNull()
+        .map { fetchShopItems() }
+        .stateIn(repoScope, SharingStarted.Eagerly, emptyList())
+
+    // 2. Smart Theme State (Wait for Auth confirm before leaving 'Loading')
+    val themeState: StateFlow<ThemeState> = combine(
+        Supabase.client.auth.sessionStatus,
+        ProfileRepository.profile
+    ) { status, profile ->
+        when (status) {
+            is SessionStatus.Authenticated -> {
+                if (profile == null) return@combine ThemeState.Loading
+                val themeId = profile.equippedThemeId ?: return@combine ThemeState.Default
+                val palette = fetchThemePalette(themeId)
+                if (palette != null) ThemeState.Custom(palette) else ThemeState.Default
+            }
+            is SessionStatus.NotAuthenticated -> ThemeState.Default
+            else -> ThemeState.Loading
         }
-        .stateIn(
-            scope = repoScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = null
-        )
+    }.stateIn(repoScope, SharingStarted.WhileSubscribed(5000), ThemeState.Loading)
 
     private suspend fun fetchThemePalette(themeId: String): ThemePalette? {
         return try {
@@ -46,8 +66,6 @@ object EconomyRepository {
     }
 
     suspend fun equipTheme(themeId: String) {
-        val myId = Supabase.client.auth.currentUserOrNull()?.id ?: return
-
         Supabase.client.postgrest.rpc(
             function = "equip_item",
             parameters = mapOf("target_item_id" to themeId)

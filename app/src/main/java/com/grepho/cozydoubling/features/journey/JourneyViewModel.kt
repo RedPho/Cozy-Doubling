@@ -24,6 +24,13 @@ class JourneyViewModel : ViewModel() {
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
-            initialValue = ProfileUiState("Loading...", "", 0, 0)
+            initialValue = ProfileRepository.profile.value?.let { profile ->
+                ProfileUiState(
+                    username = profile.displayName,
+                    bio = "Cozy Doubler since ${profile.createdAt?.take(7)}",
+                    totalLeaves = profile.leaves.toInt(),
+                    totalFocusMinutes = profile.totalMinutesFocused.toInt()
+                )
+            } ?: ProfileUiState("", "", 0, 0)
         )
 }
