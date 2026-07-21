@@ -1,8 +1,10 @@
 package com.grepho.cozydoubling.features.shop
 
+import android.app.Activity
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.grepho.cozydoubling.core.billing.BillingRepository
 import com.grepho.cozydoubling.core.economy.EconomyRepository
 import com.grepho.cozydoubling.core.profile.ProfileRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -11,26 +13,39 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import com.grepho.cozydoubling.core.theming.ThemePalette
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class ShopViewModel : ViewModel() {
 
-    val items: StateFlow<List<ShopItemUiState>> = EconomyRepository.shopItems
-        .map { rawItems ->
-            val themes = rawItems.filterIsInstance<ShopItemUiState.Theme>()
-            val passes = rawItems.filterIsInstance<ShopItemUiState.Pass>()
+    val items: StateFlow<List<ShopItemUiState>> = combine(
+        EconomyRepository.shopItems,
+        BillingRepository.offerings
+    ) { rawItems, offerings ->
+        // Find the RevenueCat packages
+        val rcPackages = offerings?.current?.availablePackages ?: emptyList()
 
-            val list = mutableListOf<ShopItemUiState>()
+        rawItems.map { item ->
+            if (item is ShopItemUiState.Pass) {
+                // Find the real price for this pass
+                val rcPackage = rcPackages.find { it.product.id == item.iapId }
+                item.copy(priceString = rcPackage?.product?.price?.formatted ?: "...")
+            } else item
+        }.let { hydratedList ->
+            // Now group into sections
+            val themes = hydratedList.filterIsInstance<ShopItemUiState.Theme>()
+            val passes = hydratedList.filterIsInstance<ShopItemUiState.Pass>()
+
+            val finalResult = mutableListOf<ShopItemUiState>()
             if (passes.isNotEmpty()) {
-                list.add(ShopItemUiState.SupporterSection(passes))
+                finalResult.add(ShopItemUiState.SupporterSection(passes))
             }
-            list.addAll(themes)
-            list
+            finalResult.addAll(themes)
+            finalResult
         }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
 
 
@@ -55,7 +70,23 @@ class ShopViewModel : ViewModel() {
         }
     }
 
-    fun onBuyWithCashClicked(itemId: String) {
-        // TODO: Logic to trigger Google Play Billing goes here
+    fun onBuyWithCashClicked(activity: Activity, itemId: String) {
+        viewModelScope.launch {
+            val currentItems = items.value
+            // 1. Find the Pass in our list to get its real 'iapId'
+            val pass = currentItems.filterIsInstance<ShopItemUiState.SupporterSection>()
+                .firstOrNull()?.passes?.find { it.id == itemId } ?: return@launch
+
+            val offerings = BillingRepository.offerings.value ?: return@launch
+            // 2. Now find the RevenueCat package using the IAP ID
+            val rcPackage = offerings.current?.availablePackages?.find { it.product.id == pass.iapId } ?: return@launch
+
+            val success = BillingRepository.purchase(activity, rcPackage)
+            if (success) {
+                ProfileRepository.refreshProfile()
+            } else {
+                print("DEBUG: onBuyWithCashClicked not success.")
+            }
+        }
     }
 }

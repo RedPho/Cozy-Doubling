@@ -25,6 +25,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.grepho.cozydoubling.BuildConfig
 import com.grepho.cozydoubling.core.economy.EconomyRepository
 import com.grepho.cozydoubling.core.economy.ThemeState
 import com.grepho.cozydoubling.core.navigation.AppNavHost
@@ -33,11 +34,19 @@ import com.grepho.cozydoubling.core.navigation.Screen
 import com.grepho.cozydoubling.core.navigation.navigateToBottomTab
 import com.grepho.cozydoubling.ui.theme.BackgroundCream
 import com.grepho.cozydoubling.ui.theme.CozyDoublingTheme
+import com.revenuecat.purchases.LogLevel
+import com.revenuecat.purchases.Purchases
+import com.revenuecat.purchases.PurchasesConfiguration
 
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Purchases.logLevel = LogLevel.DEBUG
+        Purchases.configure(
+            PurchasesConfiguration.Builder(this, BuildConfig.REVENUECAT_APIKEY).build()
+        )
+
         enableEdgeToEdge()
         setContent {
             val themeState by EconomyRepository.themeState.collectAsState()

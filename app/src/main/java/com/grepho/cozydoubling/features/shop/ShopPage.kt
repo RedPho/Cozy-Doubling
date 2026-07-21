@@ -1,5 +1,6 @@
 package com.grepho.cozydoubling.features.shop
 
+import android.app.Activity
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -25,6 +26,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.filled.Stars
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 
@@ -35,11 +37,16 @@ fun ShopScreen(viewModel: ShopViewModel = viewModel()) {
     val items by viewModel.items.collectAsState()
     val isSupporter by viewModel.isSupporter.collectAsState()
 
+    val context = LocalContext.current
+    val activity = context as? Activity
+
     ShopPage(
         items = items,
         isSupporter = isSupporter,
         onBuyWithLeaves = { id -> viewModel.onBuyWithLeavesClicked(id) },
-        onBuyWithCash = { id -> viewModel.onBuyWithCashClicked(id) }
+        onBuyWithCash = { id ->
+            activity?.let { viewModel.onBuyWithCashClicked(it, id) }
+        }
     )
 }
 

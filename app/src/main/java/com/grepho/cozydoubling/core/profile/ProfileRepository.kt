@@ -1,6 +1,7 @@
 package com.grepho.cozydoubling.core.profile
 
 import com.grepho.cozydoubling.core.Supabase
+import com.revenuecat.purchases.Purchases
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.status.SessionStatus
 import io.github.jan.supabase.postgrest.postgrest
@@ -26,8 +27,19 @@ object ProfileRepository {
         Supabase.client.auth.sessionStatus
             .onEach { status ->
                 when (status) {
-                    is SessionStatus.Authenticated -> refreshProfile()
-                    is SessionStatus.NotAuthenticated -> _profile.emit(null)
+                    is SessionStatus.Authenticated -> {
+                        // Link the Supabase UID to RevenueCat
+                        status.session.user?.let { user ->
+                            Purchases.sharedInstance.logIn(user.id)
+                        }
+                        
+                        refreshProfile()
+                    }
+                    is SessionStatus.NotAuthenticated -> {
+                        // Log out of RevenueCat to protect privacy
+                        Purchases.sharedInstance.logOut()
+                        _profile.emit(null)
+                    }
                     else -> { /* Loading... */ }
                 }
             }
