@@ -11,10 +11,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.CardMembership
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -28,15 +30,18 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
 
     SettingsPage(
         uiState = uiState,
         onBackClick = onBackClick,
         onSaveUsername = { viewModel.onUpdateUsername(it) },
         onSignOut = { viewModel.onSignOut() },
-        onDeleteAccount = { viewModel.onDeleteAccount() }
+        onDeleteAccount = { viewModel.onDeleteAccount() },
+        onManageSubscription = { viewModel.onManageSubscription(context) }
     )
 }
+
 
 // --- THE UI COMPONENT ---
 @OptIn(ExperimentalMaterial3Api::class)
@@ -46,7 +51,8 @@ fun SettingsPage(
     onBackClick: () -> Unit,
     onSaveUsername: (String) -> Unit,
     onSignOut: () -> Unit,
-    onDeleteAccount: () -> Unit
+    onDeleteAccount: () -> Unit,
+    onManageSubscription: () -> Unit
 ) {
     var showUsernameDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -92,6 +98,15 @@ fun SettingsPage(
                         showUsernameDialog = true
                     }
                 )
+                
+                if (uiState.isSupporter) {
+                    SettingsItem(
+                        label = "Manage Subscription",
+                        value = "Active Supporter",
+                        icon = Icons.Default.CardMembership,
+                        onClick = onManageSubscription
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(24.dp))

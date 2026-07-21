@@ -1,5 +1,8 @@
 package com.grepho.cozydoubling.features.settings
 
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.grepho.cozydoubling.core.profile.ProfileRepository
@@ -11,7 +14,10 @@ class SettingsViewModel : ViewModel() {
     // 1. Map the real profile into the Settings UI State
     val uiState: StateFlow<SettingsUiState> = ProfileRepository.profile
         .map { profile ->
-            SettingsUiState(username = profile?.displayName ?: "Loading...")
+            SettingsUiState(
+                username = profile?.displayName ?: "Loading...",
+                isSupporter = profile?.isSupporter ?: false
+            )
         }
         .stateIn(
             scope = viewModelScope,
@@ -43,6 +49,21 @@ class SettingsViewModel : ViewModel() {
             } catch (e: Exception) {
                 e.printStackTrace()
             }
+        }
+    }
+
+    fun onManageSubscription(context: Context) {
+        val packageName = context.packageName
+        val url = "https://play.google.com/store/account/subscriptions?package=$packageName"
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            data = Uri.parse(url)
+            setPackage("com.android.vending")
+        }
+        try {
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            // Fallback if Play Store is not installed
+            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
         }
     }
 }

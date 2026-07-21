@@ -11,9 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -60,7 +58,7 @@ fun ShopPage(
 ) {
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
-
+    var pendingThemePurchase by remember { mutableStateOf<ShopItemUiState.Theme?>(null) }
 
     LazyColumn(
         state = listState,
@@ -71,13 +69,13 @@ fun ShopPage(
         items(items) { item ->
             when (item) {
                 is ShopItemUiState.SupporterSection -> {
-                    SupporterSectionCard(item, onBuy = { onBuyWithCash(it) })
+                    SupporterSectionCard(item, isSupporter = isSupporter, onBuy = { onBuyWithCash(it) })
                 }
                 is ShopItemUiState.Theme -> {
                     ThemeShopCard(
                         theme = item,
                         isSupporter = isSupporter,
-                        onBuyWithLeaves = onBuyWithLeaves,
+                        onBuyWithLeaves = { pendingThemePurchase = item },
                         onBuyWithCash = {
                             // 2. SCROLL TO TOP when clicking "Get Pass"
                             coroutineScope.launch {
@@ -91,6 +89,29 @@ fun ShopPage(
                 }
             }
         }
+    }
+
+    if (pendingThemePurchase != null) {
+        AlertDialog(
+            onDismissRequest = { pendingThemePurchase = null },
+            title = { Text("Unlock Theme") },
+            text = { Text("Would you like to unlock '${pendingThemePurchase?.name}' for ${pendingThemePurchase?.leafPrice} leaves?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        pendingThemePurchase?.let { onBuyWithLeaves(it.id) }
+                        pendingThemePurchase = null
+                    }
+                ) {
+                    Text("Unlock")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingThemePurchase = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 
@@ -206,7 +227,7 @@ fun ThemeMockupPreview(
 }
 
 @Composable
-fun SupporterSectionCard(section: ShopItemUiState.SupporterSection, onBuy: (String) -> Unit) {
+fun SupporterSectionCard(section: ShopItemUiState.SupporterSection, isSupporter: Boolean, onBuy: (String) -> Unit) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(32.dp),
@@ -231,39 +252,47 @@ fun SupporterSectionCard(section: ShopItemUiState.SupporterSection, onBuy: (Stri
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Simplified and clear text
-            Text(
-                text = "Support independent development and unlock all premium themes for the duration of your pass. Your contribution helps keep Cozy Doubling ad-free and calm.\uD83C\uDF31",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                lineHeight = 22.sp
-            )
+            if (isSupporter) {
+                Text(
+                    text = "Thank you for being a supporter! ✨ Your contribution helps keep Cozy Doubling independent, ad-free, and calm for everyone.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    lineHeight = 22.sp
+                )
+            } else {
+                Text(
+                    text = "Support independent development and unlock all premium themes for the duration of your pass. Your contribution helps keep Cozy Doubling ad-free and calm.\uD83C\uDF31",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    lineHeight = 22.sp
+                )
 
-            Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(32.dp))
 
-            // Duration Buttons
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                section.passes.forEach { pass ->
-                    Button(
-                        onClick = { onBuy(pass.id) },
-                        modifier = Modifier.weight(1f),
-                        shape = CircleShape,
-                        contentPadding = PaddingValues(vertical = 12.dp)
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            // Extracts "Monthly", "Yearly", etc. from name
-                            Text(
-                                text = pass.name.split(" ")[0],
-                                style = MaterialTheme.typography.labelSmall
-                            )
-                            Text(
-                                text = pass.priceString,
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.Bold
-                            )
+                // Duration Buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    section.passes.forEach { pass ->
+                        Button(
+                            onClick = { onBuy(pass.id) },
+                            modifier = Modifier.weight(1f),
+                            shape = CircleShape,
+                            contentPadding = PaddingValues(vertical = 12.dp)
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                // Extracts "Monthly", "Yearly", etc. from name
+                                Text(
+                                    text = pass.name.split(" ")[0],
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                                Text(
+                                    text = pass.priceString,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
                     }
                 }
