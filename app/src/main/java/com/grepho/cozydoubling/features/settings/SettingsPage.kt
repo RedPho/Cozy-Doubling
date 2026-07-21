@@ -1,5 +1,6 @@
 package com.grepho.cozydoubling.features.settings
 
+import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -12,6 +13,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.CardMembership
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -38,7 +40,12 @@ fun SettingsScreen(
         onSaveUsername = { viewModel.onUpdateUsername(it) },
         onSignOut = { viewModel.onSignOut() },
         onDeleteAccount = { viewModel.onDeleteAccount() },
-        onManageSubscription = { viewModel.onManageSubscription(context) }
+        onManageSubscription = { viewModel.onManageSubscription(context) },
+        onRestorePurchases = {
+            viewModel.onRestorePurchases { message ->
+                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            }
+        }
     )
 }
 
@@ -52,7 +59,8 @@ fun SettingsPage(
     onSaveUsername: (String) -> Unit,
     onSignOut: () -> Unit,
     onDeleteAccount: () -> Unit,
-    onManageSubscription: () -> Unit
+    onManageSubscription: () -> Unit,
+    onRestorePurchases: () -> Unit
 ) {
     var showUsernameDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -107,6 +115,13 @@ fun SettingsPage(
                         onClick = onManageSubscription
                     )
                 }
+
+                SettingsItem(
+                    label = "Restore Purchases",
+                    value = "Sync with Google Play",
+                    icon = Icons.Default.Refresh,
+                    onClick = onRestorePurchases
+                )
             }
 
             Spacer(modifier = Modifier.height(24.dp))

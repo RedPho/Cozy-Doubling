@@ -66,4 +66,17 @@ class SettingsViewModel : ViewModel() {
             context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
         }
     }
+
+    fun onRestorePurchases(onResult: (String) -> Unit) {
+        viewModelScope.launch {
+            val success = com.grepho.cozydoubling.core.billing.BillingRepository.restorePurchases()
+            if (success) {
+                ProfileRepository.refreshProfile()
+                onResult("Purchases restored successfully!")
+            } else {
+                onResult("No active purchases found to restore.")
+            }
+        }
+    }
 }
+

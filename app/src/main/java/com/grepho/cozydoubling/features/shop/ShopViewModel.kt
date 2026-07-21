@@ -71,7 +71,7 @@ class ShopViewModel : ViewModel() {
         }
     }
 
-    fun onBuyWithCashClicked(activity: Activity, itemId: String) {
+    fun onBuyWithCashClicked(activity: Activity, itemId: String, onResult: (String) -> Unit) {
         viewModelScope.launch {
             val currentItems = items.value
             // 1. Find the Pass in our list to get its real 'iapId'
@@ -84,12 +84,13 @@ class ShopViewModel : ViewModel() {
 
             val success = BillingRepository.purchase(activity, rcPackage)
             if (success) {
+                onResult("Success! Your Supporter status is being updated...")
                 repeat(3) {
                     delay(1000)
                     ProfileRepository.refreshProfile()
                 }
             } else {
-                print("DEBUG: onBuyWithCashClicked not success.")
+                onResult("Purchase cancelled or failed.")
             }
         }
     }

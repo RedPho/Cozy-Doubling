@@ -14,6 +14,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.foundation.text.ClickableText
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -149,11 +155,30 @@ fun LoginPage(
                 Spacer(modifier = Modifier.height(64.dp))
 
                 // --- Footer Text ---
-                Text(
-                    text = "By signing in, you agree to our quiet hours and privacy policy.",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                    textAlign = TextAlign.Center
+                val uriHandler = LocalUriHandler.current
+                val annotatedString = buildAnnotatedString {
+                    append("By signing in, you agree to our quiet hours and ")
+
+                    pushStringAnnotation(tag = "URL", annotation = "https://example.com/privacy-policy") // Replace with your real URL
+                    withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.primary, textDecoration = TextDecoration.Underline)) {
+                        append("privacy policy")
+                    }
+                    pop()
+                    append(".")
+                }
+
+                ClickableText(
+                    text = annotatedString,
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                        textAlign = TextAlign.Center
+                    ),
+                    onClick = { offset ->
+                        annotatedString.getStringAnnotations(tag = "URL", start = offset, end = offset)
+                            .firstOrNull()?.let { annotation ->
+                                uriHandler.openUri(annotation.item)
+                            }
+                    }
                 )
             }
         }

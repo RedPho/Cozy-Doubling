@@ -7,6 +7,7 @@ import com.revenuecat.purchases.PurchaseParams
 import com.revenuecat.purchases.Purchases
 import com.revenuecat.purchases.awaitOfferings
 import com.revenuecat.purchases.awaitPurchase
+import com.revenuecat.purchases.awaitRestore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -46,6 +47,22 @@ object BillingRepository {
             result.customerInfo.entitlements.active.isNotEmpty()
         } catch (e: Exception) {
             false // Handle cancellation or error
+        }
+    }
+
+    suspend fun restorePurchases(): Boolean {
+        val currentUserId = Purchases.sharedInstance.appUserID
+        println("DEBUG: Starting Restore for ID: $currentUserId")
+
+        return try {
+            val result = Purchases.sharedInstance.awaitRestore()
+            val hasEntitlement = result.entitlements.active.isNotEmpty()
+
+            println("DEBUG: Restore Finished. Active Entitlements: ${result.entitlements.active.keys}")
+            hasEntitlement
+        } catch (e: Exception) {
+            println("DEBUG: Restore Failed with Error: ${e.message}")
+            false
         }
     }
 }
