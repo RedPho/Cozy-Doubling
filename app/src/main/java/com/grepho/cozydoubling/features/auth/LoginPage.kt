@@ -159,7 +159,7 @@ fun LoginPage(
                 val annotatedString = buildAnnotatedString {
                     append("By signing in, you agree to our quiet hours and ")
 
-                    pushStringAnnotation(tag = "URL", annotation = "https://example.com/privacy-policy") // Replace with your real URL
+                    pushStringAnnotation(tag = "URL", annotation = BuildConfig.PRIVACY_POLICY_URL)
                     withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.primary, textDecoration = TextDecoration.Underline)) {
                         append("privacy policy")
                     }

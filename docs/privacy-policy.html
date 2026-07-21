@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Privacy Policy – Cozy Doubling</title>
+  <meta name="description"
+    content="Privacy Policy for Cozy Doubling, a calm focus app by grepho. Learn what data we collect, how we use it, and your rights." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=Inter:wght@400;500;600&display=swap"
+    rel="stylesheet" />
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg: #faf6f0;
+      --surface: #ffffff;
+      --primary: #5a7a5a;
+      --primary-light: #e8f0e8;
+      --text: #2d2d2d;
+      --muted: #6b7280;
+      --border: #e5e0d8;
+      --accent: #8fad8f;
+      --danger: #b45555;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      font-size: 16px;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 2rem 1.5rem;
+      text-align: center;
+    }
+
+    .app-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      background: var(--primary-light);
+      border-radius: 2rem;
+      padding: 0.4rem 1rem 0.4rem 0.5rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .app-icon {
+      width: 32px;
+      height: 32px;
+      background: var(--primary);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+
+    .app-badge span {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--primary);
+      letter-spacing: 0.02em;
+    }
+
+    header h1 {
+      font-family: 'Lora', Georgia, serif;
+      font-size: clamp(1.6rem, 4vw, 2.4rem);
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 0.5rem;
+    }
+
+    .meta {
+      font-size: 0.85rem;
+      color: var(--muted);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 1rem;
+    }
+
+    .meta span::before {
+      content: '·';
+      margin-right: 1rem;
+    }
+
+    .meta span:first-child::before {
+      content: '';
+      margin-right: 0;
+    }
+
+    /* ── Layout ── */
+    .container {
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 2.5rem 1.5rem 4rem;
+    }
+
+    /* ── TOC ── */
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      padding: 1.5rem 1.75rem;
+      margin-bottom: 2.5rem;
+    }
+
+    .toc h2 {
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.75rem;
+    }
+
+    .toc ol {
+      list-style: none;
+      counter-reset: toc;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.3rem 1.5rem;
+    }
+
+    @media (max-width: 520px) {
+      .toc ol {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .toc li {
+      counter-increment: toc;
+    }
+
+    .toc a {
+      font-size: 0.9rem;
+      color: var(--primary);
+      text-decoration: none;
+      display: flex;
+      align-items: baseline;
+      gap: 0.4rem;
+    }
+
+    .toc a::before {
+      content: counter(toc) ".";
+      font-size: 0.75rem;
+      color: var(--accent);
+      font-weight: 600;
+      min-width: 1.2rem;
+    }
+
+    .toc a:hover {
+      text-decoration: underline;
+    }
+
+    /* ── Sections ── */
+    section {
+      margin-bottom: 2.5rem;
+    }
+
+    section:last-child {
+      margin-bottom: 0;
+    }
+
+    h2 {
+      font-family: 'Lora', Georgia, serif;
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--primary);
+      margin-bottom: 1rem;
+      padding-top: 0.5rem;
+      border-top: 2px solid var(--primary-light);
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    h2 .num {
+      background: var(--primary);
+      color: white;
+      font-size: 0.7rem;
+      font-family: 'Inter', sans-serif;
+      font-weight: 700;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    h3 {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text);
+      margin: 1.25rem 0 0.5rem;
+    }
+
+    p {
+      margin-bottom: 0.75rem;
+    }
+
+    p:last-child {
+      margin-bottom: 0;
+    }
+
+    ul,
+    ol {
+      padding-left: 1.25rem;
+      margin-bottom: 0.75rem;
+    }
+
+    li {
+      margin-bottom: 0.35rem;
+    }
+
+    strong {
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    a {
+      color: var(--primary);
+    }
+
+    a:hover {
+      color: var(--accent);
+    }
+
+    /* ── Data Table ── */
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+      margin: 1rem 0;
+      border-radius: 0.75rem;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    .data-table th {
+      background: var(--primary-light);
+      color: var(--primary);
+      font-weight: 600;
+      text-align: left;
+      padding: 0.75rem 1rem;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .data-table td {
+      padding: 0.7rem 1rem;
+      border-top: 1px solid var(--border);
+      vertical-align: top;
+    }
+
+    .data-table tr:nth-child(even) td {
+      background: #faf9f7;
+    }
+
+    /* ── Callout boxes ── */
+    .callout {
+      border-radius: 0.75rem;
+      padding: 1rem 1.25rem;
+      margin: 1rem 0;
+      font-size: 0.9rem;
+      display: flex;
+      gap: 0.75rem;
+    }
+
+    .callout-icon {
+      font-size: 1.1rem;
+      flex-shrink: 0;
+      margin-top: 0.05rem;
+    }
+
+    .callout.green {
+      background: var(--primary-light);
+      border-left: 3px solid var(--primary);
+    }
+
+    .callout.red {
+      background: #fdf0f0;
+      border-left: 3px solid var(--danger);
+      color: #6b2a2a;
+    }
+
+    .callout.yellow {
+      background: #fdf8ec;
+      border-left: 3px solid #c9963b;
+    }
+
+    /* ── Third-party list ── */
+    .provider-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      margin: 0.75rem 0;
+    }
+
+    .provider {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      padding: 0.85rem 1rem;
+      font-size: 0.9rem;
+    }
+
+    .provider-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      flex-shrink: 0;
+      margin-top: 0.35rem;
+    }
+
+    .provider strong {
+      display: block;
+      margin-bottom: 0.1rem;
+    }
+
+    .provider .desc {
+      color: var(--muted);
+      font-size: 0.83rem;
+    }
+
+    /* ── Rights list ── */
+    .rights-list {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+      margin: 1rem 0;
+    }
+
+    @media (max-width: 520px) {
+      .rights-list {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .right-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      padding: 0.85rem 1rem;
+      font-size: 0.88rem;
+    }
+
+    .right-item strong {
+      display: block;
+      color: var(--primary);
+      margin-bottom: 0.2rem;
+    }
+
+    /* ── Footer / Contact ── */
+    .contact-box {
+      background: var(--primary);
+      color: white;
+      border-radius: 1.25rem;
+      padding: 2rem;
+      text-align: center;
+      margin-top: 3rem;
+    }
+
+    .contact-box h2 {
+      font-family: 'Lora', serif;
+      color: white;
+      border-top: none;
+      padding-top: 0;
+      justify-content: center;
+      font-size: 1.4rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .contact-box p {
+      color: rgba(255, 255, 255, 0.85);
+      margin-bottom: 1rem;
+    }
+
+    .contact-box a {
+      display: inline-block;
+      background: white;
+      color: var(--primary);
+      font-weight: 600;
+      padding: 0.6rem 1.5rem;
+      border-radius: 2rem;
+      text-decoration: none;
+      font-size: 0.95rem;
+      transition: opacity 0.15s;
+    }
+
+    .contact-box a:hover {
+      opacity: 0.85;
+    }
+
+    footer {
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--muted);
+      padding: 1.5rem 1rem 2rem;
+      border-top: 1px solid var(--border);
+      margin-top: 1rem;
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <div class="app-badge">
+      <div class="app-icon">🌿</div>
+      <span>Cozy Doubling</span>
+    </div>
+    <h1>Privacy Policy</h1>
+    <div class="meta">
+      <span>Developer: grepho</span>
+      <span>Effective: July 21, 2026</span>
+      <span>Last updated: July 21, 2026</span>
+    </div>
+  </header>
+
+  <div class="container">
+
+    <!-- Introduction -->
+    <section>
+      <p>Welcome to <strong>Cozy Doubling</strong> — a quiet space to focus together, unhurried and calm. This Privacy
+        Policy explains what information we collect when you use the App, how we use it, and what choices you have. We
+        take your privacy seriously and keep things simple.</p>
+      <div class="callout green">
+        <span class="callout-icon">🌱</span>
+        <div>We do <strong>not</strong> sell your data, run ads, or share your information with anyone except the
+          services required to operate the App.</div>
+      </div>
+    </section>
+
+    <!-- TOC -->
+    <nav class="toc" aria-label="Table of contents">
+      <h2>Contents</h2>
+      <ol>
+        <li><a href="#s1">Information We Collect</a></li>
+        <li><a href="#s2">How We Use It</a></li>
+        <li><a href="#s3">How We Share It</a></li>
+        <li><a href="#s4">Data Retention</a></li>
+        <li><a href="#s5">Data Security</a></li>
+        <li><a href="#s6">Children's Privacy</a></li>
+        <li><a href="#s7">Your Rights</a></li>
+        <li><a href="#s8">International Transfers</a></li>
+        <li><a href="#s9">Third-Party Links</a></li>
+        <li><a href="#s10">Policy Changes</a></li>
+        <li><a href="#s11">Contact Us</a></li>
+      </ol>
+    </nav>
+
+    <!-- 1 -->
+    <section id="s1">
+      <h2><span class="num">1</span> Information We Collect</h2>
+
+      <h3>1.1 Account Information (from Google Sign-In)</h3>
+      <p>When you sign in with Google, we receive your <strong>Google account ID</strong> and <strong>display
+          name</strong> from Google. We do not store your email address in our own database.</p>
+
+      <h3>1.2 Profile Information You Set</h3>
+      <ul>
+        <li><strong>Display Name</strong> — the name shown to your friends and in Focus Rooms. You can change this at
+          any time in Settings.</li>
+        <li><strong>Player Tag</strong> — a randomly generated unique tag (e.g., <code>#XA4K6E9F</code>) so friends can
+          find you without sharing personal details.</li>
+      </ul>
+
+      <h3>1.3 Focus &amp; Activity Data</h3>
+      <ul>
+        <li><strong>Focus Session Records</strong> — start time, end time, number of tasks completed, and task text you
+          enter during a session.</li>
+        <li><strong>Statistics</strong> — total minutes focused, computed from your sessions.</li>
+        <li><strong>In-App Currency (Leaves)</strong> — leaves earned through focus sessions.</li>
+        <li><strong>Equipped Theme</strong> — which visual theme you have selected.</li>
+      </ul>
+
+      <h3>1.4 Social Data</h3>
+      <ul>
+        <li><strong>Friends List</strong> — user IDs of friends you have added and the relationship status (pending /
+          accepted).</li>
+        <li><strong>Real-Time Presence (transient)</strong> — while you are in a Focus Room, your display name, current
+          task text, and task progress are shared live with other room participants. This data <em>is not permanently
+            stored</em> on our servers; it exists only for the duration of the session.</li>
+      </ul>
+
+      <h3>1.5 Purchase &amp; Subscription Data</h3>
+      <p>We use <strong>RevenueCat</strong> to manage in-app subscriptions ("Supporter") purchased through Google Play.
+        We do not process or store your payment card information. We store only your <strong>subscription
+          status</strong> (active/inactive).</p>
+
+      <h3>1.6 Technical Data</h3>
+      <p>The App requires internet access to function. Standard network data (such as IP addresses) may be processed by
+        our backend provider (Supabase) in the normal course of service operation.</p>
+    </section>
+
+    <!-- 2 -->
+    <section id="s2">
+      <h2><span class="num">2</span> How We Use Your Information</h2>
+
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Purpose</th>
+            <th>Data Used</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Authenticate your account</td>
+            <td>Google account ID, User ID</td>
+          </tr>
+          <tr>
+            <td>Show your profile to you and friends</td>
+            <td>Display Name, Player Tag, Statistics</td>
+          </tr>
+          <tr>
+            <td>Enable Focus Rooms (live presence)</td>
+            <td>Display Name, Task text, Task progress — <em>real-time only</em></td>
+          </tr>
+          <tr>
+            <td>Manage your friends list</td>
+            <td>User IDs, Player Tags</td>
+          </tr>
+          <tr>
+            <td>Power in-app economy (Leaves, Themes)</td>
+            <td>Leaves balance, Equipped Theme ID</td>
+          </tr>
+          <tr>
+            <td>Process &amp; verify in-app purchases</td>
+            <td>RevenueCat User ID (linked to account), Supporter status</td>
+          </tr>
+          <tr>
+            <td>Operate and improve the App</td>
+            <td>Aggregated, anonymised usage data</td>
+          </tr>
+          <tr>
+            <td>Respond to support requests</td>
+            <td>Email address (only if you contact us)</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- 3 -->
+    <section id="s3">
+      <h2><span class="num">3</span> How We Share Your Information</h2>
+
+      <h3>3.1 With Other Users (Limited)</h3>
+      <ul>
+        <li>Your <strong>Display Name</strong> and <strong>Player Tag</strong> are visible to others so they can add you
+          as a friend.</li>
+        <li>When you are in a Focus Room, your <strong>Display Name</strong>, <strong>task text</strong>, and
+          <strong>task progress</strong> are visible to other room participants in real-time.
+        </li>
+      </ul>
+
+      <h3>3.2 With Third-Party Service Providers</h3>
+      <p>We use the following services to operate the App:</p>
+
+      <div class="provider-list">
+        <div class="provider">
+          <div class="provider-dot"></div>
+          <div>
+            <strong>Supabase</strong>
+            <span class="desc">Backend database and authentication. Stores your profile, focus sessions, and friends
+              list. <a href="https://supabase.com/privacy" target="_blank" rel="noopener">Privacy Policy ↗</a></span>
+          </div>
+        </div>
+        <div class="provider">
+          <div class="provider-dot"></div>
+          <div>
+            <strong>Google Sign-In / Google Identity Services</strong>
+            <span class="desc">Authenticates you with your Google account. <a href="https://policies.google.com/privacy"
+                target="_blank" rel="noopener">Google Privacy Policy ↗</a></span>
+          </div>
+        </div>
+        <div class="provider">
+          <div class="provider-dot"></div>
+          <div>
+            <strong>RevenueCat</strong>
+            <span class="desc">Manages in-app subscriptions and purchase validation. <a
+                href="https://www.revenuecat.com/privacy/" target="_blank" rel="noopener">Privacy Policy ↗</a></span>
+          </div>
+        </div>
+        <div class="provider">
+          <div class="provider-dot"></div>
+          <div>
+            <strong>Google Play</strong>
+            <span class="desc">Processes in-app purchase payments. <a href="https://policies.google.com/privacy"
+                target="_blank" rel="noopener">Google Privacy Policy ↗</a></span>
+          </div>
+        </div>
+      </div>
+
+      <h3>3.3 Legal Requirements</h3>
+      <p>We may disclose information if required by law or in response to valid requests from public authorities (e.g.,
+        a court order).</p>
+    </section>
+
+    <!-- 4 -->
+    <section id="s4">
+      <h2><span class="num">4</span> Data Retention</h2>
+      <ul>
+        <li><strong>Active Accounts</strong> — We retain your data for as long as your account is active.</li>
+        <li><strong>Focus Session Records</strong> — Retained to compute your statistics and populate your journey
+          history.</li>
+        <li><strong>Real-Time Presence</strong> — Not stored permanently. It disappears when you leave the Focus Room.
+        </li>
+      </ul>
+
+      <div class="callout red">
+        <span class="callout-icon">⚠️</span>
+        <div><strong>Account Deletion is permanent.</strong> When you delete your account via <em>Settings → Danger Zone
+            → Delete Account</em>, all your data — profile, focus sessions, statistics, friends list, leaves, and themes
+          — is permanently and irreversibly deleted from our servers. This cannot be undone.</div>
+      </div>
+    </section>
+
+    <!-- 5 -->
+    <section id="s5">
+      <h2><span class="num">5</span> Data Security</h2>
+      <ul>
+        <li>All communication between the App and our servers is encrypted in transit using <strong>HTTPS /
+            TLS</strong>.</li>
+        <li>Authentication uses Supabase Auth with industry-standard <strong>JWT tokens</strong>.</li>
+        <li>Access to your data is enforced by <strong>Row-Level Security (RLS)</strong> policies on our database — you
+          can only access your own data.</li>
+        <li>In-app purchases are validated server-side through RevenueCat.</li>
+      </ul>
+      <p>No method of electronic transmission is 100% secure. We cannot guarantee absolute security, but we take
+        reasonable steps to protect your information.</p>
+    </section>
+
+    <!-- 6 -->
+    <section id="s6">
+      <h2><span class="num">6</span> Children's Privacy</h2>
+      <p>Cozy Doubling is not directed at children under <strong>13 years of age</strong> (or the applicable minimum age
+        in your jurisdiction). We do not knowingly collect personal information from children under 13.</p>
+      <p>If you are a parent or guardian and believe your child has provided us with personal information, please
+        contact us at <a href="mailto:cozydoublingdev@gmail.com">cozydoublingdev@gmail.com</a> and we will take steps to
+        delete the information promptly.</p>
+    </section>
+
+    <!-- 7 -->
+    <section id="s7">
+      <h2><span class="num">7</span> Your Rights and Choices</h2>
+      <p>Depending on your location, you may have the following rights:</p>
+
+      <div class="rights-list">
+        <div class="right-item">
+          <strong>✏️ Correction</strong>
+          Update your Display Name anytime in Settings.
+        </div>
+        <div class="right-item">
+          <strong>🗑️ Deletion</strong>
+          Delete your account and all data via Settings → Danger Zone.
+        </div>
+        <div class="right-item">
+          <strong>📋 Access</strong>
+          Request a copy of the personal data we hold about you.
+        </div>
+        <div class="right-item">
+          <strong>📦 Portability</strong>
+          Request your data in a portable format.
+        </div>
+        <div class="right-item">
+          <strong>🚫 Objection</strong>
+          Object to or request restriction of certain data processing.
+        </div>
+        <div class="right-item">
+          <strong>📬 Contact</strong>
+          Reach us at <a href="mailto:cozydoublingdev@gmail.com">cozydoublingdev@gmail.com</a> for any request.
+        </div>
+      </div>
+    </section>
+
+    <!-- 8 -->
+    <section id="s8">
+      <h2><span class="num">8</span> International Data Transfers</h2>
+      <p>Our services are hosted on Supabase infrastructure, which may be located outside your country of residence. By
+        using the App, you consent to your information being transferred to and processed in other countries, which may
+        have different data protection laws than your own.</p>
+    </section>
+
+    <!-- 9 -->
+    <section id="s9">
+      <h2><span class="num">9</span> Third-Party Links and Services</h2>
+      <p>The App may contain links to third-party websites or services. We are not responsible for the privacy practices
+        of those third parties. We encourage you to review their privacy policies before providing any personal
+        information.</p>
+    </section>
+
+    <!-- 10 -->
+    <section id="s10">
+      <h2><span class="num">10</span> Changes to This Privacy Policy</h2>
+      <p>We may update this Privacy Policy from time to time. We will notify you of material changes by updating the
+        <strong>"Last Updated"</strong> date at the top of this page. Your continued use of the App after changes are
+        posted constitutes your acceptance of the updated policy.
+      </p>
+
+      <div class="callout yellow">
+        <span class="callout-icon">💡</span>
+        <div>Bookmark this page or check back periodically to stay informed of any updates.</div>
+      </div>
+    </section>
+
+    <!-- 11 / Contact -->
+    <section id="s11">
+      <div class="contact-box">
+        <h2>Questions? Reach out.</h2>
+        <p>If you have any questions, concerns, or requests about this Privacy Policy or how we handle your data, we'd
+          love to hear from you.</p>
+        <a href="mailto:cozydoublingdev@gmail.com">cozydoublingdev@gmail.com</a>
+        <p style="margin-top: 1rem; font-size: 0.8rem; color: rgba(255,255,255,0.6);">Developer: grepho</p>
+      </div>
+    </section>
+
+  </div>
+
+  <footer>
+    <p>© 2026 grepho · Cozy Doubling · <a href="mailto:cozydoublingdev@gmail.com">cozydoublingdev@gmail.com</a></p>
+    <p style="margin-top: 0.3rem;">Effective July 21, 2026</p>
+  </footer>
+
+</body>
+
+</html>
