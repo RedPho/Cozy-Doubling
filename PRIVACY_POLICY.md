@@ -38,7 +38,7 @@ By using the App, you agree to the collection and use of information as describe
 ### 1.4 Social Data
 
 - **Friends List:** The list of user IDs of users you have added as friends, along with the friendship status (pending or accepted).
-- **Presence Data:** When you are in a Focus Room, your display name, active task text, and task progress (completed/total tasks count) are shared in real-time with other participants in the same room. This data is **transient** and not permanently stored; it exists only for the duration of the session.
+- **Presence Data:** When you are in a Focus Room, your display name, active task text, and task progress are broadcast live to other participants in the same room via Supabase Realtime. Live broadcast data is not permanently stored. However, the **last task text and progress from each session** is saved to your focus session record so your friends can see your recent activity.
 
 ### 1.5 Purchase and Subscription Data
 
@@ -98,7 +98,7 @@ We may disclose your information if required to do so by law, or in response to 
 
 - **Active Accounts:** We retain your account data for as long as your account is active.
 - **Focus Session Records:** Session records are retained to compute your statistics and are visible in your journey/history.
-- **Real-Time Presence Data:** Data broadcast during Focus Room sessions (task text, progress) is transient and is not permanently stored on our servers.
+- **Focus Session Records & Task Text:** Retained to compute your statistics and populate your journey history. The **last task text** from each session is also stored so your friends can see your recent activity. Live broadcast data streamed during a session is not separately persisted.
 - **Deleted Accounts:** When you delete your account (via Settings → Danger Zone → Delete Account), all your data — including your profile, focus sessions, statistics, friends list, leaves, and themes — is **permanently and irreversibly deleted** from our database. This action cannot be undone.
 
 ---

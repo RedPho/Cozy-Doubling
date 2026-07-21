@@ -157,9 +157,17 @@ fun LoginPage(
                 // --- Footer Text ---
                 val uriHandler = LocalUriHandler.current
                 val annotatedString = buildAnnotatedString {
-                    append("By signing in, you agree to our quiet hours and ")
+                    append("By signing in, you agree to our ")
+                    
+                    pushStringAnnotation(tag = "URL", annotation = "https://example.com/terms")
+                    withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.primary, textDecoration = TextDecoration.Underline)) {
+                        append("terms of service")
+                    }
+                    pop()
+                    
+                    append(" and ")
 
-                    pushStringAnnotation(tag = "URL", annotation = BuildConfig.PRIVACY_POLICY_URL)
+                    pushStringAnnotation(tag = "URL", annotation = "https://example.com/privacy-policy")
                     withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.primary, textDecoration = TextDecoration.Underline)) {
                         append("privacy policy")
                     }

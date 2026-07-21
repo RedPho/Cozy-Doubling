@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Terms of Service – Cozy Doubling</title>
+  <meta name="description"
+    content="Terms of Service for Cozy Doubling by grepho. Read the rules for using the app, user-generated content policy, and your rights." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=Inter:wght@400;500;600&display=swap"
+    rel="stylesheet" />
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg: #faf6f0;
+      --surface: #ffffff;
+      --primary: #5a7a5a;
+      --primary-light: #e8f0e8;
+      --text: #2d2d2d;
+      --muted: #6b7280;
+      --border: #e5e0d8;
+      --accent: #8fad8f;
+      --danger: #b45555;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      font-size: 16px;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 2rem 1.5rem;
+      text-align: center;
+    }
+
+    .app-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      background: var(--primary-light);
+      border-radius: 2rem;
+      padding: 0.4rem 1rem 0.4rem 0.5rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .app-icon {
+      width: 32px;
+      height: 32px;
+      background: var(--primary);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+
+    .app-badge span {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--primary);
+      letter-spacing: 0.02em;
+    }
+
+    header h1 {
+      font-family: 'Lora', Georgia, serif;
+      font-size: clamp(1.6rem, 4vw, 2.4rem);
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 0.5rem;
+    }
+
+    .meta {
+      font-size: 0.85rem;
+      color: var(--muted);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 1rem;
+    }
+
+    .meta span::before {
+      content: '·';
+      margin-right: 1rem;
+    }
+
+    .meta span:first-child::before {
+      content: '';
+      margin-right: 0;
+    }
+
+    /* ── Layout ── */
+    .container {
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 2.5rem 1.5rem 4rem;
+    }
+
+    /* ── TOC ── */
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      padding: 1.5rem 1.75rem;
+      margin-bottom: 2.5rem;
+    }
+
+    .toc h2 {
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.75rem;
+    }
+
+    .toc ol {
+      list-style: none;
+      counter-reset: toc;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.3rem 1.5rem;
+    }
+
+    @media (max-width: 520px) {
+      .toc ol {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .toc li {
+      counter-increment: toc;
+    }
+
+    .toc a {
+      font-size: 0.9rem;
+      color: var(--primary);
+      text-decoration: none;
+      display: flex;
+      align-items: baseline;
+      gap: 0.4rem;
+    }
+
+    .toc a::before {
+      content: counter(toc) ".";
+      font-size: 0.75rem;
+      color: var(--accent);
+      font-weight: 600;
+      min-width: 1.2rem;
+    }
+
+    .toc a:hover {
+      text-decoration: underline;
+    }
+
+    /* ── Sections ── */
+    section {
+      margin-bottom: 2.5rem;
+    }
+
+    section:last-child {
+      margin-bottom: 0;
+    }
+
+    h2 {
+      font-family: 'Lora', Georgia, serif;
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--primary);
+      margin-bottom: 1rem;
+      padding-top: 0.5rem;
+      border-top: 2px solid var(--primary-light);
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    h2 .num {
+      background: var(--primary);
+      color: white;
+      font-size: 0.7rem;
+      font-family: 'Inter', sans-serif;
+      font-weight: 700;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    h3 {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text);
+      margin: 1.25rem 0 0.5rem;
+    }
+
+    p {
+      margin-bottom: 0.75rem;
+    }
+
+    p:last-child {
+      margin-bottom: 0;
+    }
+
+    ul,
+    ol {
+      padding-left: 1.25rem;
+      margin-bottom: 0.75rem;
+    }
+
+    li {
+      margin-bottom: 0.35rem;
+    }
+
+    strong {
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    a {
+      color: var(--primary);
+    }
+
+    a:hover {
+      color: var(--accent);
+    }
+
+    /* ── Callout boxes ── */
+    .callout {
+      border-radius: 0.75rem;
+      padding: 1rem 1.25rem;
+      margin: 1rem 0;
+      font-size: 0.9rem;
+      display: flex;
+      gap: 0.75rem;
+    }
+
+    .callout-icon {
+      font-size: 1.1rem;
+      flex-shrink: 0;
+      margin-top: 0.05rem;
+    }
+
+    .callout.green {
+      background: var(--primary-light);
+      border-left: 3px solid var(--primary);
+    }
+
+    .callout.red {
+      background: #fdf0f0;
+      border-left: 3px solid var(--danger);
+      color: #6b2a2a;
+    }
+
+    .callout.yellow {
+      background: #fdf8ec;
+      border-left: 3px solid #c9963b;
+    }
+
+    .callout.blue {
+      background: #f0f4fd;
+      border-left: 3px solid #4a6fa5;
+      color: #2a3a5c;
+    }
+
+    /* ── Prohibited list ── */
+    .prohibited-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin: 0.75rem 0;
+    }
+
+    .prohibited-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      background: #fdf0f0;
+      border: 1px solid #f0d0d0;
+      border-radius: 0.65rem;
+      padding: 0.8rem 1rem;
+      font-size: 0.9rem;
+      color: #5a2020;
+    }
+
+    .prohibited-item .icon {
+      flex-shrink: 0;
+      font-size: 1rem;
+      margin-top: 0.05rem;
+    }
+
+    /* ── Rights summary cards ── */
+    .rights-list {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+      margin: 1rem 0;
+    }
+
+    @media (max-width: 520px) {
+      .rights-list {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .right-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      padding: 0.85rem 1rem;
+      font-size: 0.88rem;
+    }
+
+    .right-item strong {
+      display: block;
+      color: var(--primary);
+      margin-bottom: 0.2rem;
+    }
+
+    /* ── Report abuse box ── */
+    .report-box {
+      background: var(--surface);
+      border: 2px solid var(--border);
+      border-radius: 1rem;
+      padding: 1.25rem 1.5rem;
+      margin: 1rem 0;
+      display: flex;
+      gap: 1rem;
+      align-items: flex-start;
+    }
+
+    .report-box .icon {
+      font-size: 2rem;
+      flex-shrink: 0;
+    }
+
+    .report-box h3 {
+      margin: 0 0 0.3rem;
+      font-size: 1rem;
+    }
+
+    .report-box p {
+      font-size: 0.88rem;
+      color: var(--muted);
+      margin: 0;
+    }
+
+    .report-box a {
+      font-weight: 600;
+    }
+
+    /* ── Footer / Contact ── */
+    .contact-box {
+      background: var(--primary);
+      color: white;
+      border-radius: 1.25rem;
+      padding: 2rem;
+      text-align: center;
+      margin-top: 3rem;
+    }
+
+    .contact-box h2 {
+      font-family: 'Lora', serif;
+      color: white;
+      border-top: none;
+      padding-top: 0;
+      justify-content: center;
+      font-size: 1.4rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .contact-box p {
+      color: rgba(255, 255, 255, 0.85);
+      margin-bottom: 1rem;
+    }
+
+    .contact-box a {
+      display: inline-block;
+      background: white;
+      color: var(--primary);
+      font-weight: 600;
+      padding: 0.6rem 1.5rem;
+      border-radius: 2rem;
+      text-decoration: none;
+      font-size: 0.95rem;
+      transition: opacity 0.15s;
+    }
+
+    .contact-box a:hover {
+      opacity: 0.85;
+    }
+
+    footer {
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--muted);
+      padding: 1.5rem 1rem 2rem;
+      border-top: 1px solid var(--border);
+      margin-top: 1rem;
+    }
+
+    .doc-links {
+      display: flex;
+      justify-content: center;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+      margin-top: 0.5rem;
+      font-size: 0.82rem;
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <div class="app-badge">
+      <div class="app-icon">🌿</div>
+      <span>Cozy Doubling</span>
+    </div>
+    <h1>Terms of Service</h1>
+    <div class="meta">
+      <span>Developer: grepho</span>
+      <span>Effective: July 21, 2026</span>
+      <span>Last updated: July 21, 2026</span>
+    </div>
+  </header>
+
+  <div class="container">
+
+    <!-- Introduction -->
+    <section>
+      <p>
+        These Terms of Service ("Terms") are a legal agreement between you ("you" or "User") and grepho ("we", "us",
+        or "our"), governing your use of the <strong>Cozy Doubling</strong> mobile application (the "App" or
+        "Service"). By creating an account or using the App in any way, you confirm that you have read, understood,
+        and agree to be bound by these Terms.
+      </p>
+      <div class="callout yellow">
+        <span class="callout-icon">⚠️</span>
+        <div><strong>Please read these Terms carefully before using the App.</strong> If you do not agree to these
+          Terms, you must not use the App. Your continued use of the App constitutes your ongoing agreement to these
+          Terms.</div>
+      </div>
+    </section>
+
+    <!-- TOC -->
+    <nav class="toc" aria-label="Table of contents">
+      <h2>Contents</h2>
+      <ol>
+        <li><a href="#s1">Eligibility</a></li>
+        <li><a href="#s2">Your Account</a></li>
+        <li><a href="#s3">User-Generated Content</a></li>
+        <li><a href="#s4">Prohibited Conduct</a></li>
+        <li><a href="#s5">Moderation &amp; Enforcement</a></li>
+        <li><a href="#s6">Reporting Abuse</a></li>
+        <li><a href="#s7">Subscriptions &amp; Billing</a></li>
+        <li><a href="#s8">Intellectual Property</a></li>
+        <li><a href="#s9">Disclaimer of Warranties</a></li>
+        <li><a href="#s10">Limitation of Liability</a></li>
+        <li><a href="#s11">Indemnification</a></li>
+        <li><a href="#s12">Governing Law</a></li>
+        <li><a href="#s13">Changes to Terms</a></li>
+        <li><a href="#s14">Contact Us</a></li>
+      </ol>
+    </nav>
+
+    <!-- 1 -->
+    <section id="s1">
+      <h2><span class="num">1</span> Eligibility</h2>
+      <p>
+        You must be at least <strong>13 years of age</strong> (or the applicable minimum digital age of consent in
+        your country) to use the App. By using the App, you represent and warrant that you meet this age requirement.
+      </p>
+      <p>
+        If you are between the ages of 13 and 18 (or the applicable age of majority in your jurisdiction), you may
+        only use the App with the consent and supervision of a parent or legal guardian who agrees to be bound by
+        these Terms on your behalf.
+      </p>
+    </section>
+
+    <!-- 2 -->
+    <section id="s2">
+      <h2><span class="num">2</span> Your Account</h2>
+      <h3>2.1 Account Creation</h3>
+      <p>
+        The App uses Google Sign-In for authentication. By signing in, you grant us permission to use your Google
+        account identifier and display name to create and maintain your account. You are responsible for maintaining
+        the security of your Google account.
+      </p>
+      <h3>2.2 Account Responsibility</h3>
+      <p>
+        You are solely responsible for all activity that occurs under your account. You must immediately notify us at
+        <a href="mailto:cozydoublingdev@gmail.com">cozydoublingdev@gmail.com</a> if you suspect any unauthorized use
+        of your account. We are not liable for any loss or damage arising from unauthorized access to your account.
+      </p>
+      <h3>2.3 Account Termination by You</h3>
+      <p>
+        You may delete your account at any time via <strong>Settings → Danger Zone → Delete Account</strong>.
+        Deletion is permanent and irreversible. All your data — including your profile, focus sessions, statistics,
+        friends list, leaves, and themes — will be permanently erased.
+      </p>
+      <h3>2.4 One Account Per Person</h3>
+      <p>
+        Each person may maintain only one account. Creating multiple accounts to circumvent restrictions, bans, or
+        for any other reason is prohibited.
+      </p>
+    </section>
+
+    <!-- 3 -->
+    <section id="s3">
+      <h2><span class="num">3</span> User-Generated Content</h2>
+      <h3>3.1 What Counts as UGC</h3>
+      <p>
+        "User-Generated Content" (UGC) includes any text or information you submit to the App that may be visible
+        to other users, including but not limited to:
+      </p>
+      <ul>
+        <li>Your <strong>display name</strong></li>
+        <li><strong>Task text</strong> entered during a focus session and shared in real-time in a Focus Room</li>
+        <li>Any other text you submit that is visible to other participants</li>
+      </ul>
+
+      <h3>3.2 Your Ownership &amp; License to Us</h3>
+      <p>
+        You retain ownership of any UGC you create. However, by submitting UGC to the App, you grant grepho a
+        worldwide, royalty-free, non-exclusive license to use, display, and transmit that content solely for the
+        purpose of operating and providing the Service. This license terminates when your content is deleted or your
+        account is closed.
+      </p>
+
+      <h3>3.3 Your Responsibility</h3>
+      <p>
+        <strong>You are solely and entirely responsible for any UGC you submit.</strong> By submitting UGC, you
+        represent and warrant that:
+      </p>
+      <ul>
+        <li>You have the right to submit the content;</li>
+        <li>The content does not violate any applicable law or these Terms;</li>
+        <li>The content will not infringe the intellectual property, privacy, or other rights of any third party;</li>
+        <li>The content is not harmful, offensive, or otherwise objectionable as described in Section 4.</li>
+      </ul>
+
+      <div class="callout blue">
+        <span class="callout-icon">ℹ️</span>
+        <div>While live broadcast data streamed during a Focus Room session is not separately stored, the
+          <strong>last task text and progress from each session</strong> is saved to your focus session record
+          so your friends can see your recent activity. You remain fully responsible for all content you
+          write, including task text.</div>
+      </div>
+    </section>
+
+    <!-- 4 -->
+    <section id="s4">
+      <h2><span class="num">4</span> Prohibited Conduct</h2>
+      <p>
+        Cozy Doubling is intended to be a calm, safe, and respectful space. The following conduct is
+        <strong>strictly prohibited</strong>. Violations may result in immediate account suspension or termination
+        without notice.
+      </p>
+
+      <div class="prohibited-list">
+        <div class="prohibited-item">
+          <span class="icon">🚫</span>
+          <div><strong>Hate Speech &amp; Discrimination</strong> — Posting, sharing, or displaying content that
+            promotes or incites hatred, discrimination, or violence based on race, ethnicity, nationality, religion,
+            gender, sexual orientation, disability, or any other characteristic.</div>
+        </div>
+        <div class="prohibited-item">
+          <span class="icon">🚫</span>
+          <div><strong>Harassment &amp; Bullying</strong> — Targeting, intimidating, threatening, stalking, or
+            harassing any other user or person.</div>
+        </div>
+        <div class="prohibited-item">
+          <span class="icon">🚫</span>
+          <div><strong>Sexually Explicit or Violent Content</strong> — Sharing or displaying pornographic, graphic,
+            or gratuitously violent content of any kind.</div>
+        </div>
+        <div class="prohibited-item">
+          <span class="icon">🚫</span>
+          <div><strong>Illegal Content or Activity</strong> — Using the App to engage in, facilitate, or promote
+            any activity that is illegal under applicable law, including but not limited to fraud, distribution of
+            harmful materials, or violation of third-party rights.</div>
+        </div>
+        <div class="prohibited-item">
+          <span class="icon">🚫</span>
+          <div><strong>Spam &amp; Unsolicited Advertising</strong> — Sending or displaying unsolicited commercial
+            messages, spam, chain messages, or other forms of unauthorized advertising.</div>
+        </div>
+        <div class="prohibited-item">
+          <span class="icon">🚫</span>
+          <div><strong>Impersonation</strong> — Impersonating any person, entity, or brand, including grepho or
+            any other user of the App.</div>
+        </div>
+        <div class="prohibited-item">
+          <span class="icon">🚫</span>
+          <div><strong>Circumventing Security or Access Controls</strong> — Attempting to bypass, hack, reverse
+            engineer, or otherwise undermine the security or integrity of the App or its infrastructure.</div>
+        </div>
+        <div class="prohibited-item">
+          <span class="icon">🚫</span>
+          <div><strong>Cheating or Manipulation</strong> — Exploiting bugs, using scripts, bots, or any
+            unauthorized means to manipulate in-app currency (Leaves), statistics, or any other game mechanic.</div>
+        </div>
+        <div class="prohibited-item">
+          <span class="icon">🚫</span>
+          <div><strong>Distributing Malware</strong> — Uploading or transmitting viruses, malware, or any other
+            malicious or harmful code.</div>
+        </div>
+        <div class="prohibited-item">
+          <span class="icon">🚫</span>
+          <div><strong>Violation of Others' Privacy</strong> — Collecting, storing, or sharing personal
+            information of other users without their explicit consent.</div>
+        </div>
+      </div>
+
+      <p>
+        This list is illustrative, not exhaustive. We reserve the right to determine, at our sole discretion,
+        whether any conduct violates these Terms or the spirit of a respectful community.
+      </p>
+    </section>
+
+    <!-- 5 -->
+    <section id="s5">
+      <h2><span class="num">5</span> Moderation &amp; Enforcement</h2>
+      <h3>5.1 Our Rights</h3>
+      <p>
+        We reserve the right, but are under no obligation, to monitor content and conduct within the App. We may,
+        at our sole discretion and <strong>without prior notice or liability</strong>:
+      </p>
+      <ul>
+        <li>Remove or modify any UGC that we determine violates these Terms or that we find objectionable;</li>
+        <li>Suspend or permanently terminate any user's account;</li>
+        <li>Restrict, limit, or revoke access to any feature of the App;</li>
+        <li>Take any other action we deem appropriate to protect the community and the Service.</li>
+      </ul>
+
+      <h3>5.2 No Moderation Obligation</h3>
+      <p>
+        Because UGC (particularly real-time task text in Focus Rooms) is not pre-screened, we do not
+        and cannot guarantee that all content in the App will comply with these Terms at all times.
+        <strong>We are not liable for any UGC submitted by other users.</strong> You use the App at your own
+        risk and you may encounter content posted by other users that you find offensive or objectionable.
+      </p>
+
+      <div class="callout red">
+        <span class="callout-icon">⚠️</span>
+        <div><strong>Zero Tolerance Policy:</strong> Any account found to be engaging in hate speech, harassment,
+          or the posting of illegal content will be permanently banned without warning or refund of any
+          unused subscription period.</div>
+      </div>
+
+      <h3>5.3 Appeals</h3>
+      <p>
+        If you believe your account was suspended or content was removed in error, you may contact us at
+        <a href="mailto:cozydoublingdev@gmail.com">cozydoublingdev@gmail.com</a> to appeal the decision. We will
+        review appeals at our discretion but are not required to restore any account or content.
+      </p>
+    </section>
+
+    <!-- 6 -->
+    <section id="s6">
+      <h2><span class="num">6</span> Reporting Abuse</h2>
+      <p>
+        We rely on our community to help keep Cozy Doubling safe. If you encounter content or conduct that
+        violates these Terms, please report it to us immediately.
+      </p>
+
+      <div class="report-box">
+        <div class="icon">🛡️</div>
+        <div>
+          <h3>Report Abuse or Harmful Content</h3>
+          <p>Send an email to <a href="mailto:cozydoublingdev@gmail.com">cozydoublingdev@gmail.com</a> with
+            the subject line <strong>"Abuse Report"</strong>. Please include: the offending user's display name
+            or Player Tag, a description of the content or behavior, and if possible, a screenshot. We will
+            investigate all reports and take appropriate action.</p>
+        </div>
+      </div>
+
+      <div class="callout blue">
+        <span class="callout-icon">🗺️</span>
+        <div>In-app reporting and blocking features are on our product roadmap and will be added in a future
+          update. Until then, email is the official channel for abuse reports.</div>
+      </div>
+    </section>
+
+    <!-- 7 -->
+    <section id="s7">
+      <h2><span class="num">7</span> Subscriptions &amp; Billing</h2>
+      <h3>7.1 Supporter Subscription</h3>
+      <p>
+        Cozy Doubling offers an optional "Supporter" subscription that unlocks premium cosmetic features. All
+        subscriptions are processed and managed through <strong>Google Play</strong> and
+        <strong>RevenueCat</strong>.
+      </p>
+
+      <h3>7.2 Billing</h3>
+      <p>
+        By purchasing a subscription, you agree to the billing terms presented at the time of purchase in Google
+        Play. Your subscription will automatically renew at the end of each billing period unless you cancel it
+        before the renewal date through your Google Play account settings.
+      </p>
+
+      <h3>7.3 Refunds</h3>
+      <p>
+        All purchases are processed by Google Play. Refund requests must be submitted directly to Google Play in
+        accordance with their refund policy. We do not process refunds directly. We do not offer pro-rated refunds
+        for partial subscription periods.
+      </p>
+
+      <h3>7.4 Cancellation</h3>
+      <p>
+        You may cancel your subscription at any time via your Google Play account. Cancellation takes effect at the
+        end of your current billing period. You will continue to have access to Supporter features until the end of
+        the paid period.
+      </p>
+
+      <h3>7.5 Price Changes</h3>
+      <p>
+        We reserve the right to change subscription prices at any time. Price changes will be announced in advance
+        in accordance with Google Play's policies. Continued use of the subscription after a price change constitutes
+        your acceptance of the new price.
+      </p>
+
+      <h3>7.6 Account Termination &amp; Subscriptions</h3>
+      <p>
+        If your account is terminated due to a violation of these Terms, you forfeit any remaining subscription
+        period. No refund will be issued.
+      </p>
+    </section>
+
+    <!-- 8 -->
+    <section id="s8">
+      <h2><span class="num">8</span> Intellectual Property</h2>
+      <h3>8.1 Our Property</h3>
+      <p>
+        The App, including all its content, features, design, software, trademarks, logos, and all other
+        intellectual property (excluding UGC), is owned by grepho and is protected by applicable intellectual
+        property laws. You may not copy, modify, distribute, sell, or lease any part of the App without our
+        express written permission.
+      </p>
+      <h3>8.2 Limited License to You</h3>
+      <p>
+        We grant you a limited, non-exclusive, non-transferable, revocable license to use the App for your personal,
+        non-commercial purposes, strictly in accordance with these Terms.
+      </p>
+      <h3>8.3 Feedback</h3>
+      <p>
+        If you provide us with suggestions, ideas, or feedback about the App ("Feedback"), you grant us a
+        royalty-free, worldwide, perpetual license to use that Feedback for any purpose without any obligation to
+        you.
+      </p>
+    </section>
+
+    <!-- 9 -->
+    <section id="s9">
+      <h2><span class="num">9</span> Disclaimer of Warranties</h2>
+      <p>
+        <strong>THE APP IS PROVIDED "AS IS" AND "AS AVAILABLE," WITHOUT ANY WARRANTIES OF ANY KIND, EXPRESS OR
+          IMPLIED.</strong> To the maximum extent permitted by applicable law, grepho expressly disclaims all
+        warranties, including but not limited to:
+      </p>
+      <ul>
+        <li>Warranties of <strong>merchantability</strong>, fitness for a particular purpose, or
+          non-infringement;</li>
+        <li>Warranties that the App will be <strong>uninterrupted, error-free, or free of viruses</strong>;</li>
+        <li>Warranties regarding the <strong>accuracy, reliability, or completeness</strong> of any content in
+          the App;</li>
+        <li>Warranties that any <strong>defects will be corrected</strong>.</li>
+      </ul>
+      <p>
+        You use the App entirely at your own risk. We do not guarantee that the App will always be available or
+        that it will meet your expectations.
+      </p>
+    </section>
+
+    <!-- 10 -->
+    <section id="s10">
+      <h2><span class="num">10</span> Limitation of Liability</h2>
+      <p>
+        To the maximum extent permitted by applicable law, in no event will grepho, its developer(s), affiliates,
+        or licensors be liable for any:
+      </p>
+      <ul>
+        <li>Indirect, incidental, special, consequential, or punitive damages;</li>
+        <li>Loss of profits, revenue, data, goodwill, or business;</li>
+        <li>Damages arising from your use of or inability to use the App;</li>
+        <li>Damages arising from UGC posted by other users;</li>
+        <li>Damages from unauthorized access to or alteration of your account or data;</li>
+        <li>Any other matter relating to the Service.</li>
+      </ul>
+      <p>
+        In all cases, our total aggregate liability to you for any claim arising out of or relating to these Terms
+        or the App shall not exceed the <strong>greater of (a) the total amount you paid to us in the twelve (12)
+          months preceding the claim, or (b) USD $10</strong>.
+      </p>
+      <p>
+        Some jurisdictions do not allow the limitation or exclusion of certain liabilities, so some of the above
+        limitations may not apply to you.
+      </p>
+    </section>
+
+    <!-- 11 -->
+    <section id="s11">
+      <h2><span class="num">11</span> Indemnification</h2>
+      <p>
+        You agree to defend, indemnify, and hold harmless grepho and its developer(s) from and against any claims,
+        damages, losses, liabilities, costs, and expenses (including reasonable legal fees) arising out of or
+        relating to:
+      </p>
+      <ul>
+        <li>Your use of the App;</li>
+        <li>Any UGC you submit;</li>
+        <li>Your violation of these Terms;</li>
+        <li>Your violation of any rights of another person or entity;</li>
+        <li>Your violation of any applicable laws or regulations.</li>
+      </ul>
+      <p>
+        We reserve the right to assume exclusive defense and control of any matter subject to indemnification by
+        you, in which case you agree to cooperate with our defense of such claim.
+      </p>
+    </section>
+
+    <!-- 12 -->
+    <section id="s12">
+      <h2><span class="num">12</span> Governing Law &amp; Disputes</h2>
+      <p>
+        These Terms shall be governed by and construed in accordance with the laws of <strong>Turkey</strong>,
+        without regard to its conflict of law provisions. Any dispute arising from or relating to these Terms or
+        the App shall be subject to the exclusive jurisdiction of the courts located in Turkey.
+      </p>
+      <p>
+        Notwithstanding the above, we reserve the right to seek injunctive or other equitable relief in any court
+        of competent jurisdiction to prevent or stop any unauthorized use of the App.
+      </p>
+      <div class="callout green">
+        <span class="callout-icon">🌿</span>
+        <div>We believe most issues can be resolved through a simple conversation. Before pursuing any formal
+          dispute, please reach out to us at <a
+            href="mailto:cozydoublingdev@gmail.com">cozydoublingdev@gmail.com</a>. We want to make things right.</div>
+      </div>
+    </section>
+
+    <!-- 13 -->
+    <section id="s13">
+      <h2><span class="num">13</span> Changes to These Terms</h2>
+      <p>
+        We may update these Terms from time to time. When we make material changes, we will update the
+        <strong>"Last Updated"</strong> date at the top of this page. For significant changes, we may also notify
+        you within the App.
+      </p>
+      <p>
+        Your continued use of the App after the effective date of any revised Terms constitutes your acceptance
+        of the new Terms. If you do not agree to the revised Terms, you must stop using the App and may delete
+        your account.
+      </p>
+    </section>
+
+    <!-- 14 / Contact -->
+    <section id="s14">
+      <div class="contact-box">
+        <h2>Questions? Reach out.</h2>
+        <p>If you have any questions about these Terms of Service, or need to report a violation, please contact us.</p>
+        <a href="mailto:cozydoublingdev@gmail.com">cozydoublingdev@gmail.com</a>
+        <p style="margin-top: 1rem; font-size: 0.8rem; color: rgba(255,255,255,0.6);">Developer: grepho</p>
+      </div>
+    </section>
+
+  </div>
+
+  <footer>
+    <p>© 2026 grepho · Cozy Doubling · <a href="mailto:cozydoublingdev@gmail.com">cozydoublingdev@gmail.com</a></p>
+    <p style="margin-top: 0.3rem;">Effective July 21, 2026</p>
+    <div class="doc-links">
+      <a href="./privacy-policy.html">Privacy Policy</a>
+      <a href="./terms-of-service.html">Terms of Service</a>
+    </div>
+  </footer>
+
+</body>
+
+</html>

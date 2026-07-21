@@ -78,5 +78,14 @@ class SettingsViewModel : ViewModel() {
             }
         }
     }
+
+    fun onOpenUrl(context: Context, url: String) {
+        try {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
 }
 

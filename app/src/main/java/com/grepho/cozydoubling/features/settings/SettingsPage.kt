@@ -13,6 +13,9 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.CardMembership
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Policy
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -45,7 +48,8 @@ fun SettingsScreen(
             viewModel.onRestorePurchases { message ->
                 Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
             }
-        }
+        },
+        onOpenUrl = { url -> viewModel.onOpenUrl(context, url) }
     )
 }
 
@@ -60,7 +64,8 @@ fun SettingsPage(
     onSignOut: () -> Unit,
     onDeleteAccount: () -> Unit,
     onManageSubscription: () -> Unit,
-    onRestorePurchases: () -> Unit
+    onRestorePurchases: () -> Unit,
+    onOpenUrl: (String) -> Unit
 ) {
     var showUsernameDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -132,6 +137,45 @@ fun SettingsPage(
                     label = "Sign Out",
                     icon = Icons.AutoMirrored.Filled.ExitToApp,
                     onClick = onSignOut
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // --- LEGAL & ABOUT ---
+            SettingsGroup(title = "LEGAL & ABOUT") {
+                SettingsItem(
+                    label = "Privacy Policy",
+                    icon = Icons.Default.Policy,
+                    onClick = { onOpenUrl("https://example.com/privacy-policy") }
+                )
+                SettingsItem(
+                    label = "Terms of Service",
+                    icon = Icons.Default.Description,
+                    onClick = { onOpenUrl("https://example.com/terms") }
+                )
+                
+                val context = LocalContext.current
+                val packageInfo = remember {
+                    try {
+                        context.packageManager.getPackageInfo(context.packageName, 0)
+                    } catch (e: Exception) { null }
+                }
+                val version = packageInfo?.versionName ?: "1.0"
+                val code = packageInfo?.let {
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                        it.longVersionCode
+                    } else {
+                        @Suppress("DEPRECATION")
+                        it.versionCode.toLong()
+                    }
+                } ?: 1
+
+                SettingsItem(
+                    label = "Version",
+                    value = "$version ($code)",
+                    icon = Icons.Default.Info,
+                    onClick = { /* No-op */ }
                 )
             }
 

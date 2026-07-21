@@ -426,6 +426,15 @@
       border-top: 1px solid var(--border);
       margin-top: 1rem;
     }
+
+    .doc-links {
+      display: flex;
+      justify-content: center;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+      margin-top: 0.5rem;
+      font-size: 0.82rem;
+    }
   </style>
 </head>
 
@@ -505,9 +514,11 @@
       <ul>
         <li><strong>Friends List</strong> — user IDs of friends you have added and the relationship status (pending /
           accepted).</li>
-        <li><strong>Real-Time Presence (transient)</strong> — while you are in a Focus Room, your display name, current
-          task text, and task progress are shared live with other room participants. This data <em>is not permanently
-            stored</em> on our servers; it exists only for the duration of the session.</li>
+        <li><strong>Real-Time Presence</strong> — while you are in a Focus Room, your display name, current
+          task text, and task progress are broadcast live to other room participants via Supabase Realtime.
+          Live broadcast data is not permanently stored. However, the <strong>last task text and progress
+          from each session</strong> is saved to your focus session record so that your friends can see
+          your recent activity.</li>
       </ul>
 
       <h3>1.5 Purchase &amp; Subscription Data</h3>
@@ -631,7 +642,10 @@
         <li><strong>Active Accounts</strong> — We retain your data for as long as your account is active.</li>
         <li><strong>Focus Session Records</strong> — Retained to compute your statistics and populate your journey
           history.</li>
-        <li><strong>Real-Time Presence</strong> — Not stored permanently. It disappears when you leave the Focus Room.
+        <li><strong>Focus Session Records &amp; Task Text</strong> — Retained to compute your statistics and populate
+          your journey history. The <strong>last task text</strong> from each session is also stored so your
+          friends can see your recent activity. Live broadcast data (streamed during a session) is not separately
+          persisted.</li>
         </li>
       </ul>
 
@@ -747,6 +761,10 @@
   <footer>
     <p>© 2026 grepho · Cozy Doubling · <a href="mailto:cozydoublingdev@gmail.com">cozydoublingdev@gmail.com</a></p>
     <p style="margin-top: 0.3rem;">Effective July 21, 2026</p>
+    <div class="doc-links">
+      <a href="./privacy-policy.html">Privacy Policy</a>
+      <a href="./terms-of-service.html">Terms of Service</a>
+    </div>
   </footer>
 
 </body>
