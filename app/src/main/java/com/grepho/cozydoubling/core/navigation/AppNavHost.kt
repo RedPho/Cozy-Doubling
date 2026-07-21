@@ -9,6 +9,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.grepho.cozydoubling.core.profile.ProfileRepository
 import com.grepho.cozydoubling.features.auth.LoginScreen
 import com.grepho.cozydoubling.features.auth.LoginViewModel
 import com.grepho.cozydoubling.features.home.HomeScreen
@@ -44,6 +45,13 @@ fun AppNavHost(navController: NavHostController, modifier: Modifier = Modifier, 
                 }
                 else -> { /* Loading... we can just wait or show a splash */ }
             }
+        }
+    }
+
+    // 🚀 NEW: Refresh profile on every screen change
+    LaunchedEffect(navController) {
+        navController.currentBackStackEntryFlow.collect { _ ->
+            ProfileRepository.refreshProfile()
         }
     }
 

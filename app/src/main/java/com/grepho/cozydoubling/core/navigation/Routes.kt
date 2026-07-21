@@ -24,6 +24,8 @@ enum class BottomTab(val route: String, val label: String, val icon: Int) {
 
 // 3. Your helper function so the tabs don't stack up infinitely when clicked
 fun NavController.navigateToBottomTab(route: String) {
+    if (currentDestination?.route == route) return
+
     navigate(route) {
         popUpTo(graph.findStartDestination().id) { saveState = true }
         launchSingleTop = true

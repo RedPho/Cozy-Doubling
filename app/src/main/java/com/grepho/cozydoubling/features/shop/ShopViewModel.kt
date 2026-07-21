@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import com.grepho.cozydoubling.core.theming.ThemePalette
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
@@ -83,7 +84,10 @@ class ShopViewModel : ViewModel() {
 
             val success = BillingRepository.purchase(activity, rcPackage)
             if (success) {
-                ProfileRepository.refreshProfile()
+                repeat(3) {
+                    delay(1000)
+                    ProfileRepository.refreshProfile()
+                }
             } else {
                 print("DEBUG: onBuyWithCashClicked not success.")
             }

@@ -54,6 +54,7 @@ object ProfileRepository {
                 .select { filter { eq("id", user.id) } }
                 .decodeSingle<Profile>()
             _profile.emit(fetchedProfile)
+            println("DEBUG: Profile supporter status:" + profile.value?.isSupporter)
         } catch (e: Exception) {
             e.printStackTrace()
         }
