@@ -1,10 +1,12 @@
 package com.grepho.cozydoubling.core.profile
 
 import com.grepho.cozydoubling.core.Supabase
+import com.grepho.cozydoubling.core.network.ConnectionStateManager
 import com.revenuecat.purchases.Purchases
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.status.SessionStatus
 import io.github.jan.supabase.postgrest.postgrest
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -56,36 +58,56 @@ object ProfileRepository {
             _profile.emit(fetchedProfile)
             println("DEBUG: Profile supporter status:" + profile.value?.isSupporter)
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             e.printStackTrace()
+            ConnectionStateManager.reportServerError()
         }
     }
 
     suspend fun updateDisplayName(newName: String) {
         val myId = Supabase.client.auth.currentUserOrNull()?.id ?: return
 
-        Supabase.client.postgrest["profiles"].update(
-            mapOf("display_name" to newName)
-        ) {
-            filter { eq("id", myId) }
-        }
+        try {
+            Supabase.client.postgrest["profiles"].update(
+                mapOf("display_name" to newName)
+            ) {
+                filter { eq("id", myId) }
+            }
 
-        // Refresh instantly so every screen sees the new name
-        refreshProfile()
+            // Refresh instantly so every screen sees the new name
+            refreshProfile()
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            e.printStackTrace()
+            ConnectionStateManager.reportServerError()
+        }
     }
 
     suspend fun signOut() {
-        Supabase.client.auth.signOut()
-        _profile.emit(null) // Clear local cache
+        try {
+            Supabase.client.auth.signOut()
+            _profile.emit(null) // Clear local cache
+        } catch (e: Exception) {
+            e.printStackTrace()
+            // Even if sign out fails on server, we should probably clear local state
+            _profile.emit(null)
+        }
     }
 
     /**
      * Completely wipes the user's account and data from the server.
      */
     suspend fun deleteAccount() {
-        // 1. Call the secure RPC to delete from the DB
-        Supabase.client.postgrest.rpc("delete_own_account")
+        try {
+            // 1. Call the secure RPC to delete from the DB
+            Supabase.client.postgrest.rpc("delete_own_account")
 
-        // 2. Clear local session
-        signOut()
+            // 2. Clear local session
+            signOut()
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            e.printStackTrace()
+            ConnectionStateManager.reportServerError()
+        }
     }
 }

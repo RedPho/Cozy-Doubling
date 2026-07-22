@@ -25,18 +25,24 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.lifecycle.lifecycleScope
 import com.grepho.cozydoubling.BuildConfig
+import com.grepho.cozydoubling.core.components.ConnectionErrorDialog
 import com.grepho.cozydoubling.core.economy.EconomyRepository
 import com.grepho.cozydoubling.core.economy.ThemeState
 import com.grepho.cozydoubling.core.navigation.AppNavHost
 import com.grepho.cozydoubling.core.navigation.BottomTab
 import com.grepho.cozydoubling.core.navigation.Screen
 import com.grepho.cozydoubling.core.navigation.navigateToBottomTab
+import com.grepho.cozydoubling.core.network.ConnectionStateManager
+import com.grepho.cozydoubling.core.network.ConnectivityObserver
 import com.grepho.cozydoubling.ui.theme.BackgroundCream
 import com.grepho.cozydoubling.ui.theme.CozyDoublingTheme
 import com.revenuecat.purchases.LogLevel
 import com.revenuecat.purchases.Purchases
 import com.revenuecat.purchases.PurchasesConfiguration
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 
 
 class MainActivity : ComponentActivity() {
@@ -47,12 +53,17 @@ class MainActivity : ComponentActivity() {
             PurchasesConfiguration.Builder(this, BuildConfig.REVENUECAT_APIKEY).build()
         )
 
+        ConnectivityObserver(this).isOnline
+            .onEach { ConnectionStateManager.updateConnectivity(it) }
+            .launchIn(lifecycleScope)
+
         enableEdgeToEdge()
         setContent {
             val themeState by EconomyRepository.themeState.collectAsState()
+            val connectionState by ConnectionStateManager.state.collectAsState()
 
             // 1. Hold on a Splash screen while Loading
-            if (themeState is ThemeState.Loading) {
+            if (themeState is ThemeState.Loading && connectionState == ConnectionStateManager.ConnectionState.Available) {
                 // Show a solid background matching your brand (BackgroundCream)
                 Box(modifier = Modifier.fillMaxSize().background(BackgroundCream))
             } else {
@@ -60,7 +71,14 @@ class MainActivity : ComponentActivity() {
                 val customPalette = (themeState as? ThemeState.Custom)?.palette
 
                 CozyDoublingTheme(customPalette = customPalette) {
-                    CozyDoublingApp()
+                    Box {
+                        CozyDoublingApp()
+                        
+                        ConnectionErrorDialog(
+                            state = connectionState,
+                            onRetry = { ConnectionStateManager.retry() }
+                        )
+                    }
                 }
             }
         }

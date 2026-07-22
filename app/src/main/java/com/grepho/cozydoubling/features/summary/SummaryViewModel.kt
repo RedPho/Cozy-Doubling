@@ -18,12 +18,14 @@ class SummaryViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 val session = repository.fetchSession(sessionId)
-                _uiState.update {
-                    SummaryUiState(
-                        focusedMinutes = session.durationMinutes,
-                        tasksFinished = session.tasksCompleted,
-                        leavesEarned = session.earnedLeaves.toInt()
-                    )
+                if (session != null) {
+                    _uiState.update {
+                        SummaryUiState(
+                            focusedMinutes = session.durationMinutes,
+                            tasksFinished = session.tasksCompleted,
+                            leavesEarned = session.earnedLeaves.toInt()
+                        )
+                    }
                 }
             } catch (e: Exception) {
                 e.printStackTrace()

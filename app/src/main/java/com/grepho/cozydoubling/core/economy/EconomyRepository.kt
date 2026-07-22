@@ -2,6 +2,7 @@ package com.grepho.cozydoubling.core.economy
 
 import androidx.compose.ui.graphics.Color
 import com.grepho.cozydoubling.core.Supabase
+import com.grepho.cozydoubling.core.network.ConnectionStateManager
 import com.grepho.cozydoubling.core.profile.ProfileRepository
 import com.grepho.cozydoubling.core.theming.ThemePalette
 import com.grepho.cozydoubling.features.shop.ShopItemUiState
@@ -10,6 +11,7 @@ import io.github.jan.supabase.auth.status.SessionStatus
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.postgrest.rpc
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -61,26 +63,41 @@ object EconomyRepository {
                 .decodeSingle<ThemeDetailsDto>()
                 .toPalette()
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            e.printStackTrace()
+            ConnectionStateManager.reportServerError()
             null
         }
     }
 
     suspend fun equipTheme(themeId: String) {
-        Supabase.client.postgrest.rpc(
-            function = "equip_item",
-            parameters = mapOf("target_item_id" to themeId)
-        )
+        try {
+            Supabase.client.postgrest.rpc(
+                function = "equip_item",
+                parameters = mapOf("target_item_id" to themeId)
+            )
 
-        // REACTIVE REFRESH: Tell the app to fetch the updated profile
-        // so the whole app theme changes instantly!
-        ProfileRepository.refreshProfile()
+            // REACTIVE REFRESH: Tell the app to fetch the updated profile
+            // so the whole app theme changes instantly!
+            ProfileRepository.refreshProfile()
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            e.printStackTrace()
+            ConnectionStateManager.reportServerError()
+        }
     }
 
     suspend fun purchaseWithLeaves(itemId: String) {
-        Supabase.client.postgrest.rpc(
-            function = "buy_item",
-            parameters = mapOf("target_item_id" to itemId)
-        )
+        try {
+            Supabase.client.postgrest.rpc(
+                function = "buy_item",
+                parameters = mapOf("target_item_id" to itemId)
+            )
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            e.printStackTrace()
+            ConnectionStateManager.reportServerError()
+        }
     }
 
     suspend fun fetchShopItems(): List<ShopItemUiState> {
@@ -126,8 +143,10 @@ object EconomyRepository {
                 }
             }
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             println("DEBUG: Shop Error: ${e.message}")
             e.printStackTrace()
+            ConnectionStateManager.reportServerError()
             emptyList()
         }
     }

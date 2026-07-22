@@ -2,6 +2,7 @@ package com.grepho.cozydoubling.features.room
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.grepho.cozydoubling.core.network.ConnectionStateManager
 import com.grepho.cozydoubling.core.profile.ProfileRepository
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
@@ -21,10 +22,7 @@ class FocusRoomViewModel : ViewModel() {
 
     init {
         // 2. Start the Room Logic
-        viewModelScope.launch {
-            currentSessionId = roomRepository.startSession()
-            roomRepository.joinRoom()
-        }
+        startRoom()
 
         // 3. Observe the "Other Participants" directly from the Repository
         roomRepository.otherParticipants
@@ -32,6 +30,21 @@ class FocusRoomViewModel : ViewModel() {
                 _uiState.update { it.copy(otherParticipants = participants) }
             }
             .launchIn(viewModelScope)
+
+        // 4. Listen for Retry Events
+        ConnectionStateManager.retryEvents
+            .onEach { startRoom() }
+            .launchIn(viewModelScope)
+    }
+
+    private fun startRoom() {
+        viewModelScope.launch {
+            if (currentSessionId == null) {
+                currentSessionId = roomRepository.startSession()
+            }
+            // Always try to join room (handles re-joining channel)
+            roomRepository.joinRoom()
+        }
     }
 
     private fun syncWithOthers() {
