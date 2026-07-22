@@ -56,6 +56,14 @@ object EconomyRepository {
         }.let { hydratedList ->
             val themes = hydratedList.filterIsInstance<ShopItemUiState.Theme>()
             val passes = hydratedList.filterIsInstance<ShopItemUiState.Pass>()
+                .sortedBy { pass ->
+                    when {
+                        pass.name.contains("Monthly", ignoreCase = true) -> 1
+                        pass.name.contains("Yearly", ignoreCase = true) -> 2
+                        pass.name.contains("Lifetime", ignoreCase = true) -> 3
+                        else -> 4
+                    }
+                }
 
             val finalResult = mutableListOf<ShopItemUiState>()
             if (passes.isNotEmpty()) {
