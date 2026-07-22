@@ -19,6 +19,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
@@ -41,6 +42,8 @@ import com.grepho.cozydoubling.ui.theme.CozyDoublingTheme
 import com.revenuecat.purchases.LogLevel
 import com.revenuecat.purchases.Purchases
 import com.revenuecat.purchases.PurchasesConfiguration
+import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.auth.status.SessionStatus
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 
@@ -61,9 +64,11 @@ class MainActivity : ComponentActivity() {
         setContent {
             val themeState by EconomyRepository.themeState.collectAsState()
             val connectionState by ConnectionStateManager.state.collectAsState()
+            val sessionStatus by remember { Supabase.client.auth.sessionStatus }.collectAsState(initial = SessionStatus.Initializing)
 
             // 1. Hold on a Splash screen while Loading
-            if (themeState is ThemeState.Loading && connectionState == ConnectionStateManager.ConnectionState.Available) {
+            val isAuthLoading = sessionStatus is SessionStatus.Initializing
+            if ((themeState is ThemeState.Loading || isAuthLoading) && connectionState == ConnectionStateManager.ConnectionState.Available) {
                 // Show a solid background matching your brand (BackgroundCream)
                 Box(modifier = Modifier.fillMaxSize().background(BackgroundCream))
             } else {
@@ -72,7 +77,7 @@ class MainActivity : ComponentActivity() {
 
                 CozyDoublingTheme(customPalette = customPalette) {
                     Box {
-                        CozyDoublingApp()
+                        CozyDoublingApp(sessionStatus)
                         
                         ConnectionErrorDialog(
                             state = connectionState,
@@ -86,7 +91,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun CozyDoublingApp() {
+fun CozyDoublingApp(sessionStatus: SessionStatus) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route ?: Screen.Home.route
@@ -138,6 +143,7 @@ fun CozyDoublingApp() {
     ) { innerPadding ->
         AppNavHost(
             navController = navController,
+            sessionStatus = sessionStatus,
             modifier = Modifier
                 .padding(innerPadding)
                 .consumeWindowInsets(innerPadding)

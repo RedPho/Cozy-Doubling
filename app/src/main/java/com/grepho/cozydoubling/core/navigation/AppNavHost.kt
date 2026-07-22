@@ -20,7 +20,12 @@ import com.grepho.cozydoubling.features.summary.SummaryScreen
 import io.github.jan.supabase.auth.status.SessionStatus
 
 @Composable
-fun AppNavHost(navController: NavHostController, modifier: Modifier = Modifier, authViewModel: LoginViewModel = viewModel() ) {
+fun AppNavHost(
+    navController: NavHostController,
+    sessionStatus: SessionStatus,
+    modifier: Modifier = Modifier,
+    authViewModel: LoginViewModel = viewModel()
+) {
 
     LaunchedEffect(Unit) {
         authViewModel.sessionStatus.collect { status ->
@@ -57,7 +62,7 @@ fun AppNavHost(navController: NavHostController, modifier: Modifier = Modifier, 
 
     NavHost(
         navController = navController,
-        startDestination = Screen.Login.route,
+        startDestination = if (sessionStatus is SessionStatus.Authenticated) Screen.Home.route else Screen.Login.route,
         modifier = modifier
     ) {
         composable(Screen.Login.route) {
