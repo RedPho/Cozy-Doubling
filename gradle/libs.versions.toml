@@ -41,6 +41,7 @@ supabase-postgrest = { group = "io.github.jan-tennert.supabase", name = "postgre
 supabase-auth = { group = "io.github.jan-tennert.supabase", name = "auth-kt" }
 ktor-client-android = { group = "io.ktor", name = "ktor-client-android", version.ref = "ktor" }
 supabase-realtime = { group = "io.github.jan-tennert.supabase", name = "realtime-kt" }
+supabase-functions = { group = "io.github.jan-tennert.supabase", name = "functions-kt" }
 supabase-compose-auth = { group = "io.github.jan-tennert.supabase", name = "compose-auth" }
 ktor-client-okhttp = { group = "io.ktor", name = "ktor-client-okhttp", version.ref = "ktor" }
 androidx-compose-ui-text-google-fonts = { group = "androidx.compose.ui", name = "ui-text-google-fonts" }

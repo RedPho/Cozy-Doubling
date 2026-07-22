@@ -5,6 +5,7 @@ import com.grepho.cozydoubling.core.network.ConnectionStateManager
 import com.revenuecat.purchases.Purchases
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.status.SessionStatus
+import io.github.jan.supabase.functions.functions
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -100,6 +101,24 @@ object ProfileRepository {
             e.printStackTrace()
             // Even if sign out fails on server, we should probably clear local state
             _profile.emit(null)
+        }
+    }
+
+    /**
+     * Forces the backend to synchronize its subscription status with RevenueCat.
+     */
+    suspend fun triggerBackendRestoreSync() {
+        try {
+            // This Edge Function should be implemented on the backend to fetch the latest
+            // status from RevenueCat and update the 'profiles' table.
+            Supabase.client.functions.invoke("sync-revenuecat")
+            
+            // Refresh local profile to get the updated status
+            refreshProfile()
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            e.printStackTrace()
+            ConnectionStateManager.reportServerError()
         }
     }
 

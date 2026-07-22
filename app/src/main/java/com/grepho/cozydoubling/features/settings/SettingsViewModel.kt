@@ -71,7 +71,15 @@ class SettingsViewModel : ViewModel() {
         viewModelScope.launch {
             val success = com.grepho.cozydoubling.core.billing.BillingRepository.restorePurchases()
             if (success) {
-                ProfileRepository.refreshProfile()
+                // Force backend to sync with RevenueCat
+                ProfileRepository.triggerBackendRestoreSync()
+                
+                // Optional: Short retry loop in case the backend process takes a moment
+                repeat(2) {
+                    kotlinx.coroutines.delay(1000)
+                    ProfileRepository.refreshProfile()
+                }
+
                 onResult("Purchases restored successfully!")
             } else {
                 onResult("No active purchases found to restore.")
