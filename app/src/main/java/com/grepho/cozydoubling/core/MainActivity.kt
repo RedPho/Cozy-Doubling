@@ -66,6 +66,8 @@ class MainActivity : ComponentActivity() {
             val sessionStatus by remember { Supabase.client.auth.sessionStatus }.collectAsState(initial = SessionStatus.Initializing)
 
             // 1. Hold on a Splash screen while Loading
+            // We consider the session "Loading" if it's Initializing OR if it's briefly
+            // NotAuthenticated during a resume (handled by AppNavHost's delay).
             val isAuthLoading = sessionStatus is SessionStatus.Initializing
             if ((themeState is ThemeState.Loading || isAuthLoading) && connectionState == ConnectionStateManager.ConnectionState.Available) {
                 // Show a solid background matching your brand (BackgroundCream)

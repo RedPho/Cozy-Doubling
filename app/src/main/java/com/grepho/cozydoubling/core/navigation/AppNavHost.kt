@@ -24,6 +24,8 @@ import com.grepho.cozydoubling.features.room.FocusRoomScreen
 import com.grepho.cozydoubling.features.settings.SettingsScreen
 import com.grepho.cozydoubling.features.summary.SummaryScreen
 import io.github.jan.supabase.auth.status.SessionStatus
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 
 @Composable
 fun AppNavHost(
@@ -34,13 +36,11 @@ fun AppNavHost(
 ) {
 
     LaunchedEffect(Unit) {
-        authViewModel.sessionStatus.collect { status ->
-            val currentRoute = navController.currentDestination?.route
-
+        authViewModel.sessionStatus.collectLatest { status ->
             when (status) {
                 is SessionStatus.Authenticated -> {
-                    // ONLY navigate to Home if we are currently stuck on the Login screen
-                    if (currentRoute == Screen.Login.route || currentRoute == null) {
+                    // ONLY navigate to Home if we are currently stuck on the Login screen.
+                    if (navController.currentDestination?.route == Screen.Login.route) {
                         navController.navigate(Screen.Home.route) {
                             popUpTo(Screen.Login.route) { inclusive = true }
                         }
@@ -48,11 +48,13 @@ fun AppNavHost(
                 }
                 is SessionStatus.NotAuthenticated -> {
                     // User is logged out! Send them to Login
-                        if (currentRoute != Screen.Login.route) {
-                            navController.navigate(Screen.Login.route) {
-                                popUpTo(0)
-                            }
+                    // We add a small delay to avoid flickering during app resume
+                    delay(500)
+                    if (navController.currentDestination?.route != Screen.Login.route) {
+                        navController.navigate(Screen.Login.route) {
+                            popUpTo(0)
                         }
+                    }
                 }
                 else -> { /* Loading... we can just wait or show a splash */ }
             }

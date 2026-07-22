@@ -39,11 +39,22 @@ class FocusRoomViewModel : ViewModel() {
 
     private fun startRoom() {
         viewModelScope.launch {
+            val currentProfile = ProfileRepository.profile.filterNotNull().first()
             if (currentSessionId == null) {
                 currentSessionId = roomRepository.startSession()
             }
+
+            val state = _uiState.value
+            val initialPresence = ParticipantPresence(
+                id = currentProfile.id,
+                name = currentProfile.displayName,
+                activeTaskText = state.tasks.find { it.id == state.activeTaskId }?.text ?: "Focusing...",
+                completedTasks = state.tasks.count { it.isCompleted },
+                totalTasks = state.tasks.size
+            )
+
             // Always try to join room (handles re-joining channel)
-            roomRepository.joinRoom()
+            roomRepository.joinRoom(initialPresence)
         }
     }
 

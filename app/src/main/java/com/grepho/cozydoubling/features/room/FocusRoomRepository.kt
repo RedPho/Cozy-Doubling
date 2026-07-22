@@ -17,12 +17,16 @@ class FocusRoomRepository(private val scope: CoroutineScope) {
     private var roomChannel: RealtimeChannel? = null
     private var lastPresenceUpdateTime = 0L
     private var pendingPresenceJob: Job? = null
+    
+    // Track the latest presence state locally so we can re-sync it on reconnection
+    private val currentPresence = MutableStateFlow<ParticipantPresence?>(null)
 
     // 1. A unified flow of other people in the room
     private val _otherParticipants = MutableStateFlow<List<RoomParticipant>>(emptyList())
     val otherParticipants: StateFlow<List<RoomParticipant>> = _otherParticipants.asStateFlow()
 
-    suspend fun joinRoom() {
+    suspend fun joinRoom(initialPresence: ParticipantPresence) {
+        currentPresence.value = initialPresence
         try {
             val myId = Supabase.client.auth.currentUserOrNull()?.id ?: return
 
@@ -71,12 +75,15 @@ class FocusRoomRepository(private val scope: CoroutineScope) {
 
             channel.subscribe()
 
-            // Initial "Hello"
+            // RE-SYNC LOGIC: Automatically re-track presence every time the channel connects/reconnects
             scope.launch {
                 try {
                     ProfileRepository.profile.filterNotNull().first()
-                    channel.status.filter { it == RealtimeChannel.Status.SUBSCRIBED }.first()
-                    syncPresence()
+                    channel.status.collect { status ->
+                        if (status == RealtimeChannel.Status.SUBSCRIBED) {
+                            currentPresence.value?.let { syncPresence(it) }
+                        }
+                    }
                 } catch (e: Exception) {
                     if (e is CancellationException) throw e
                     e.printStackTrace()
@@ -99,14 +106,23 @@ class FocusRoomRepository(private val scope: CoroutineScope) {
                 // Throttled Presence
                 pendingPresenceJob?.cancel()
                 val currentTime = System.currentTimeMillis()
+                val presence = ParticipantPresence(
+                    id = action.id,
+                    name = ProfileRepository.profile.value?.displayName ?: "User",
+                    activeTaskText = action.activeTaskText,
+                    completedTasks = action.completedTasks,
+                    totalTasks = action.totalTasks
+                )
+                currentPresence.value = presence
+                
                 if (currentTime - lastPresenceUpdateTime > 10000) {
                     lastPresenceUpdateTime = currentTime
-                    syncPresence()
+                    syncPresence(presence)
                 }
                 pendingPresenceJob = launch {
                     delay(7000)
                     lastPresenceUpdateTime = System.currentTimeMillis()
-                    syncPresence()
+                    syncPresence(presence)
                 }
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
@@ -115,12 +131,9 @@ class FocusRoomRepository(private val scope: CoroutineScope) {
         }
     }
 
-    private suspend fun syncPresence() {
+    private suspend fun syncPresence(presence: ParticipantPresence) {
         try {
-            val profile = ProfileRepository.profile.value ?: return
             val channel = roomChannel ?: return
-            // Map the action to the presence object
-            val presence = ParticipantPresence(profile.id, profile.displayName, "Focusing...", 0, 0) // Simplify for now
             channel.track(presence)
         } catch (e: Exception) {
             if (e is CancellationException) throw e
