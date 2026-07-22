@@ -10,8 +10,11 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
@@ -23,6 +26,9 @@ object ProfileRepository {
     // 1. This is the local "cache" that the UI observes
     private val _profile = MutableStateFlow<Profile?>(null)
     val profile: StateFlow<Profile?> = _profile.asStateFlow()
+
+    private val _syncEvents = MutableSharedFlow<Unit>(replay = 0)
+    val syncEvents: SharedFlow<Unit> = _syncEvents.asSharedFlow()
 
     init {
         // 2. The Reactive Engine: Observe Auth status globally
@@ -57,6 +63,9 @@ object ProfileRepository {
                 .decodeSingle<Profile>()
             _profile.emit(fetchedProfile)
             println("DEBUG: Profile supporter status:" + profile.value?.isSupporter)
+            
+            // 🚀 Signal other repositories (like Friends) to sync their data
+            _syncEvents.emit(Unit)
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             e.printStackTrace()

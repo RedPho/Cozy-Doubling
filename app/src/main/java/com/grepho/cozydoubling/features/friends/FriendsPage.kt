@@ -33,12 +33,21 @@ import kotlinx.coroutines.launch
 
 // --- THE SCREEN ENTRY POINT ---
 @Composable
-fun FriendsScreen(viewModel: FriendsViewModel = viewModel()) {
+fun FriendsScreen(
+    snackbarHostState: SnackbarHostState,
+    viewModel: FriendsViewModel = viewModel()
+) {
     // 1. Collect both flows from the ViewModel
     val friendsList by viewModel.friends.collectAsState()
     val pendingRequests by viewModel.pendingRequests.collectAsState()
 
     val profile by ProfileRepository.profile.collectAsState()
+
+    LaunchedEffect(Unit) {
+        viewModel.uiEvents.collect { message ->
+            snackbarHostState.showSnackbar(message)
+        }
+    }
 
 
     FriendsPage(

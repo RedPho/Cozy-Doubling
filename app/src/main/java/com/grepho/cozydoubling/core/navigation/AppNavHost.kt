@@ -1,5 +1,11 @@
 package com.grepho.cozydoubling.core.navigation
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
@@ -63,7 +69,75 @@ fun AppNavHost(
     NavHost(
         navController = navController,
         startDestination = if (sessionStatus is SessionStatus.Authenticated) Screen.Home.route else Screen.Login.route,
-        modifier = modifier
+        modifier = modifier,
+        enterTransition = {
+            val initialRoute = initialState.destination.route
+            val targetRoute = targetState.destination.route
+            
+            val isMainTabSwitch = initialRoute in listOf(Screen.Home.route, Screen.Oasis.route) &&
+                                 targetRoute in listOf(Screen.Home.route, Screen.Oasis.route)
+            
+            if (isMainTabSwitch) {
+                val isForward = initialRoute == Screen.Home.route && targetRoute == Screen.Oasis.route
+                slideInHorizontally(
+                    initialOffsetX = { if (isForward) 300 else -300 },
+                    animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing)
+                ) + fadeIn(animationSpec = tween(400))
+            } else {
+                fadeIn(animationSpec = tween(400))
+            }
+        },
+        exitTransition = {
+            val initialRoute = initialState.destination.route
+            val targetRoute = targetState.destination.route
+            
+            val isMainTabSwitch = initialRoute in listOf(Screen.Home.route, Screen.Oasis.route) &&
+                                 targetRoute in listOf(Screen.Home.route, Screen.Oasis.route)
+            
+            if (isMainTabSwitch) {
+                val isForward = initialRoute == Screen.Home.route && targetRoute == Screen.Oasis.route
+                slideOutHorizontally(
+                    targetOffsetX = { if (isForward) -300 else 300 },
+                    animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing)
+                ) + fadeOut(animationSpec = tween(400))
+            } else {
+                fadeOut(animationSpec = tween(400))
+            }
+        },
+        popEnterTransition = {
+            val initialRoute = initialState.destination.route
+            val targetRoute = targetState.destination.route
+            
+            val isMainTabSwitch = initialRoute in listOf(Screen.Home.route, Screen.Oasis.route) &&
+                                 targetRoute in listOf(Screen.Home.route, Screen.Oasis.route)
+            
+            if (isMainTabSwitch) {
+                val isForward = initialRoute == Screen.Home.route && targetRoute == Screen.Oasis.route
+                slideInHorizontally(
+                    initialOffsetX = { if (isForward) 300 else -300 },
+                    animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing)
+                ) + fadeIn(animationSpec = tween(400))
+            } else {
+                fadeIn(animationSpec = tween(400))
+            }
+        },
+        popExitTransition = {
+            val initialRoute = initialState.destination.route
+            val targetRoute = targetState.destination.route
+            
+            val isMainTabSwitch = initialRoute in listOf(Screen.Home.route, Screen.Oasis.route) &&
+                                 targetRoute in listOf(Screen.Home.route, Screen.Oasis.route)
+            
+            if (isMainTabSwitch) {
+                val isForward = initialRoute == Screen.Home.route && targetRoute == Screen.Oasis.route
+                slideOutHorizontally(
+                    targetOffsetX = { if (isForward) -300 else 300 },
+                    animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing)
+                ) + fadeOut(animationSpec = tween(400))
+            } else {
+                fadeOut(animationSpec = tween(400))
+            }
+        }
     ) {
         composable(Screen.Login.route) {
             LoginScreen()

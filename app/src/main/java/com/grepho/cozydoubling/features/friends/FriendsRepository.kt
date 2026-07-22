@@ -13,31 +13,32 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 
 object FriendsRepository {
 
     private val repoScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
-    // 1. Pre-loaded Friends list
-    val friends: StateFlow<List<FriendUiState>> = ProfileRepository.profile
-        .filterNotNull()
-        .map { fetchFriendsWithStories() }
+    // 1. Pre-loaded Friends list (Refreshes on Profile updates OR manual Sync events)
+    val friends: StateFlow<List<FriendUiState>> = ProfileRepository.syncEvents
+        .onStart { emit(Unit) } // Fetch immediately on app start
+        .combine(ProfileRepository.profile.filterNotNull()) { _, _ ->
+            fetchFriendsWithStories()
+        }
         .stateIn(repoScope, SharingStarted.Eagerly, emptyList())
 
     // 2. Pre-loaded Pending Requests
-    val pendingRequests: StateFlow<List<Profile>> = ProfileRepository.profile
-        .filterNotNull()
-        .map { fetchIncomingRequests() }
+    val pendingRequests: StateFlow<List<Profile>> = ProfileRepository.syncEvents
+        .onStart { emit(Unit) }
+        .combine(ProfileRepository.profile.filterNotNull()) { _, _ ->
+            fetchIncomingRequests()
+        }
         .stateIn(repoScope, SharingStarted.Eagerly, emptyList())
 
-
-    /**
-     * Sends a request by player tag (e.g. #XA4K6E9F)
-     */
     suspend fun sendFriendRequest(playerTag: String) {
         val myId = Supabase.client.auth.currentUserOrNull()?.id ?: return
 

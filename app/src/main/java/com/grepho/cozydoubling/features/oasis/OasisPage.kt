@@ -1,13 +1,14 @@
 package com.grepho.cozydoubling.features.oasis
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SecondaryTabRow
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRowDefaults
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,6 +40,7 @@ fun OasisScreen(
 ) {
     val profile by viewModel.profile.collectAsState()
     var selectedTab by remember { mutableStateOf(OasisSubTab.SHOP) }
+    val snackbarHostState = remember { SnackbarHostState() }
 
     OasisPage(
         topBar = {
@@ -50,7 +52,8 @@ fun OasisScreen(
             )
         },
         selectedTab = selectedTab,
-        onTabSelected = { selectedTab = it }
+        onTabSelected = { selectedTab = it },
+        snackbarHostState = snackbarHostState
     )
 }
 
@@ -58,11 +61,13 @@ fun OasisScreen(
 fun OasisPage(
     topBar: @Composable () -> Unit,
     selectedTab: OasisSubTab,
-    onTabSelected: (OasisSubTab) -> Unit
+    onTabSelected: (OasisSubTab) -> Unit,
+    snackbarHostState: SnackbarHostState
 ) {
     Scaffold(
         topBar = topBar,
-        containerColor = MaterialTheme.colorScheme.background
+        containerColor = MaterialTheme.colorScheme.background,
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -102,16 +107,27 @@ fun OasisPage(
             }
 
             // --- 2. Content Area ---
-            Box(
+            AnimatedContent(
+                targetState = selectedTab,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f)
-            ) {
-                when (selectedTab) {
+                    .weight(1f),
+                transitionSpec = {
+                    if (targetState.ordinal > initialState.ordinal) {
+                        (slideInHorizontally { width -> width / 4 } + fadeIn())
+                            .togetherWith(slideOutHorizontally { width -> -width / 4 } + fadeOut())
+                    } else {
+                        (slideInHorizontally { width -> -width / 4 } + fadeIn())
+                            .togetherWith(slideOutHorizontally { width -> width / 4 } + fadeOut())
+                    }
+                },
+                label = "OasisTabTransition"
+            ) { tab ->
+                when (tab) {
                     OasisSubTab.SHOP -> ShopScreen()
                     OasisSubTab.INVENTORY -> InventoryScreen()
                     OasisSubTab.JOURNEY -> JourneyScreen()
-                    OasisSubTab.FRIENDS -> FriendsScreen()
+                    OasisSubTab.FRIENDS -> FriendsScreen(snackbarHostState = snackbarHostState)
                 }
             }
         }

@@ -64,7 +64,7 @@ fun ShopPage(
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
     var pendingThemePurchase by remember { mutableStateOf<ShopItemUiState.Theme?>(null) }
-
+    
     LazyColumn(
         state = listState,
         modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),

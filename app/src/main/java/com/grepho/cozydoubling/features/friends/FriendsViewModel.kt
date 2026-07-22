@@ -4,8 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.grepho.cozydoubling.core.profile.Profile
 import com.grepho.cozydoubling.core.profile.ProfileRepository
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.launchIn
@@ -19,6 +22,9 @@ class FriendsViewModel : ViewModel() {
     val friends = FriendsRepository.friends
     val pendingRequests = FriendsRepository.pendingRequests
 
+    private val _uiEvents = MutableSharedFlow<String>()
+    val uiEvents: SharedFlow<String> = _uiEvents.asSharedFlow()
+
 
     fun onSendRequest(tag: String) {
         if (tag.isBlank()) return
@@ -27,7 +33,11 @@ class FriendsViewModel : ViewModel() {
                 FriendsRepository.sendFriendRequest(tag)
                 // Trigger a refresh by updating the profile (our chain reaction)
                 ProfileRepository.refreshProfile()
-            } catch (e: Exception) { e.printStackTrace() }
+                _uiEvents.emit("Friend request sent!")
+            } catch (e: Exception) { 
+                e.printStackTrace() 
+                _uiEvents.emit(e.message ?: "Could not send request")
+            }
         }
     }
 
