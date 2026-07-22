@@ -32,4 +32,5 @@ class SummaryViewModel : ViewModel() {
             }
         }
     }
+
 }

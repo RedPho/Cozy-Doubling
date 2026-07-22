@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.grepho.cozydoubling.core.profile.Profile
 import com.grepho.cozydoubling.core.profile.ProfileRepository
+import com.grepho.cozydoubling.core.safety.SafetyRepository
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -47,6 +48,28 @@ class FriendsViewModel : ViewModel() {
                 FriendsRepository.acceptFriendRequest(senderId)
                 ProfileRepository.refreshProfile()
             } catch (e: Exception) { e.printStackTrace() }
+        }
+    }
+
+    fun onRejectRequest(senderId: String) {
+        viewModelScope.launch {
+            try {
+                FriendsRepository.rejectFriendRequest(senderId)
+                ProfileRepository.refreshProfile()
+            } catch (e: Exception) { e.printStackTrace() }
+        }
+    }
+
+    fun onBlockUser(userId: String) {
+        viewModelScope.launch {
+            SafetyRepository.blockUser(userId)
+        }
+    }
+
+    fun onReportUser(userId: String, reason: String) {
+        viewModelScope.launch {
+            SafetyRepository.reportUser(userId, reason)
+            _uiEvents.emit("Report submitted. Thank you.")
         }
     }
 }

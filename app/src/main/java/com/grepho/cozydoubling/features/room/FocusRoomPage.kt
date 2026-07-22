@@ -18,13 +18,13 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Eco
+import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.Groups
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -58,7 +58,6 @@ fun FocusRoomScreen(
     }
 
     // Purely UI-driven states
-    var isTaskListExpanded by remember { mutableStateOf(false) }
     var newTaskText by remember { mutableStateOf("") }
 
     // Dynamically calculate your own avatar stats based on the current task list
@@ -72,15 +71,13 @@ fun FocusRoomScreen(
 
     BackHandler(onBack = handleExit)
 
-    // Combine mock users with yourself
+    // Combine users with yourself
     val allParticipants = uiState.otherParticipants + currentUserParticipant
 
     FocusRoomPage(
         uiState = uiState,
         allParticipants = allParticipants,
-        isTaskListExpanded = isTaskListExpanded,
         newTaskText = newTaskText,
-        onToggleExpand = { isTaskListExpanded = !isTaskListExpanded },
         onNewTaskTextChange = { newTaskText = it },
         onTaskClick = { viewModel.onTaskClick(it) },
         onTaskToggleStatus = { viewModel.onTaskToggleStatus(it) },
@@ -88,6 +85,8 @@ fun FocusRoomScreen(
             viewModel.onAddTask(newTaskText)
             newTaskText = ""
         },
+        onBlockUser = { viewModel.onBlockUser(it) },
+        onReportUser = { id, reason -> viewModel.onReportUser(id, reason) },
         onExitClick = handleExit
     )
 }
@@ -98,22 +97,21 @@ fun FocusRoomScreen(
 fun FocusRoomPage(
     uiState: FocusRoomUiState,
     allParticipants: List<RoomParticipant>,
-    isTaskListExpanded: Boolean,
     newTaskText: String,
-    onToggleExpand: () -> Unit,
     onNewTaskTextChange: (String) -> Unit,
     onTaskClick: (String) -> Unit,
     onTaskToggleStatus: (String) -> Unit,
     onAddTask: () -> Unit,
+    onBlockUser: (String) -> Unit,
+    onReportUser: (String, String) -> Unit,
     onExitClick: () -> Unit
 ) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { /* Empty or very minimal as per design */ },
+                title = { /* Minimal as per design */ },
                 navigationIcon = {
                     IconButton(onClick = onExitClick) {
-                        // Leaf logo as back button (or use a standard back icon)
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Leave", tint = MaterialTheme.colorScheme.primary)
                     }
                 },
@@ -157,11 +155,13 @@ fun FocusRoomPage(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                
+
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // The Grid
+            // The Grid (2 columns as per user request to keep styles)
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
                 modifier = Modifier.fillMaxSize(),
@@ -169,7 +169,11 @@ fun FocusRoomPage(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 items(allParticipants) { participant ->
-                    ParticipantCard(participant)
+                    ParticipantCard(
+                        participant = participant,
+                        onBlock = { onBlockUser(participant.id) },
+                        onReport = { reason -> onReportUser(participant.id, reason) }
+                    )
                 }
             }
         }
@@ -177,10 +181,18 @@ fun FocusRoomPage(
 }
 
 @Composable
-fun ParticipantCard(participant: RoomParticipant) {
+fun ParticipantCard(
+    participant: RoomParticipant,
+    onBlock: () -> Unit,
+    onReport: (String) -> Unit
+) {
     val progress = if (participant.totalTasks > 0) {
         participant.completedTasks.toFloat() / participant.totalTasks.toFloat()
     } else 0f
+
+    var showMenu by remember { mutableStateOf(false) }
+    var showReportDialog by remember { mutableStateOf(false) }
+    val isSelf = participant.id == "self"
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -188,59 +200,145 @@ fun ParticipantCard(participant: RoomParticipant) {
         color = MaterialTheme.colorScheme.surface,
         shadowElevation = 2.dp
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                // Progress Ring
-                CircularProgressIndicator(
-                    progress = { 1f },
-                    modifier = Modifier.size(80.dp),
-                    color = Color.LightGray.copy(alpha = 0.2f),
-                    strokeWidth = 6.dp
-                )
-                CircularProgressIndicator(
-                    progress = { progress },
-                    modifier = Modifier.size(80.dp),
-                    color = MaterialTheme.colorScheme.primary,
-                    strokeWidth = 6.dp,
-                    strokeCap = StrokeCap.Round
-                )
-                // Initials Circle
-                Box(
-                    modifier = Modifier
-                        .size(60.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.secondaryContainer),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = participant.name.take(2).uppercase(),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer,
-                        fontWeight = FontWeight.Bold
-                    )
+        Box(modifier = Modifier.fillMaxWidth()) {
+            // --- More Menu (Top Right) ---
+            if (!isSelf) {
+                Box(modifier = Modifier.align(Alignment.TopEnd).padding(2.dp)) {
+                    IconButton(
+                        onClick = { showMenu = true },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "Options",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = { showMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Report User") },
+                            onClick = {
+                                showMenu = false
+                                showReportDialog = true
+                            },
+                            leadingIcon = { Icon(Icons.Default.Flag, contentDescription = null, modifier = Modifier.size(18.dp)) }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Block User") },
+                            onClick = {
+                                showMenu = false
+                                onBlock()
+                            },
+                            leadingIcon = { Icon(Icons.Default.Block, contentDescription = null, modifier = Modifier.size(18.dp)) }
+                        )
+                    }
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    // Progress Ring
+                    CircularProgressIndicator(
+                        progress = { 1f },
+                        modifier = Modifier.size(80.dp),
+                        color = Color.LightGray.copy(alpha = 0.2f),
+                        strokeWidth = 6.dp
+                    )
+                    CircularProgressIndicator(
+                        progress = { progress },
+                        modifier = Modifier.size(80.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        strokeWidth = 6.dp,
+                        strokeCap = StrokeCap.Round
+                    )
+                    // Initials Circle
+                    Box(
+                        modifier = Modifier
+                            .size(60.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.secondaryContainer),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = participant.name.take(2).uppercase(),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
 
-            Text(
-                text = participant.name,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
+                Spacer(modifier = Modifier.height(12.dp))
 
-            Text(
-                text = "${participant.activeTaskText} • ${participant.completedTasks}/${participant.totalTasks} done",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-                maxLines = 2
-            )
+                Text(
+                    text = participant.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                Text(
+                    text = "${participant.activeTaskText} • ${participant.completedTasks}/${participant.totalTasks} done",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
     }
+
+    if (showReportDialog) {
+        ReportDialog(
+            onDismiss = { showReportDialog = false },
+            onReport = { reason ->
+                onReport(reason)
+                showReportDialog = false
+            }
+        )
+    }
+}
+
+@Composable
+fun ReportDialog(
+    onDismiss: () -> Unit,
+    onReport: (String) -> Unit
+) {
+    val reasons = listOf("Inappropriate Name", "Inappropriate Task", "Harassment", "Spam", "Other")
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Report User") },
+        text = {
+            Column {
+                reasons.forEach { reason ->
+                    TextButton(
+                        onClick = { onReport(reason) },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(reason, textAlign = TextAlign.Start, modifier = Modifier.fillMaxWidth())
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
 }
 
 @Composable

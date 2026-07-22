@@ -12,6 +12,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Block
+import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.MailOutline
 import androidx.compose.material3.*
@@ -24,6 +27,7 @@ import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -55,7 +59,10 @@ fun FriendsScreen(
         friendsList = friendsList,
         pendingRequests = pendingRequests,
         onAddFriend = { tag -> viewModel.onSendRequest(tag) },
-        onAcceptRequest = { id -> viewModel.onAcceptRequest(id) }
+        onAcceptRequest = { id -> viewModel.onAcceptRequest(id) },
+        onRejectRequest = { id -> viewModel.onRejectRequest(id) },
+        onBlockUser = { id -> viewModel.onBlockUser(id) },
+        onReportUser = { id, reason -> viewModel.onReportUser(id, reason) }
     )
 }
 
@@ -66,7 +73,10 @@ fun FriendsPage(
     friendsList: List<FriendUiState>,
     pendingRequests: List<Profile>,
     onAddFriend: (String) -> Unit,
-    onAcceptRequest: (String) -> Unit
+    onAcceptRequest: (String) -> Unit,
+    onRejectRequest: (String) -> Unit,
+    onBlockUser: (String) -> Unit,
+    onReportUser: (String, String) -> Unit
 ) {
     // 1. Add state for the Add Friend dialog
     var showAddDialog by remember { mutableStateOf(false) }
@@ -128,7 +138,12 @@ fun FriendsPage(
                     Spacer(modifier = Modifier.height(16.dp))
                 }
                 items(pendingRequests) { request ->
-                    PendingRequestCard(request.displayName, request.playerTag) { onAcceptRequest(request.id) }
+                    PendingRequestCard(
+                        name = request.displayName,
+                        tag = request.playerTag,
+                        onAccept = { onAcceptRequest(request.id) },
+                        onReject = { onRejectRequest(request.id) }
+                    )
                     Spacer(modifier = Modifier.height(12.dp))
                 }
                 item { Spacer(modifier = Modifier.height(24.dp)) }
@@ -144,7 +159,11 @@ fun FriendsPage(
                 Spacer(modifier = Modifier.height(16.dp))
             }
             items(friendsList) { friend ->
-                FriendCard(friend = friend)
+                FriendCard(
+                    friend = friend,
+                    onBlock = { onBlockUser(friend.id) },
+                    onReport = { reason -> onReportUser(friend.id, reason) }
+                )
                 Spacer(modifier = Modifier.height(12.dp))
             }
         }
@@ -209,7 +228,8 @@ fun FriendsPage(
 fun PendingRequestCard(
     name: String,
     tag: String,
-    onAccept: () -> Unit
+    onAccept: () -> Unit,
+    onReject: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -223,7 +243,11 @@ fun PendingRequestCard(
                 Text(text = name, style = MaterialTheme.typography.titleSmall)
                 Text(text = "#$tag", style = MaterialTheme.typography.labelSmall)
             }
-            Button(onClick = onAccept) {
+            TextButton(onClick = onReject) {
+                Text("Reject", color = MaterialTheme.colorScheme.error)
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Button(onClick = onAccept, shape = CircleShape) {
                 Text("Accept")
             }
         }
@@ -232,7 +256,14 @@ fun PendingRequestCard(
 
 
 @Composable
-fun FriendCard(friend: FriendUiState) {
+fun FriendCard(
+    friend: FriendUiState,
+    onBlock: () -> Unit,
+    onReport: (String) -> Unit
+) {
+    var showMenu by remember { mutableStateOf(false) }
+    var showReportDialog by remember { mutableStateOf(false) }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -289,6 +320,75 @@ fun FriendCard(friend: FriendUiState) {
                     overflow = TextOverflow.Ellipsis
                 )
             }
+
+            // --- 3. More Menu ---
+            Box {
+                IconButton(onClick = { showMenu = true }) {
+                    Icon(Icons.Default.MoreVert, contentDescription = "More options")
+                }
+                DropdownMenu(
+                    expanded = showMenu,
+                    onDismissRequest = { showMenu = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Report User") },
+                        onClick = {
+                            showMenu = false
+                            showReportDialog = true
+                        },
+                        leadingIcon = { Icon(Icons.Default.Flag, contentDescription = null) }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Block User") },
+                        onClick = {
+                            showMenu = false
+                            onBlock()
+                        },
+                        leadingIcon = { Icon(Icons.Default.Block, contentDescription = null) }
+                    )
+                }
+            }
         }
     }
+
+    if (showReportDialog) {
+        ReportDialog(
+            onDismiss = { showReportDialog = false },
+            onReport = { reason ->
+                onReport(reason)
+                showReportDialog = false
+            }
+        )
+    }
+}
+
+@Composable
+fun ReportDialog(
+    onDismiss: () -> Unit,
+    onReport: (String) -> Unit
+) {
+    val reasons = listOf("Inappropriate Name", "Inappropriate Task", "Harassment", "Spam", "Other")
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Report User") },
+        text = {
+            Column {
+                reasons.forEach { reason ->
+                    TextButton(
+                        onClick = { onReport(reason) },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(reason, textAlign = TextAlign.Start, modifier = Modifier.fillMaxWidth())
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
 }

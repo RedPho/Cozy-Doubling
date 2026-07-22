@@ -38,7 +38,10 @@ object EconomyRepository {
     // 1. Pre-loaded Shop Items (Eagerly starts loading on app start)
     val shopItems: StateFlow<List<ShopItemUiState>> = ProfileRepository.profile
         .filterNotNull()
-        .map { fetchShopItems() }
+        .map { 
+            println("DEBUG: EconomyRepository - Profile loaded, fetching shop items...")
+            fetchShopItems() 
+        }
         .stateIn(repoScope, SharingStarted.Eagerly, emptyList())
 
     // 🚀 2. Processed Shop Items: Groups items and hydrates localized prices in background
@@ -46,6 +49,7 @@ object EconomyRepository {
         shopItems,
         BillingRepository.offerings
     ) { rawItems, offerings ->
+        println("DEBUG: EconomyRepository - Processing shop items with ${rawItems.size} raw items...")
         val rcPackages = offerings?.current?.availablePackages ?: emptyList()
 
         rawItems.map { item ->
@@ -81,26 +85,39 @@ object EconomyRepository {
         Supabase.client.auth.sessionStatus,
         ProfileRepository.profile
     ) { status, profile ->
+        println("DEBUG: EconomyRepository - themeState combining. Status: $status")
         when (status) {
             is SessionStatus.Authenticated -> {
-                if (profile == null) return@combine ThemeState.Loading
-                val themeId = profile.equippedThemeId ?: return@combine ThemeState.Default
+                if (profile == null) {
+                    println("DEBUG: EconomyRepository - Authenticated but profile is null, Loading.")
+                    return@combine ThemeState.Loading
+                }
+                val themeId = profile.equippedThemeId ?: run {
+                    println("DEBUG: EconomyRepository - No theme equipped, Default.")
+                    return@combine ThemeState.Default
+                }
+                println("DEBUG: EconomyRepository - Fetching palette for theme $themeId")
                 val palette = fetchThemePalette(themeId)
                 if (palette != null) ThemeState.Custom(palette) else ThemeState.Default
             }
-            is SessionStatus.NotAuthenticated -> ThemeState.Default
+            is SessionStatus.NotAuthenticated -> {
+                println("DEBUG: EconomyRepository - Not authenticated, Default.")
+                ThemeState.Default
+            }
             else -> ThemeState.Loading
         }
     }.stateIn(repoScope, SharingStarted.WhileSubscribed(5000), ThemeState.Loading)
 
     private suspend fun fetchThemePalette(themeId: String): ThemePalette? {
         return try {
+            println("DEBUG: fetchThemePalette - Fetching for $themeId")
             Supabase.client.postgrest["theme_details"]
                 .select { filter { eq("item_id", themeId) } }
                 .decodeSingle<ThemeDetailsDto>()
                 .toPalette()
         } catch (e: Exception) {
             if (e is CancellationException) throw e
+            println("ERROR: fetchThemePalette - Failed: ${e.message}")
             e.printStackTrace()
             ConnectionStateManager.reportServerError()
             null
@@ -109,6 +126,7 @@ object EconomyRepository {
 
     suspend fun equipTheme(themeId: String) {
         try {
+            println("DEBUG: equipTheme - Equipping $themeId")
             Supabase.client.postgrest.rpc(
                 function = "equip_item",
                 parameters = mapOf("target_item_id" to themeId)
@@ -119,6 +137,7 @@ object EconomyRepository {
             ProfileRepository.refreshProfile()
         } catch (e: Exception) {
             if (e is CancellationException) throw e
+            println("ERROR: equipTheme - Failed: ${e.message}")
             e.printStackTrace()
             ConnectionStateManager.reportServerError()
         }
@@ -126,31 +145,41 @@ object EconomyRepository {
 
     suspend fun purchaseWithLeaves(itemId: String) {
         try {
+            println("DEBUG: purchaseWithLeaves - Purchasing $itemId")
             Supabase.client.postgrest.rpc(
                 function = "buy_item",
                 parameters = mapOf("target_item_id" to itemId)
             )
         } catch (e: Exception) {
             if (e is CancellationException) throw e
+            println("ERROR: purchaseWithLeaves - Failed: ${e.message}")
             e.printStackTrace()
             ConnectionStateManager.reportServerError()
         }
     }
 
     suspend fun fetchShopItems(): List<ShopItemUiState> {
-        val myId = Supabase.client.auth.currentUserOrNull()?.id ?: return emptyList()
+        val myId = Supabase.client.auth.currentUserOrNull()?.id ?: run {
+            println("WARNING: fetchShopItems - No current user ID")
+            return emptyList()
+        }
         val profile = ProfileRepository.profile.value
 
         return try {
+            println("DEBUG: fetchShopItems - Fetching items for $myId")
             val ownedIds = Supabase.client.postgrest["user_inventory"]
                 .select { filter { eq("user_id", myId) } }
                 .decodeList<UserInventoryDto>()
                 .map { it.itemId }
                 .toSet()
 
+            println("DEBUG: fetchShopItems - User owns ${ownedIds.size} items")
+
             val rawItems = Supabase.client.postgrest["items"]
                 .select(Columns.raw("*, theme_details(*)"))
                 .decodeList<ThemeItemDto>()
+
+            println("DEBUG: fetchShopItems - Total raw items in shop: ${rawItems.size}")
 
             rawItems.map { dto ->
                 val isOwned = ownedIds.contains(dto.id)
@@ -181,7 +210,7 @@ object EconomyRepository {
             }
         } catch (e: Exception) {
             if (e is CancellationException) throw e
-            println("DEBUG: Shop Error: ${e.message}")
+            println("ERROR: fetchShopItems - Failed: ${e.message}")
             e.printStackTrace()
             ConnectionStateManager.reportServerError()
             emptyList()

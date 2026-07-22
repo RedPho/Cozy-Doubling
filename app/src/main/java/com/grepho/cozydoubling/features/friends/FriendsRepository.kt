@@ -3,6 +3,7 @@ package com.grepho.cozydoubling.features.friends
 import com.grepho.cozydoubling.core.Supabase
 import com.grepho.cozydoubling.core.profile.Profile
 import com.grepho.cozydoubling.core.profile.ProfileRepository
+import com.grepho.cozydoubling.core.safety.SafetyRepository
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Columns
@@ -27,6 +28,7 @@ object FriendsRepository {
     val friends: StateFlow<List<FriendUiState>> = ProfileRepository.syncEvents
         .onStart { emit(Unit) } // Fetch immediately on app start
         .combine(ProfileRepository.profile.filterNotNull()) { _, _ ->
+            println("DEBUG: FriendsRepository - Profile sync, fetching friends...")
             fetchFriendsWithStories()
         }
         .stateIn(repoScope, SharingStarted.Eagerly, emptyList())
@@ -35,17 +37,26 @@ object FriendsRepository {
     val pendingRequests: StateFlow<List<Profile>> = ProfileRepository.syncEvents
         .onStart { emit(Unit) }
         .combine(ProfileRepository.profile.filterNotNull()) { _, _ ->
+            println("DEBUG: FriendsRepository - Profile sync, fetching pending requests...")
             fetchIncomingRequests()
         }
         .stateIn(repoScope, SharingStarted.Eagerly, emptyList())
 
     suspend fun sendFriendRequest(playerTag: String) {
-        val myId = Supabase.client.auth.currentUserOrNull()?.id ?: return
+        val myId = Supabase.client.auth.currentUserOrNull()?.id ?: run {
+            println("ERROR: sendFriendRequest - No current user ID")
+            return
+        }
+
+        println("DEBUG: sendFriendRequest - Sending request to $playerTag from $myId")
 
         // 1. Find the target user
         val targetProfile = Supabase.client.postgrest["profiles"]
             .select { filter { eq("player_tag", playerTag.uppercase().removePrefix("#")) } }
-            .decodeSingleOrNull<Profile>() ?: throw Exception("User not found")
+            .decodeSingleOrNull<Profile>() ?: run {
+                println("WARNING: sendFriendRequest - User not found for tag $playerTag")
+                throw Exception("User not found")
+            }
 
         if (targetProfile.id == myId) throw Exception("You can't add yourself!")
 
@@ -61,15 +72,18 @@ object FriendsRepository {
             }.decodeSingleOrNull<Friendship>()
 
         if (existing != null) {
+            println("DEBUG: sendFriendRequest - Relationship already exists with status ${existing.status}")
             if (existing.status == "accepted") throw Exception("Already friends!")
             if (existing.requesterId == myId) throw Exception("Request already sent!")
 
             // If THEY sent you a request, just accept it!
+            println("DEBUG: sendFriendRequest - Accepting existing incoming request...")
             acceptFriendRequest(targetProfile.id)
             return
         }
 
         // 3. Only insert if no row exists
+        println("DEBUG: sendFriendRequest - Inserting new friendship row...")
         Supabase.client.postgrest["friendships"].insert(
             mapOf(
                 "user_id_1" to id1,
@@ -84,6 +98,7 @@ object FriendsRepository {
      * Accepts a pending request from a specific friend
      */
     suspend fun acceptFriendRequest(senderId: String) {
+        println("DEBUG: acceptFriendRequest - Accepting from $senderId")
         // We just call the server function.
         // It already knows who 'you' are (via auth.uid())
         // and it handles the sorting and the timestamp!
@@ -93,12 +108,29 @@ object FriendsRepository {
         )
     }
 
+    suspend fun rejectFriendRequest(senderId: String) {
+        try {
+            println("DEBUG: rejectFriendRequest - Rejecting from $senderId")
+            Supabase.client.postgrest.rpc(
+                function = "reject_friend",
+                parameters = mapOf("sender_id" to senderId)
+            )
+        } catch (e: Exception) {
+            println("ERROR: rejectFriendRequest - Failed: ${e.message}")
+            e.printStackTrace()
+        }
+    }
+
     /**
      * Fetches people who sent YOU a friend request
      */
     suspend fun fetchIncomingRequests(): List<Profile> {
-        val myId = Supabase.client.auth.currentUserOrNull()?.id ?: return emptyList()
+        val myId = Supabase.client.auth.currentUserOrNull()?.id ?: run {
+            println("WARNING: fetchIncomingRequests - No current user ID")
+            return emptyList()
+        }
 
+        println("DEBUG: fetchIncomingRequests - Fetching for $myId")
         return Supabase.client.postgrest["friend_stories"]
             .select() {
                 filter {
@@ -121,8 +153,12 @@ object FriendsRepository {
      * The "Big Query": Fetches friends + their last session
      */
     suspend fun fetchFriendsWithStories(): List<FriendUiState> {
-        val myId = Supabase.client.auth.currentUserOrNull()?.id ?: return emptyList()
+        val myId = Supabase.client.auth.currentUserOrNull()?.id ?: run {
+            println("WARNING: fetchFriendsWithStories - No current user ID")
+            return emptyList()
+        }
 
+        println("DEBUG: fetchFriendsWithStories - Fetching for $myId")
         return Supabase.client.postgrest["friend_stories"]
             .select() {
                 filter {

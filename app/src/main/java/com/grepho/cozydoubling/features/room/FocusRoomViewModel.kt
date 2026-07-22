@@ -4,15 +4,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.grepho.cozydoubling.core.network.ConnectionStateManager
 import com.grepho.cozydoubling.core.profile.ProfileRepository
-import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
+import com.grepho.cozydoubling.core.safety.SafetyRepository
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.launch
 
 class FocusRoomViewModel : ViewModel() {
 
-    // 1. Initialize Repo with the ViewModel's scope
     private val roomRepository = FocusRoomRepository(viewModelScope)
 
     private val _uiState = MutableStateFlow(FocusRoomUiState())
@@ -21,17 +18,14 @@ class FocusRoomViewModel : ViewModel() {
     private var currentSessionId: String? = null
 
     init {
-        // 2. Start the Room Logic
         startRoom()
 
-        // 3. Observe the "Other Participants" directly from the Repository
         roomRepository.otherParticipants
             .onEach { participants ->
                 _uiState.update { it.copy(otherParticipants = participants) }
             }
             .launchIn(viewModelScope)
 
-        // 4. Listen for Retry Events
         ConnectionStateManager.retryEvents
             .onEach { startRoom() }
             .launchIn(viewModelScope)
@@ -53,7 +47,6 @@ class FocusRoomViewModel : ViewModel() {
                 totalTasks = state.tasks.size
             )
 
-            // Always try to join room (handles re-joining channel)
             roomRepository.joinRoom(initialPresence)
         }
     }
@@ -100,16 +93,25 @@ class FocusRoomViewModel : ViewModel() {
         syncWithOthers()
     }
 
+    fun onBlockUser(userId: String) {
+        viewModelScope.launch {
+            SafetyRepository.blockUser(userId)
+        }
+    }
+
+    fun onReportUser(userId: String, reason: String) {
+        viewModelScope.launch {
+            SafetyRepository.reportUser(userId, reason)
+        }
+    }
+
     fun finishWork(onComplete: (String) -> Unit) {
         val sessionId = currentSessionId ?: return
         val state = _uiState.value
-
-        // Find the text of your current active focus
         val lastTask = state.tasks.find { it.id == state.activeTaskId }?.text ?: "Focusing"
 
         viewModelScope.launch {
             try {
-                // Pass the text to the repository here!
                 roomRepository.finishSession(sessionId, state.tasks.count { it.isCompleted }, lastTask)
                 ProfileRepository.refreshProfile()
                 onComplete(sessionId)
@@ -121,16 +123,13 @@ class FocusRoomViewModel : ViewModel() {
 
     override fun onCleared() {
         super.onCleared()
-        // We use GlobalScope here because the ViewModelScope is already cancelled
-        // and we MUST ensure this network call finishes.
-        @OptIn(DelicateCoroutinesApi::class)
-        GlobalScope.launch(Dispatchers.IO) {
+        // viewModelScope is already cancelled at this point, so we use a short-lived
+        // scope to ensure the leave call completes before the VM is destroyed.
+        CoroutineScope(Dispatchers.IO).launch {
             try {
-                println("DEBUG: RoomViewModel - Starting global cleanup...")
                 roomRepository.leaveRoom()
-                println("DEBUG: RoomViewModel - Channel cleaned up successfully.")
             } catch (e: Exception) {
-                println("DEBUG: Cleanup error: ${e.message}")
+                println("DEBUG: leaveRoom cleanup error: ${e.message}")
             }
         }
     }

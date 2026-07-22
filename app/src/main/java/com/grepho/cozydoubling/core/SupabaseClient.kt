@@ -9,18 +9,23 @@ import io.github.jan.supabase.functions.Functions
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.realtime.Realtime
 import io.ktor.client.engine.okhttp.OkHttp
+import kotlin.time.Duration.Companion.seconds
 
 object Supabase {
     val client = createSupabaseClient(
         supabaseUrl = BuildConfig.SUPABASE_URL,
         supabaseKey = BuildConfig.SUPABASE_ANON_KEY
     ) {
-        httpEngine = OkHttp.create()
+        httpEngine = OkHttp.create() // Use default OkHttp config (no aggressive ping)
+        
         install(Postgrest)
         install(Auth)
-        install(Realtime)
+        install(Realtime) {
+            // Standard heartbeat to prevent timeouts without over-stressing the socket
+            heartbeatInterval = 15.seconds
+            reconnectDelay = 5.seconds
+        }
         install(Functions)
-        // Add this:
         install(ComposeAuth) {
             googleNativeLogin(serverClientId = BuildConfig.SUPABASE_GOOGLE_OAUTH_WEB_CLIENT_ID)
         }

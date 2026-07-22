@@ -35,16 +35,19 @@ object ProfileRepository {
         // 2. The Reactive Engine: Observe Auth status globally
         Supabase.client.auth.sessionStatus
             .onEach { status ->
+                println("DEBUG: ProfileRepository - Session status: $status")
                 when (status) {
                     is SessionStatus.Authenticated -> {
                         // Link the Supabase UID to RevenueCat
                         status.session.user?.let { user ->
+                            println("DEBUG: ProfileRepository - Authenticated as ${user.id}")
                             Purchases.sharedInstance.logIn(user.id)
                         }
                         
                         refreshProfile()
                     }
                     is SessionStatus.NotAuthenticated -> {
+                        println("DEBUG: ProfileRepository - Not authenticated")
                         // Log out of RevenueCat to protect privacy
                         Purchases.sharedInstance.logOut()
                         _profile.emit(null)
@@ -57,27 +60,37 @@ object ProfileRepository {
 
     // 2. The manual "Refresh" action
     suspend fun refreshProfile() {
-        val user = Supabase.client.auth.currentUserOrNull() ?: return
+        val user = Supabase.client.auth.currentUserOrNull() ?: run {
+            println("WARNING: refreshProfile - No current user")
+            return
+        }
+        
         try {
+            println("DEBUG: refreshProfile - Fetching profile for ${user.id}")
             val fetchedProfile = Supabase.client.postgrest["profiles"]
                 .select { filter { eq("id", user.id) } }
                 .decodeSingle<Profile>()
             _profile.emit(fetchedProfile)
-            println("DEBUG: Profile supporter status:" + profile.value?.isSupporter)
+            println("DEBUG: refreshProfile - Profile fetched. Supporter status: ${fetchedProfile.isSupporter}")
             
             // 🚀 Signal other repositories (like Friends) to sync their data
             _syncEvents.emit(Unit)
         } catch (e: Exception) {
             if (e is CancellationException) throw e
+            println("ERROR: refreshProfile - Failed to fetch profile: ${e.message}")
             e.printStackTrace()
             ConnectionStateManager.reportServerError()
         }
     }
 
     suspend fun updateDisplayName(newName: String) {
-        val myId = Supabase.client.auth.currentUserOrNull()?.id ?: return
+        val myId = Supabase.client.auth.currentUserOrNull()?.id ?: run {
+            println("ERROR: updateDisplayName - No current user ID")
+            return
+        }
 
         try {
+            println("DEBUG: updateDisplayName - Changing name for $myId to $newName")
             Supabase.client.postgrest["profiles"].update(
                 mapOf("display_name" to newName)
             ) {
@@ -88,6 +101,7 @@ object ProfileRepository {
             refreshProfile()
         } catch (e: Exception) {
             if (e is CancellationException) throw e
+            println("ERROR: updateDisplayName - Failed to update name: ${e.message}")
             e.printStackTrace()
             ConnectionStateManager.reportServerError()
         }
@@ -95,9 +109,11 @@ object ProfileRepository {
 
     suspend fun signOut() {
         try {
+            println("DEBUG: ProfileRepository - Signing out...")
             Supabase.client.auth.signOut()
             _profile.emit(null) // Clear local cache
         } catch (e: Exception) {
+            println("ERROR: signOut - Failed: ${e.message}")
             e.printStackTrace()
             // Even if sign out fails on server, we should probably clear local state
             _profile.emit(null)
@@ -109,6 +125,7 @@ object ProfileRepository {
      */
     suspend fun triggerBackendRestoreSync() {
         try {
+            println("DEBUG: triggerBackendRestoreSync - Triggering sync-revenuecat")
             // This Edge Function should be implemented on the backend to fetch the latest
             // status from RevenueCat and update the 'profiles' table.
             Supabase.client.functions.invoke("sync-revenuecat")
@@ -117,6 +134,7 @@ object ProfileRepository {
             refreshProfile()
         } catch (e: Exception) {
             if (e is CancellationException) throw e
+            println("ERROR: triggerBackendRestoreSync - Failed: ${e.message}")
             e.printStackTrace()
             ConnectionStateManager.reportServerError()
         }
@@ -127,6 +145,7 @@ object ProfileRepository {
      */
     suspend fun deleteAccount() {
         try {
+            println("DEBUG: deleteAccount - Requesting account deletion...")
             // 1. Call the secure RPC to delete from the DB
             Supabase.client.postgrest.rpc("delete_own_account")
 
@@ -134,6 +153,7 @@ object ProfileRepository {
             signOut()
         } catch (e: Exception) {
             if (e is CancellationException) throw e
+            println("ERROR: deleteAccount - Failed: ${e.message}")
             e.printStackTrace()
             ConnectionStateManager.reportServerError()
         }

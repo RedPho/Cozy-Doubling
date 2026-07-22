@@ -9,6 +9,12 @@ data class FocusTask(
     val text: String,
     val isCompleted: Boolean = false
 )
+
+/**
+ * Presence payload — full participant identity + task state.
+ * Tracked via channel.track() and received via presenceDataFlow.
+ * Updated throttled (at most once per ~10 s) to avoid flooding.
+ */
 @Serializable
 data class ParticipantPresence(
     val id: String,
@@ -20,7 +26,26 @@ data class ParticipantPresence(
     @SerialName("total_tasks")
     val totalTasks: Int
 )
+
+/**
+ * Broadcast payload — lightweight task-state update.
+ * Sent via channel.broadcast() on every user action for instant updates.
+ * No name field — presence is the authority on identity.
+ */
 @Serializable
+data class ParticipantAction(
+    val id: String,
+    @SerialName("active_task")
+    val activeTaskText: String,
+    @SerialName("completed_tasks")
+    val completedTasks: Int,
+    @SerialName("total_tasks")
+    val totalTasks: Int,
+)
+
+/**
+ * UI model — merged result of presence + broadcast data.
+ */
 data class RoomParticipant(
     val id: String,
     val name: String,
@@ -46,18 +71,6 @@ data class FocusSession(
     val isProcessed: Boolean = false,
     @SerialName("duration_minutes")
     val durationMinutes: Int = 0
-
-)
-
-@Serializable
-data class ParticipantAction(
-    val id: String,
-    @SerialName("active_task")
-    val activeTaskText: String,
-    @SerialName("completed_tasks")
-    val completedTasks: Int,
-    @SerialName("total_tasks")
-    val totalTasks: Int,
 )
 
 @Serializable
@@ -66,11 +79,20 @@ data class FinishSessionParams(
     val sessionId: String,
     @SerialName("tasks_done")
     val tasksDone: Int,
-    @SerialName("task_text") // Add this line!
+    @SerialName("task_text")
     val taskText: String
-
 )
 
+@Serializable
+data class UserReport(
+    @SerialName("reported_id") val reportedId: String,
+    @SerialName("reason") val reason: String
+)
+
+@Serializable
+data class UserBlock(
+    @SerialName("blocked_id") val blockedId: String
+)
 
 data class FocusRoomUiState(
     val tasks: List<FocusTask> = emptyList(),
