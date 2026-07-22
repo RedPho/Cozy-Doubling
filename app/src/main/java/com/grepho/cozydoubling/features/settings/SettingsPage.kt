@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.grepho.cozydoubling.BuildConfig
 
 // --- THE SCREEN ENTRY POINT ---
 @Composable
@@ -147,12 +148,12 @@ fun SettingsPage(
                 SettingsItem(
                     label = "Privacy Policy",
                     icon = Icons.Default.Policy,
-                    onClick = { onOpenUrl("https://example.com/privacy-policy") }
+                    onClick = { onOpenUrl(BuildConfig.PRIVACY_POLICY_URL) }
                 )
                 SettingsItem(
                     label = "Terms of Service",
                     icon = Icons.Default.Description,
-                    onClick = { onOpenUrl("https://example.com/terms") }
+                    onClick = { onOpenUrl(BuildConfig.TERMS_OF_SERVICE_URL) }
                 )
                 
                 val context = LocalContext.current
