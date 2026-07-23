@@ -27,12 +27,21 @@ object BillingRepository {
         scope.launch {
             try {
                 _offerings.emit(Purchases.sharedInstance.awaitOfferings())
-                val offerings = offerings.value ?: return@launch
-                print("------------------------------------------------------------------------")
-                print(offerings)
-                print("------------------------------------------------------------------------")
+                val currentOfferings = offerings.value ?: return@launch
+                
+                println("BILLING_DEBUG: Offering update received.")
+                val current = currentOfferings.current
+                if (current == null) {
+                    println("BILLING_DEBUG: NO CURRENT OFFERING SET IN REVENUECAT")
+                } else {
+                    println("BILLING_DEBUG: Current Offering ID: ${current.identifier}")
+                    current.availablePackages.forEach { pkg ->
+                        println("BILLING_DEBUG: Found Package: ${pkg.identifier}, Product: ${pkg.product.id}")
+                    }
+                }
 
             } catch (e: Exception) {
+                println("BILLING_DEBUG: Error fetching offerings: ${e.message}")
                 e.printStackTrace()
             }
         }

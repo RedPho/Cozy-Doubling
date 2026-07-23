@@ -2,7 +2,6 @@ package com.grepho.cozydoubling.core.economy
 
 import androidx.compose.ui.graphics.Color
 import com.grepho.cozydoubling.core.Supabase
-import com.grepho.cozydoubling.core.billing.BillingRepository
 import com.grepho.cozydoubling.core.network.ConnectionStateManager
 import com.grepho.cozydoubling.core.profile.ProfileRepository
 import com.grepho.cozydoubling.core.theming.ThemePalette
@@ -20,7 +19,6 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.serialization.SerialName
@@ -43,42 +41,6 @@ object EconomyRepository {
             fetchShopItems() 
         }
         .stateIn(repoScope, SharingStarted.Eagerly, emptyList())
-
-    // 🚀 2. Processed Shop Items: Groups items and hydrates localized prices in background
-    val processedShopItems: StateFlow<List<ShopItemUiState>> = combine(
-        shopItems,
-        BillingRepository.offerings
-    ) { rawItems, offerings ->
-        println("DEBUG: EconomyRepository - Processing shop items with ${rawItems.size} raw items...")
-        val rcPackages = offerings?.current?.availablePackages ?: emptyList()
-
-        rawItems.map { item ->
-            if (item is ShopItemUiState.Pass) {
-                val rcPackage = rcPackages.find { it.product.id == item.iapId }
-                item.copy(priceString = rcPackage?.product?.price?.formatted ?: "...")
-            } else item
-        }.let { hydratedList ->
-            val themes = hydratedList.filterIsInstance<ShopItemUiState.Theme>()
-            val passes = hydratedList.filterIsInstance<ShopItemUiState.Pass>()
-                .sortedBy { pass ->
-                    when {
-                        pass.name.contains("Monthly", ignoreCase = true) -> 1
-                        pass.name.contains("Yearly", ignoreCase = true) -> 2
-                        pass.name.contains("Lifetime", ignoreCase = true) -> 3
-                        else -> 4
-                    }
-                }
-
-            val finalResult = mutableListOf<ShopItemUiState>()
-            if (passes.isNotEmpty()) {
-                finalResult.add(ShopItemUiState.SupporterSection(passes))
-            }
-            finalResult.addAll(themes)
-            finalResult
-        }
-    }
-    .flowOn(Dispatchers.Default) // Perform computation off-thread
-    .stateIn(repoScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // 3. Smart Theme State (Wait for Auth confirm before leaving 'Loading')
     val themeState: StateFlow<ThemeState> = combine(
@@ -180,6 +142,7 @@ object EconomyRepository {
                 .decodeList<ThemeItemDto>()
 
             println("DEBUG: fetchShopItems - Total raw items in shop: ${rawItems.size}")
+            rawItems.forEach { println("SHOP_DEBUG: Item: ${it.name}, IAP_ID: ${it.iapId}") }
 
             rawItems.map { dto ->
                 val isOwned = ownedIds.contains(dto.id)
