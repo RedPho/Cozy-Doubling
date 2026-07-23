@@ -187,6 +187,7 @@ fun LoginPage(
                 val annotatedString = buildAnnotatedString {
                     append("By signing in, you agree to our ")
                     
+
                     pushStringAnnotation(tag = "URL", annotation = BuildConfig.TERMS_OF_SERVICE_URL)
                     withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.primary, textDecoration = TextDecoration.Underline)) {
                         append("terms of service")
