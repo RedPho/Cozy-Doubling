@@ -18,22 +18,13 @@ class FocusRoomViewModel : ViewModel() {
 
     private var currentSessionId: String? = null
 
-    // Used to throttle presence updates
-    private val syncIntent = MutableSharedFlow<Unit>(replay = 0)
-    private var lastSyncTime = 0L
+    // Throttling state for Presence (track)
+    private var lastPresenceSyncTime = 0L
+    private var pendingPresenceJob: Job? = null
+    private val SYNC_INTERVAL_MS = 10_000L // 10 seconds for Presence track
 
     init {
         startRoom()
-
-        // Debounced sync for rapid changes
-        @OptIn(FlowPreview::class)
-        viewModelScope.launch {
-            syncIntent
-                .debounce(7.seconds)
-                .collect {
-                    syncWithOthers()
-                }
-        }
     }
 
     private fun startRoom() {
@@ -47,12 +38,11 @@ class FocusRoomViewModel : ViewModel() {
 
                 // 2. Join Realtime room
                 val presenceFlow = roomRepository.joinRoom()
+                val broadcastFlow = roomRepository.listenForBroadcasts()
 
                 val myId = ProfileRepository.profile.value?.id
 
-                // Initial and Re-sync logic:
-                // We sync every time the channel becomes SUBSCRIBED.
-                // This handles initial join AND automatic reconnections.
+                // Monitoring connection status
                 viewModelScope.launch {
                     roomRepository.getChannelStatus()
                         .onEach { status ->
@@ -60,17 +50,29 @@ class FocusRoomViewModel : ViewModel() {
                         }
                         .filter { it == RealtimeChannel.Status.SUBSCRIBED }
                         .collect {
-                            println("DEBUG: FocusRoomViewModel - Channel SUBSCRIBED, syncing presence...")
+                            println("DEBUG: FocusRoomViewModel - Channel SUBSCRIBED, syncing initial presence...")
                             syncWithOthers()
                         }
                 }
 
-                presenceFlow
-                    .combine(SafetyRepository.blockedUserIds) { participants, blockedIds ->
-                        // Heavy filtering and ID mapping done on background thread
-                        participants.filter { it.id !in blockedIds && it.id != myId }
+                // 3. Process participants: Presence (Stable) + Broadcast (Instant)
+                // We use a scan to accumulate broadcast updates so they aren't lost when Presence refreshes
+                val latestBroadcasts = broadcastFlow
+                    .scan(emptyMap<String, ParticipantPresence>()) { acc, update ->
+                        acc + (update.id to update)
                     }
-                    .flowOn(Dispatchers.Default) 
+                    .onStart { emit(emptyMap()) } // Unblock combine for initial render
+
+                presenceFlow
+                    .map { list -> list.associateBy { it.id } }
+                    .combine(latestBroadcasts) { presenceMap, broadcasts ->
+                        // Broadcasts override Presence until the next stable 'track' update
+                        presenceMap + broadcasts
+                    }
+                    .combine(SafetyRepository.blockedUserIds) { participantsMap, blockedIds ->
+                        participantsMap.values.filter { it.id !in blockedIds && it.id != myId }
+                    }
+                    .flowOn(Dispatchers.Default)
                     .collect { participants ->
                         println("DEBUG: FocusRoomViewModel - Updating UI with ${participants.size} other participants")
                         _uiState.update { state ->
@@ -93,7 +95,7 @@ class FocusRoomViewModel : ViewModel() {
         }
     }
 
-    private suspend fun syncWithOthers() {
+    private fun syncWithOthers() {
         try {
             val profile = ProfileRepository.profile.value ?: run {
                 println("DEBUG: FocusRoomViewModel - syncWithOthers: No profile found")
@@ -110,25 +112,47 @@ class FocusRoomViewModel : ViewModel() {
                 totalTasks = state.tasks.size
             )
 
-            println("DEBUG: FocusRoomViewModel - Sending presence update for ${profile.displayName}")
-            roomRepository.updatePresence(presence)
-            lastSyncTime = System.currentTimeMillis()
+            broadcastUpdate(presence)
         } catch (e: Exception) {
             println("DEBUG: FocusRoomViewModel - syncWithOthers error: ${e.message}")
             e.printStackTrace()
         }
     }
 
-    private fun triggerSync() {
-        val now = System.currentTimeMillis()
+    private fun broadcastUpdate(presence: ParticipantPresence) {
         viewModelScope.launch {
-            if (now - lastSyncTime > 7000L) {
-                // First change in a while -> Sync immediately
-                syncWithOthers()
-            } else {
-                // Frequent changes -> Use debounce to sync only the last one
-                syncIntent.emit(Unit)
+            try {
+                // 1. Instant Path: Broadcast to everyone currently in the room
+                roomRepository.broadcastPresence(presence)
+
+                // 2. Throttled Path: Update stable Presence (track) at most once per 10s
+                val now = System.currentTimeMillis()
+                
+                // Cancel any pending sync since we have a fresh one
+                pendingPresenceJob?.cancel()
+
+                if (now - lastPresenceSyncTime > SYNC_INTERVAL_MS) {
+                    // It's been a while, sync presence immediately
+                    lastPresenceSyncTime = now
+                    roomRepository.updatePresence(presence)
+                } else {
+                    // Frequent update, schedule a trailing sync
+                    pendingPresenceJob = launch {
+                        delay(7.seconds)
+                        lastPresenceSyncTime = System.currentTimeMillis()
+                        roomRepository.updatePresence(presence)
+                    }
+                }
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                e.printStackTrace()
             }
+        }
+    }
+
+    private fun triggerSync() {
+        viewModelScope.launch {
+            syncWithOthers()
         }
     }
 

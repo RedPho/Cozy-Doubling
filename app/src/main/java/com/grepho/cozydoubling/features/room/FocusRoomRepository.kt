@@ -8,6 +8,7 @@ import io.github.jan.supabase.postgrest.rpc
 import io.github.jan.supabase.realtime.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.serialization.json.Json
@@ -49,6 +50,20 @@ class FocusRoomRepository {
      */
     fun getChannelStatus(): Flow<RealtimeChannel.Status> {
         return roomChannel?.status ?: flowOf(RealtimeChannel.Status.UNSUBSCRIBED)
+    }
+
+    suspend fun broadcastPresence(presence: ParticipantPresence) = withContext(Dispatchers.IO) {
+        try {
+            val channel = roomChannel ?: return@withContext
+            println("DEBUG: FocusRoomRepository - Broadcasting presence for ${presence.name}")
+            channel.broadcast("presence_update", presence)
+        } catch (e: Exception) {
+            println("DEBUG: FocusRoomRepository - Broadcast error: ${e.message}")
+        }
+    }
+
+    fun listenForBroadcasts(): Flow<ParticipantPresence> {
+        return roomChannel?.broadcastFlow<ParticipantPresence>("presence_update") ?: emptyFlow()
     }
 
     suspend fun updatePresence(presence: ParticipantPresence) = withContext(Dispatchers.IO) {
