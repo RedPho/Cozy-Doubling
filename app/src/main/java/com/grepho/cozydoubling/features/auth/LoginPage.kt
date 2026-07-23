@@ -27,6 +27,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.grepho.cozydoubling.BuildConfig
 import com.grepho.cozydoubling.core.Supabase
 import io.github.jan.supabase.compose.auth.composable.NativeSignInResult
 import io.github.jan.supabase.compose.auth.composable.rememberSignInWithGoogle
@@ -186,7 +187,7 @@ fun LoginPage(
                 val annotatedString = buildAnnotatedString {
                     append("By signing in, you agree to our ")
                     
-                    pushStringAnnotation(tag = "URL", annotation = "https://example.com/terms")
+                    pushStringAnnotation(tag = "URL", annotation = BuildConfig.TERMS_OF_SERVICE_URL)
                     withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.primary, textDecoration = TextDecoration.Underline)) {
                         append("terms of service")
                     }
@@ -194,7 +195,7 @@ fun LoginPage(
                     
                     append(" and ")
 
-                    pushStringAnnotation(tag = "URL", annotation = "https://example.com/privacy-policy")
+                    pushStringAnnotation(tag = "URL", annotation = BuildConfig.PRIVACY_POLICY_URL)
                     withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.primary, textDecoration = TextDecoration.Underline)) {
                         append("privacy policy")
                     }

@@ -31,6 +31,9 @@ object FriendsRepository {
             println("DEBUG: FriendsRepository - Profile sync, fetching friends...")
             fetchFriendsWithStories()
         }
+        .combine(SafetyRepository.blockedUserIds) { friendsList, blockedIds ->
+            friendsList.filter { it.id !in blockedIds }
+        }
         .stateIn(repoScope, SharingStarted.Eagerly, emptyList())
 
     // 2. Pre-loaded Pending Requests
@@ -39,6 +42,9 @@ object FriendsRepository {
         .combine(ProfileRepository.profile.filterNotNull()) { _, _ ->
             println("DEBUG: FriendsRepository - Profile sync, fetching pending requests...")
             fetchIncomingRequests()
+        }
+        .combine(SafetyRepository.blockedUserIds) { requests, blockedIds ->
+            requests.filter { it.id !in blockedIds }
         }
         .stateIn(repoScope, SharingStarted.Eagerly, emptyList())
 
