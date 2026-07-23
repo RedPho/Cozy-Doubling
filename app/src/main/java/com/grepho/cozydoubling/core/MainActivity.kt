@@ -36,6 +36,7 @@ import com.grepho.cozydoubling.core.navigation.Screen
 import com.grepho.cozydoubling.core.navigation.navigateToBottomTab
 import com.grepho.cozydoubling.core.network.ConnectionStateManager
 import com.grepho.cozydoubling.core.network.ConnectivityObserver
+import com.grepho.cozydoubling.core.safety.SafetyRepository
 import com.grepho.cozydoubling.ui.theme.BackgroundCream
 import com.grepho.cozydoubling.ui.theme.CozyDoublingTheme
 import com.revenuecat.purchases.LogLevel
@@ -58,6 +59,9 @@ class MainActivity : ComponentActivity() {
         ConnectivityObserver(this).isOnline
             .onEach { ConnectionStateManager.updateConnectivity(it) }
             .launchIn(lifecycleScope)
+
+        // Force initialization of SafetyRepository to warm up Realtime connection
+        SafetyRepository.blockedUserIds
 
         enableEdgeToEdge()
         setContent {

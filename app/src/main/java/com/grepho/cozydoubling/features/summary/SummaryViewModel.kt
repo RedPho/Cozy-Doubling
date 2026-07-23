@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class SummaryViewModel : ViewModel() {
-    private val repository = FocusRoomRepository(viewModelScope)
+    private val repository = FocusRoomRepository()
     private val _uiState = MutableStateFlow(SummaryUiState())
     val uiState: StateFlow<SummaryUiState> = _uiState.asStateFlow()
 
