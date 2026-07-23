@@ -4,7 +4,7 @@
 **Developer:** Grepho  
 **Contact:** cozydoublingdev@gmail.com  
 **Effective Date:** July 21, 2026  
-**Last Updated:** July 21, 2026
+**Last Updated:** July 23, 2026
 
 ---
 
@@ -38,6 +38,7 @@ By using the App, you agree to the collection and use of information as describe
 ### 1.4 Social Data
 
 - **Friends List:** The list of user IDs of users you have added as friends, along with the friendship status (pending or accepted).
+- **Block List:** The list of user IDs of users you have blocked, preventing them from interacting with you.
 - **Presence Data:** When you are in a Focus Room, your display name, active task text, and task progress are broadcast live to other participants in the same room via Supabase Realtime. Live broadcast data is not permanently stored. However, the **last task text and progress from each session** is saved to your focus session record so your friends can see your recent activity.
 
 ### 1.5 Purchase and Subscription Data

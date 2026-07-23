@@ -186,7 +186,7 @@ fun LoginPage(
                 val annotatedString = buildAnnotatedString {
                     append("By signing in, you agree to our ")
                     
-                    pushStringAnnotation(tag = "URL", annotation = "https://example.com/terms")
+                    pushStringAnnotation(tag = "URL", annotation = "https://grepho.github.io/CozyDoubling/terms-of-service.html")
                     withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.primary, textDecoration = TextDecoration.Underline)) {
                         append("terms of service")
                     }
@@ -194,7 +194,7 @@ fun LoginPage(
                     
                     append(" and ")
 
-                    pushStringAnnotation(tag = "URL", annotation = "https://example.com/privacy-policy")
+                    pushStringAnnotation(tag = "URL", annotation = "https://grepho.github.io/CozyDoubling/privacy-policy.html")
                     withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.primary, textDecoration = TextDecoration.Underline)) {
                         append("privacy policy")
                     }

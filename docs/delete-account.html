@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Delete Account – Cozy Doubling</title>
+  <meta name="description" content="Learn how to delete your Cozy Doubling account and what happens to your data." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=Inter:wght@400;500;600&display=swap"
+    rel="stylesheet" />
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg: #faf6f0;
+      --surface: #ffffff;
+      --primary: #5a7a5a;
+      --primary-light: #e8f0e8;
+      --text: #2d2d2d;
+      --muted: #6b7280;
+      --border: #e5e0d8;
+      --accent: #8fad8f;
+      --danger: #b45555;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      font-size: 16px;
+    }
+
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 2rem 1.5rem;
+      text-align: center;
+    }
+
+    .app-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      background: var(--primary-light);
+      border-radius: 2rem;
+      padding: 0.4rem 1rem 0.4rem 0.5rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .app-icon {
+      width: 32px;
+      height: 32px;
+      background: var(--primary);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+
+    .app-badge span {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--primary);
+      letter-spacing: 0.02em;
+    }
+
+    header h1 {
+      font-family: 'Lora', Georgia, serif;
+      font-size: clamp(1.6rem, 4vw, 2.4rem);
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 0.5rem;
+    }
+
+    .container {
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 2.5rem 1.5rem 4rem;
+    }
+
+    section {
+      margin-bottom: 2.5rem;
+    }
+
+    h2 {
+      font-family: 'Lora', Georgia, serif;
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--primary);
+      margin-bottom: 1rem;
+      padding-top: 0.5rem;
+      border-top: 2px solid var(--primary-light);
+    }
+
+    h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text);
+      margin: 1.5rem 0 0.5rem;
+    }
+
+    p {
+      margin-bottom: 1rem;
+    }
+
+    .step-list {
+      list-style: none;
+      counter-reset: steps;
+      margin: 1.5rem 0;
+    }
+
+    .step-item {
+      counter-increment: steps;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+      display: flex;
+      gap: 1.25rem;
+      align-items: flex-start;
+    }
+
+    .step-num {
+      background: var(--primary);
+      color: white;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.9rem;
+      flex-shrink: 0;
+    }
+
+    .callout {
+      border-radius: 0.75rem;
+      padding: 1rem 1.25rem;
+      margin: 1rem 0;
+      font-size: 0.9rem;
+      display: flex;
+      gap: 0.75rem;
+      background: #fdf0f0;
+      border-left: 3px solid var(--danger);
+      color: #6b2a2a;
+    }
+
+    .data-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin: 1rem 0;
+    }
+
+    @media (max-width: 520px) {
+      .data-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .data-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      padding: 1rem;
+    }
+
+    .data-card strong {
+      display: block;
+      color: var(--primary);
+      margin-bottom: 0.25rem;
+    }
+
+    .contact-box {
+      background: var(--primary);
+      color: white;
+      border-radius: 1.25rem;
+      padding: 2rem;
+      text-align: center;
+      margin-top: 3rem;
+    }
+
+    .contact-box a {
+      color: white;
+      font-weight: 600;
+      text-decoration: underline;
+    }
+
+    footer {
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--muted);
+      padding: 2rem 1rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .doc-links a {
+      color: var(--muted);
+      margin: 0 0.75rem;
+      text-decoration: none;
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <div class="app-badge">
+      <div class="app-icon">🌿</div>
+      <span>Cozy Doubling</span>
+    </div>
+    <h1>Account Deletion</h1>
+  </header>
+
+  <div class="container">
+    <section>
+      <p>We're sorry to see you go. This page explains how you can delete your <strong>Cozy Doubling</strong> account and what happens to your data when you do. This process is managed by the developer, <strong>grepho</strong>.</p>
+
+      <div class="callout">
+        <span>⚠️</span>
+        <div><strong>Action is permanent.</strong> Once your account is deleted, it cannot be recovered. All focus sessions, statistics, and earned items will be lost.</div>
+      </div>
+    </section>
+
+    <section>
+      <h2>How to Delete Your Account</h2>
+
+      <h3>Option 1: In the App (Recommended)</h3>
+      <p>The fastest way to delete your account is directly within the Cozy Doubling app:</p>
+      <div class="step-list">
+        <div class="step-item">
+          <div class="step-num">1</div>
+          <div>Open the <strong>Settings</strong> page from the bottom navigation bar.</div>
+        </div>
+        <div class="step-item">
+          <div class="step-num">2</div>
+          <div>Scroll down to the <strong>Danger Zone</strong> section.</div>
+        </div>
+        <div class="step-item">
+          <div class="step-num">3</div>
+          <div>Tap on <strong>Delete Account</strong>.</div>
+        </div>
+        <div class="step-item">
+          <div class="step-num">4</div>
+          <div>Confirm your choice. Your data will be deleted immediately.</div>
+        </div>
+      </div>
+
+      <h3>Option 2: Via Email</h3>
+      <p>If you no longer have the app installed, you can request account deletion by emailing us:</p>
+      <ul>
+        <li><strong>Email:</strong> <a href="mailto:cozydoublingdev@gmail.com">cozydoublingdev@gmail.com</a></li>
+        <li><strong>Subject:</strong> Account Deletion Request</li>
+        <li><strong>Information required:</strong> Please send the request from the email address associated with your Google account used in the app, or provide your unique <strong>Player Tag</strong>.</li>
+      </ul>
+      <p>Email requests are typically processed within 7 business days.</p>
+    </section>
+
+    <section>
+      <h2>What Data is Deleted?</h2>
+      <p>When you delete your account, the following data types are permanently removed from our servers:</p>
+
+      <div class="data-grid">
+        <div class="data-card">
+          <strong>Profile Information</strong>
+          Display name, Player Tag, and your internal User ID.
+        </div>
+        <div class="data-card">
+          <strong>Activity History</strong>
+          All focus session records, task text, and focus statistics.
+        </div>
+        <div class="data-card">
+          <strong>Social Data</strong>
+          Your friends list and block list.
+        </div>
+        <div class="data-card">
+          <strong>In-App Economy</strong>
+          Your leaves balance and all unlocked themes/cosmetics.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>What Data is Kept?</h2>
+      <p>We do not retain any personal data after account deletion. However, please note:</p>
+      <ul>
+        <li><strong>Subscription Records:</strong> Financial transaction records (for "Supporter" subscriptions) are maintained by Google Play and RevenueCat for accounting and legal purposes. These records are anonymized and no longer linked to your deleted Cozy Doubling profile.</li>
+        <li><strong>Backups:</strong> Residual data may remain in our encrypted database backups for up to 30 days before being completely overwritten.</li>
+      </ul>
+    </section>
+
+    <div class="contact-box">
+      <p>Need help? Contact us at <a href="mailto:cozydoublingdev@gmail.com">cozydoublingdev@gmail.com</a></p>
+    </div>
+  </div>
+
+  <footer>
+    <div class="doc-links">
+      <a href="privacy-policy.html">Privacy Policy</a>
+      <a href="terms-of-service.html">Terms of Service</a>
+      <a href="delete-account.html">Account Deletion</a>
+    </div>
+    <p style="margin-top: 1rem;">© 2026 grepho · Cozy Doubling</p>
+  </footer>
+
+</body>
+
+</html>
