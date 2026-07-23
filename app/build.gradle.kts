@@ -77,6 +77,6 @@ dependencies {
     implementation(libs.ktor.client.okhttp)
     implementation(libs.androidx.compose.ui.text.google.fonts)
     implementation(libs.revenuecat.purchases)
-
+    implementation(libs.google.billing)
 
 }
