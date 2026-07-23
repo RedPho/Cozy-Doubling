@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.onStart
 import kotlinx.serialization.json.Json
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.serialization.json.encodeToJsonElement
@@ -18,31 +19,40 @@ import kotlinx.serialization.json.jsonObject
 
 class FocusRoomRepository {
 
+    private val repoScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var roomChannel: RealtimeChannel? = null
 
     /**
-     * Joins the focus room and returns a flow of all present participants.
+     * Prepares the focus room channel and returns a flow of participants.
+     * Note: This does NOT initiate the connection. Call [subscribe] to connect.
      */
-    suspend fun joinRoom(): Flow<List<ParticipantPresence>> = withContext(Dispatchers.IO) {
-        println("DEBUG: FocusRoomRepository - Joining room channel 'focus-room'")
+    fun joinRoom(): Flow<List<ParticipantPresence>> {
+        println("DEBUG: FocusRoomRepository - Preparing channel 'focus-room'")
+        
         val channel = Supabase.client.realtime.channel("focus-room")
         roomChannel = channel
 
-        // Monitor status changes for debugging
-        CoroutineScope(Dispatchers.IO).launch {
+        // Monitor status changes
+        repoScope.launch {
             channel.status.collect { status ->
-                println("DEBUG: FocusRoomRepository - Channel status changed to: $status")
+                println("DEBUG: FocusRoomRepository - Channel status: $status")
             }
         }
 
+        return channel.presenceDataFlow<ParticipantPresence>()
+    }
+
+    /**
+     * Initiates the WebSocket handshake for the channel.
+     */
+    suspend fun subscribe() = withContext(Dispatchers.IO) {
         try {
-            channel.subscribe()
-            println("DEBUG: FocusRoomRepository - Subscription initiated")
+            println("DEBUG: FocusRoomRepository - Initiating channel subscription...")
+            roomChannel?.subscribe()
         } catch (e: Exception) {
             println("DEBUG: FocusRoomRepository - Subscription error: ${e.message}")
             e.printStackTrace()
         }
-        channel.presenceDataFlow<ParticipantPresence>()
     }
 
     /**
@@ -88,9 +98,6 @@ class FocusRoomRepository {
                         continue
                     }
                 }
-
-                // A tiny "settle" delay often helps avoid immediate protocol clashes on some networks
-                delay(1.5.seconds)
 
                 val json = Json.encodeToJsonElement(presence).jsonObject
                 println("DEBUG: FocusRoomRepository - Tracking presence for ${presence.name}")

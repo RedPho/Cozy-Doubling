@@ -4,9 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.grepho.cozydoubling.core.profile.ProfileRepository
 import com.grepho.cozydoubling.core.safety.SafetyRepository
-import io.github.jan.supabase.realtime.RealtimeChannel
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 class FocusRoomViewModel : ViewModel() {
@@ -30,63 +30,69 @@ class FocusRoomViewModel : ViewModel() {
     private fun startRoom() {
         viewModelScope.launch {
             try {
-                println("DEBUG: FocusRoomViewModel - Starting room join sequence")
+                println("DEBUG: FocusRoomViewModel - [1/4] Starting room setup sequence")
                 // 1. Start session in DB
                 val sessionId = roomRepository.startSession()
                 currentSessionId = sessionId
-                println("DEBUG: FocusRoomViewModel - Session ID: $sessionId")
+                println("DEBUG: FocusRoomViewModel - [2/4] Session ID: $sessionId")
 
-                // 2. Join Realtime room
+                // 2. Prepare flows (DO NOT subscribe yet)
                 val presenceFlow = roomRepository.joinRoom()
                 val broadcastFlow = roomRepository.listenForBroadcasts()
 
-                val myId = ProfileRepository.profile.value?.id
-
-                // Monitoring connection status
-                viewModelScope.launch {
-                    roomRepository.getChannelStatus()
-                        .onEach { status ->
-                            println("DEBUG: FocusRoomViewModel - Channel status update: $status")
-                        }
-                        .filter { it == RealtimeChannel.Status.SUBSCRIBED }
-                        .collect {
-                            println("DEBUG: FocusRoomViewModel - Channel SUBSCRIBED, syncing initial presence...")
-                            syncWithOthers()
-                        }
-                }
-
-                // 3. Process participants: Presence (Stable) + Broadcast (Instant)
-                // We use a scan to accumulate broadcast updates so they aren't lost when Presence refreshes
+                // 3. Setup Broadcast Processor (Instant Overrides)
                 val latestBroadcasts = broadcastFlow
                     .scan(emptyMap<String, ParticipantPresence>()) { acc, update ->
                         acc + (update.id to update)
                     }
-                    .onStart { emit(emptyMap()) } // Unblock combine for initial render
+                    .onStart { emit(emptyMap()) }
 
-                presenceFlow
-                    .map { list -> list.associateBy { it.id } }
-                    .combine(latestBroadcasts) { presenceMap, broadcasts ->
-                        // Broadcasts override Presence until the next stable 'track' update
-                        presenceMap + broadcasts
-                    }
-                    .combine(SafetyRepository.blockedUserIds) { participantsMap, blockedIds ->
-                        participantsMap.values.filter { it.id !in blockedIds && it.id != myId }
-                    }
-                    .flowOn(Dispatchers.Default)
-                    .collect { participants ->
-                        println("DEBUG: FocusRoomViewModel - Updating UI with ${participants.size} other participants")
-                        _uiState.update { state ->
-                            state.copy(otherParticipants = participants.map { p ->
-                                RoomParticipant(
-                                    id = p.id,
-                                    name = p.name,
-                                    activeTaskText = p.activeTaskText,
-                                    completedTasks = p.completedTasks,
-                                    totalTasks = p.totalTasks,
-                                )
-                            })
+                // 4. START LISTENING (Parallel coroutine)
+                // This ensures we are listening BEFORE the subscription starts.
+                launch {
+                    println("DEBUG: FocusRoomViewModel - [3/4] Listener coroutine active")
+                    presenceFlow
+                        .onEach { list -> println("DEBUG: FocusRoomViewModel - RECEIVED PRESENCE: ${list.size} users") }
+                        .map { list -> list.associateBy { it.id } }
+                        .combine(latestBroadcasts) { presenceMap, broadcasts ->
+                            presenceMap.mapValues { (id, presence) -> broadcasts[id] ?: presence }
                         }
-                    }
+                        .combine(SafetyRepository.blockedUserIds) { participantsMap, blockedIds ->
+                            val mySessionId = currentSessionId ?: ""
+                            participantsMap.values.filter { 
+                                val profileId = it.id.split(":").first()
+                                it.id.contains(mySessionId).not() && profileId !in blockedIds
+                            }
+                        }
+                        .flowOn(Dispatchers.Default)
+                        .collect { participants ->
+                            println("DEBUG: FocusRoomViewModel - Updating UI with ${participants.size} other participants")
+                            _uiState.update { state ->
+                                state.copy(otherParticipants = participants.map { p ->
+                                    val profileId = p.id.split(":").first()
+                                    RoomParticipant(
+                                        id = profileId,
+                                        name = p.name,
+                                        activeTaskText = p.activeTaskText,
+                                        completedTasks = p.completedTasks,
+                                        totalTasks = p.totalTasks,
+                                    )
+                                })
+                            }
+                        }
+                }
+
+                // 5. INITIATE SUBSCRIPTION (Parallel)
+                launch {
+                    delay(200.milliseconds) // Tiny delay to let the listener definitely start
+                    println("DEBUG: FocusRoomViewModel - [4/4] Triggering WebSocket subscription")
+                    roomRepository.subscribe()
+                    
+                    // Initial sync after join
+                    delay(500)
+                    syncWithOthers()
+                }
+
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
                 println("DEBUG: FocusRoomViewModel - startRoom critical error: ${e.message}")
@@ -104,8 +110,12 @@ class FocusRoomViewModel : ViewModel() {
             val state = _uiState.value
             val activeTask = state.tasks.find { it.id == state.activeTaskId }
 
+            // Use a session-unique ID to prevent collisions on the Supabase server
+            // between old 'leave' events and new 'join' events during rapid re-entry.
+            val uniquePresenceId = "${profile.id}:${currentSessionId}"
+
             val presence = ParticipantPresence(
-                id = profile.id,
+                id = uniquePresenceId,
                 name = profile.displayName,
                 activeTaskText = activeTask?.text ?: "No active task",
                 completedTasks = state.tasks.count { it.isCompleted },
@@ -198,12 +208,17 @@ class FocusRoomViewModel : ViewModel() {
     }
 
     fun finishWork(onComplete: (String) -> Unit) {
+        println("DEBUG: FocusRoomViewModel - Starting global cleanup (finishWork)...")
         val sessionId = currentSessionId ?: return
         val state = _uiState.value
         val lastTask = state.tasks.find { it.id == state.activeTaskId }?.text ?: "Focusing"
 
         viewModelScope.launch {
             try {
+                // 1. Immediate unsubscription to free up the channel for next potential join
+                roomRepository.leaveRoom()
+                println("DEBUG: FocusRoomViewModel - Channel cleaned up successfully.")
+
                 roomRepository.finishSession(sessionId, state.tasks.count { it.isCompleted }, lastTask)
                 ProfileRepository.refreshProfile()
                 onComplete(sessionId)
@@ -215,13 +230,13 @@ class FocusRoomViewModel : ViewModel() {
 
     override fun onCleared() {
         super.onCleared()
-        // viewModelScope is already cancelled at this point, so we use a short-lived
-        // scope to ensure the leave call completes before the VM is destroyed.
+        // ViewModel is being destroyed. We use a non-cancelled scope to ensure cleanup completes.
         CoroutineScope(Dispatchers.IO).launch {
             try {
+                println("DEBUG: FocusRoomViewModel - onCleared cleanup...")
                 roomRepository.leaveRoom()
             } catch (e: Exception) {
-                println("DEBUG: leaveRoom cleanup error: ${e.message}")
+                println("DEBUG: FocusRoomViewModel - leaveRoom cleanup error: ${e.message}")
             }
         }
     }
