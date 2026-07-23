@@ -39,3 +39,9 @@
 -dontwarn org.conscrypt.**
 -dontwarn org.bouncycastle.**
 -dontwarn org.openjsse.**
+
+# --- GOOGLE IDENTITY / CREDENTIAL MANAGER ---
+-keep class com.google.android.libraries.identity.googleid.** { *; }
+-keep class com.google.android.gms.auth.** { *; }
+-keep public class com.google.android.gms.auth.api.signin.** { *; }
+-keep class androidx.credentials.** { *; }

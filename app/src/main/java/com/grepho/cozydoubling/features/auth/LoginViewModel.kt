@@ -35,6 +35,10 @@ class LoginViewModel : ViewModel() {
         }
     }
 
+    fun setError(message: String) {
+        _error.value = message
+    }
+
     fun clearError() {
         _error.value = null
     }

@@ -43,8 +43,21 @@ fun LoginScreen(viewModel: LoginViewModel = viewModel()) {
         onResult = { result ->
             when (result) {
                 is NativeSignInResult.Success -> println("DEBUG: Google Success")
-                is NativeSignInResult.Error -> println("DEBUG: Google Error: ${result.message}")
-                else -> println("DEBUG: Google Other: $result")
+                is NativeSignInResult.Error -> {
+                    val msg = "Google Error: ${result.message}"
+                    println("DEBUG: $msg")
+                    viewModel.setError(msg)
+                }
+                NativeSignInResult.ClosedByUser -> {
+                    println("DEBUG: Google Other: ClosedByUser")
+                    // Optional: You could show a message here too if you want, 
+                    // but usually ClosedByUser means the user just swiped it away.
+                }
+                else -> {
+                    val msg = "Google Other: $result"
+                    println("DEBUG: $msg")
+                    viewModel.setError(msg)
+                }
             }
         }
     )
