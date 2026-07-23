@@ -27,25 +27,7 @@ data class ParticipantPresence(
     val totalTasks: Int
 )
 
-/**
- * Broadcast payload — lightweight task-state update.
- * Sent via channel.broadcast() on every user action for instant updates.
- * No name field — presence is the authority on identity.
- */
-@Serializable
-data class ParticipantAction(
-    val id: String,
-    @SerialName("active_task")
-    val activeTaskText: String,
-    @SerialName("completed_tasks")
-    val completedTasks: Int,
-    @SerialName("total_tasks")
-    val totalTasks: Int,
-)
 
-/**
- * UI model — merged result of presence + broadcast data.
- */
 data class RoomParticipant(
     val id: String,
     val name: String,
