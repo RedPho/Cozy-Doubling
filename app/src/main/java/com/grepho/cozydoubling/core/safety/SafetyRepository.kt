@@ -13,7 +13,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.launch
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -38,14 +40,17 @@ object SafetyRepository {
         // 1. Manage Realtime lifecycle and session-based fetching
         repoScope.launch {
             ProfileRepository.profile
+                .onEach { p -> println("DEBUG: SafetyRepository - Profile emission: ${p?.id}") }
                 .map { it?.id }
                 .distinctUntilChanged()
                 .collect { userId ->
                     if (userId != null) {
-                        println("DEBUG: SafetyRepository - Session started for: $userId")
+                        println("DEBUG: SafetyRepository - Session ACTIVE for: $userId")
                         refreshBlockedUsers(userId)
+                        delay(2.seconds) // Wait for profile to settle
                         setupRealtime()
                     } else {
+                        println("DEBUG: SafetyRepository - Session NULL, stopping realtime")
                         stopRealtime()
                         _blockedUserIds.value = emptySet()
                     }
@@ -61,16 +66,34 @@ object SafetyRepository {
     }
 
     private fun setupRealtime() {
+        if (safetyChannel?.status?.value == RealtimeChannel.Status.SUBSCRIBED || 
+            safetyChannel?.status?.value == RealtimeChannel.Status.SUBSCRIBING) {
+            println("DEBUG: SafetyRepository - Already subscribed or subscribing, skipping setupRealtime")
+            return
+        }
+
         stopRealtime()
         val channel = Supabase.client.realtime.channel("safety-updates")
         safetyChannel = channel
 
+        // Monitor status for safety channel
+        repoScope.launch {
+            channel.status.collect { status ->
+                println("DEBUG: SafetyRepository - Channel status changed to: $status")
+            }
+        }
+
         realtimeJob = repoScope.launch {
-            channel.postgresChangeFlow<PostgresAction>(schema = "public") {
-                table = "user_blocks"
-            }.collect { action ->
-                println("DEBUG: SafetyRepository - Block change detected, refreshing...")
-                ProfileRepository.refreshProfile()
+            try {
+                channel.postgresChangeFlow<PostgresAction>(schema = "public") {
+                    table = "user_blocks"
+                }.collect { action ->
+                    println("DEBUG: SafetyRepository - Block change detected, refreshing...")
+                    ProfileRepository.refreshProfile()
+                }
+            } catch (e: Exception) {
+                println("DEBUG: SafetyRepository - Realtime subscription failed. This usually means Realtime is not enabled for 'user_blocks' table in Supabase dashboard.")
+                e.printStackTrace()
             }
         }
 
@@ -80,14 +103,19 @@ object SafetyRepository {
     }
 
     private fun stopRealtime() {
+        println("DEBUG: SafetyRepository - stopRealtime() called")
         realtimeJob?.cancel()
         realtimeJob = null
         safetyChannel?.let {
+            val channelToClose = it
             repoScope.launch {
                 try {
-                    it.unsubscribe()
-                    Supabase.client.realtime.removeChannel(it)
-                } catch (e: Exception) { e.printStackTrace() }
+                    println("DEBUG: SafetyRepository - Unsubscribing channel...")
+                    channelToClose.unsubscribe()
+                    Supabase.client.realtime.removeChannel(channelToClose)
+                } catch (e: Exception) { 
+                    println("DEBUG: SafetyRepository - stopRealtime error: ${e.message}")
+                }
             }
         }
         safetyChannel = null

@@ -52,7 +52,9 @@ fun FocusRoomScreen(
     val myName = profile?.displayName ?: "You"
 
     val handleExit = {
+        println("DEBUG: FocusRoomScreen - User requested exit")
         viewModel.finishWork { id ->
+            println("DEBUG: FocusRoomScreen - Session finished, navigating to summary: $id")
             onNavigateToSummary(id)
         }
     }

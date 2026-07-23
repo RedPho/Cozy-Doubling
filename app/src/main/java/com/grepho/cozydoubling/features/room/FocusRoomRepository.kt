@@ -5,202 +5,147 @@ import com.grepho.cozydoubling.core.network.ConnectionStateManager
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.rpc
-import com.grepho.cozydoubling.core.profile.ProfileRepository
-import com.grepho.cozydoubling.core.safety.SafetyRepository
 import io.github.jan.supabase.realtime.*
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.onStart
+import kotlinx.serialization.json.Json
+import kotlin.time.Duration.Companion.seconds
+import kotlinx.serialization.json.encodeToJsonElement
+import kotlinx.serialization.json.jsonObject
 
-class FocusRoomRepository(private val scope: CoroutineScope) {
+class FocusRoomRepository {
 
+    private val repoScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var roomChannel: RealtimeChannel? = null
-    private var lastPresenceUpdateTime = 0L
-    private var pendingPresenceJob: Job? = null
 
-    // Track the latest presence state locally so we can re-sync it on reconnection
-    private val currentPresence = MutableStateFlow<ParticipantPresence?>(null)
+    /**
+     * Prepares the focus room channel and returns a flow of participants.
+     * Note: This does NOT initiate the connection. Call [subscribe] to connect.
+     */
+    fun joinRoom(): Flow<List<ParticipantPresence>> {
+        println("DEBUG: FocusRoomRepository - Preparing channel 'focus-room'")
+        
+        val channel = Supabase.client.realtime.channel("focus-room")
+        roomChannel = channel
 
-    // Raw participant map — keyed by userId
-    private val _otherParticipantsMap = MutableStateFlow<Map<String, RoomParticipant>>(emptyMap())
-
-    // Filtered UI list (blocked users removed)
-    val otherParticipants: StateFlow<List<RoomParticipant>> = _otherParticipantsMap
-        .map { it.values.toList() }
-        .combine(SafetyRepository.blockedUserIds) { list, blocked ->
-            list.filter { it.id !in blocked }
+        // Monitor status changes
+        repoScope.launch {
+            channel.status.collect { status ->
+                println("DEBUG: FocusRoomRepository - Channel status: $status")
+            }
         }
-        .stateIn(scope, SharingStarted.Eagerly, emptyList())
 
-    suspend fun joinRoom(initialPresence: ParticipantPresence) {
-        currentPresence.value = initialPresence
+        return channel.presenceDataFlow<ParticipantPresence>()
+    }
+
+    /**
+     * Initiates the WebSocket handshake for the channel.
+     */
+    suspend fun subscribe() = withContext(Dispatchers.IO) {
         try {
-            val myId = Supabase.client.auth.currentUserOrNull()?.id ?: return
-
-            // Clean up any old channel before creating a new one
-            Supabase.client.realtime.subscriptions["realtime:room:cozy"]?.let {
-                Supabase.client.realtime.removeChannel(it)
-            }
-            _otherParticipantsMap.value = emptyMap()
-
-            val channel = Supabase.client.realtime.channel("room:cozy") {
-                presence { key = myId }
-            }
-            roomChannel = channel
-
-            // A. Presence: full snapshot via presenceDataFlow.
-            //    This is the authoritative list of WHO is in the room.
-            //    We use a map so later broadcasts can update task state without
-            //    being blown away by the next presence heartbeat.
-            scope.launch {
-                try {
-                    channel.presenceDataFlow<ParticipantPresence>()
-                        .collect { all ->
-                            _otherParticipantsMap.update { current ->
-                                val incoming = all
-                                    .filter { it.id != myId }
-                                    .associateBy { it.id }
-                                // Merge: keep task state from broadcast if newer
-                                incoming.mapValues { (id, presence) ->
-                                    val existing = current[id]
-                                    RoomParticipant(
-                                        id = presence.id,
-                                        name = presence.name,
-                                        // Prefer existing task state (may be newer from broadcast),
-                                        // fall back to what presence carries
-                                        activeTaskText = existing?.activeTaskText ?: presence.activeTaskText,
-                                        completedTasks = existing?.completedTasks ?: presence.completedTasks,
-                                        totalTasks = existing?.totalTasks ?: presence.totalTasks
-                                    )
-                                }
-                            }
-                        }
-                } catch (e: Exception) {
-                    if (e is CancellationException) throw e
-                    e.printStackTrace()
-                    ConnectionStateManager.reportServerError()
-                }
-            }
-
-            // B. Broadcast: low-latency task state updates between presence heartbeats.
-            //    Only updates task fields; never adds/removes participants (that's presence's job).
-            scope.launch {
-                try {
-                    channel.broadcastFlow<ParticipantAction>("action").collect { action ->
-                        if (action.id == myId) return@collect
-                        _otherParticipantsMap.update { current ->
-                            val existing = current[action.id] ?: return@update current
-                            current + (action.id to existing.copy(
-                                activeTaskText = action.activeTaskText,
-                                completedTasks = action.completedTasks,
-                                totalTasks = action.totalTasks
-                            ))
-                        }
-                    }
-                } catch (e: Exception) {
-                    if (e is CancellationException) throw e
-                    e.printStackTrace()
-                }
-            }
-
-            channel.subscribe()
-
-            // C. Re-track presence every time the channel (re)connects.
-            //    Must be launched AFTER subscribe() so the channel status StateFlow
-            //    already holds the correct value when we start collecting.
-            scope.launch {
-                try {
-                    channel.status.collect { status ->
-                        if (status == RealtimeChannel.Status.SUBSCRIBED) {
-                            currentPresence.value?.let { syncPresence(it) }
-                        }
-                    }
-                } catch (e: Exception) {
-                    if (e is CancellationException) throw e
-                    e.printStackTrace()
-                }
-            }
-
+            println("DEBUG: FocusRoomRepository - Initiating channel subscription...")
+            roomChannel?.subscribe()
         } catch (e: Exception) {
-            if (e is CancellationException) throw e
+            println("DEBUG: FocusRoomRepository - Subscription error: ${e.message}")
             e.printStackTrace()
-            ConnectionStateManager.reportServerError()
         }
     }
 
-    fun broadcastUpdate(action: ParticipantAction) {
-        val channel = roomChannel ?: return
-        scope.launch {
+    /**
+     * Returns a flow of the channel's connection status.
+     */
+    fun getChannelStatus(): Flow<RealtimeChannel.Status> {
+        return roomChannel?.status ?: flowOf(RealtimeChannel.Status.UNSUBSCRIBED)
+    }
+
+    suspend fun broadcastPresence(presence: ParticipantPresence) = withContext(Dispatchers.IO) {
+        try {
+            val channel = roomChannel ?: return@withContext
+            println("DEBUG: FocusRoomRepository - Broadcasting presence for ${presence.name}")
+            channel.broadcast("presence_update", presence)
+        } catch (e: Exception) {
+            println("DEBUG: FocusRoomRepository - Broadcast error: ${e.message}")
+        }
+    }
+
+    fun listenForBroadcasts(): Flow<ParticipantPresence> {
+        return roomChannel?.broadcastFlow<ParticipantPresence>("presence_update") ?: emptyFlow()
+    }
+
+    suspend fun updatePresence(presence: ParticipantPresence) = withContext(Dispatchers.IO) {
+        var attempts = 0
+        val maxAttempts = 3
+        
+        while (attempts < maxAttempts) {
             try {
-                // Instant broadcast — supabase-kt falls back to REST if not yet SUBSCRIBED
-                channel.broadcast("action", action)
+                val channel = roomChannel ?: return@withContext
 
-                // Throttled presence track (at most once per 10 s, with a trailing 7 s update)
-                pendingPresenceJob?.cancel()
-                val now = System.currentTimeMillis()
-                val presence = ParticipantPresence(
-                    id = action.id,
-                    name = ProfileRepository.profile.value?.displayName ?: "User",
-                    activeTaskText = action.activeTaskText,
-                    completedTasks = action.completedTasks,
-                    totalTasks = action.totalTasks
-                )
-                currentPresence.value = presence
+                // Wait for subscription if not already subscribed
+                if (channel.status.value != RealtimeChannel.Status.SUBSCRIBED) {
+                    println("DEBUG: FocusRoomRepository - Waiting for SUBSCRIBED status before tracking (Attempt ${attempts + 1})...")
+                    try {
+                        withTimeout(5.seconds) {
+                            channel.status.first { it == RealtimeChannel.Status.SUBSCRIBED }
+                        }
+                    } catch (e: TimeoutCancellationException) {
+                        println("DEBUG: FocusRoomRepository - Timeout waiting for subscription on attempt ${attempts + 1}")
+                        attempts++
+                        delay(1.seconds) // Wait before retrying
+                        continue
+                    }
+                }
 
-                if (now - lastPresenceUpdateTime > 10_000L) {
-                    lastPresenceUpdateTime = now
-                    syncPresence(presence)
-                }
-                pendingPresenceJob = launch {
-                    delay(7_000L)
-                    lastPresenceUpdateTime = System.currentTimeMillis()
-                    syncPresence(presence)
-                }
+                val json = Json.encodeToJsonElement(presence).jsonObject
+                println("DEBUG: FocusRoomRepository - Tracking presence for ${presence.name}")
+                channel.track(json)
+                return@withContext // Success
+
             } catch (e: Exception) {
-                if (e is CancellationException) throw e
+                println("DEBUG: FocusRoomRepository - Track error on attempt ${attempts + 1}: ${e.message}")
+                e.printStackTrace()
+                attempts++
+                delay(1.seconds)
+            }
+        }
+        println("DEBUG: FocusRoomRepository - Failed to track presence after $maxAttempts attempts")
+    }
+
+    suspend fun leaveRoom() = withContext(Dispatchers.IO) {
+        println("DEBUG: FocusRoomRepository - Leaving room")
+        roomChannel?.let {
+            try {
+                it.unsubscribe()
+                Supabase.client.realtime.removeChannel(it)
+                println("DEBUG: FocusRoomRepository - Unsubscribed and channel removed")
+            } catch (e: Exception) {
+                println("DEBUG: FocusRoomRepository - Leave room error: ${e.message}")
                 e.printStackTrace()
             }
         }
-    }
-
-    private suspend fun syncPresence(presence: ParticipantPresence) {
-        try {
-            val channel = roomChannel ?: return
-            // track() throws if channel is not SUBSCRIBED — guard required
-            if (channel.status.value == RealtimeChannel.Status.SUBSCRIBED) {
-                channel.track(presence)
-            }
-        } catch (e: Exception) {
-            if (e is CancellationException) throw e
-            e.printStackTrace()
-        }
-    }
-
-    suspend fun leaveRoom() {
-        try {
-            pendingPresenceJob?.cancel()
-            roomChannel?.let {
-                it.unsubscribe()
-                Supabase.client.realtime.removeChannel(it)
-            }
-            roomChannel = null
-            _otherParticipantsMap.value = emptyMap()
-        } catch (e: Exception) {
-            if (e is CancellationException) throw e
-            e.printStackTrace()
-        }
+        roomChannel = null
     }
 
     // ── Session database logic ───────────────────────────────────────────────
 
     suspend fun startSession(): String? {
-        val user = Supabase.client.auth.currentUserOrNull() ?: return null
+        println("DEBUG: FocusRoomRepository - Starting session...")
+        val user = Supabase.client.auth.currentUserOrNull() ?: run {
+            println("DEBUG: FocusRoomRepository - startSession: No user found")
+            return null
+        }
         return try {
             val session = Supabase.client.postgrest["focus_sessions"]
                 .insert(mapOf("user_id" to user.id)) { select() }
                 .decodeSingle<FocusSession>()
+            println("DEBUG: FocusRoomRepository - Session started: ${session.id}")
             session.id
         } catch (e: Exception) {
             if (e is CancellationException) throw e
+            println("DEBUG: FocusRoomRepository - startSession error: ${e.message}")
             e.printStackTrace()
             ConnectionStateManager.reportServerError()
             null
@@ -208,13 +153,16 @@ class FocusRoomRepository(private val scope: CoroutineScope) {
     }
 
     suspend fun finishSession(sessionId: String, tasksCompleted: Int, taskText: String) {
+        println("DEBUG: FocusRoomRepository - Finishing session $sessionId ($tasksCompleted tasks)")
         try {
             Supabase.client.postgrest.rpc(
                 function = "finish_session",
-                parameters = FinishSessionParams(sessionId, tasksCompleted, taskText)
+                parameters = FinishSessionParams(sessionId, tasksCompleted, taskText),
             )
+            println("DEBUG: FocusRoomRepository - Session finished successfully")
         } catch (e: Exception) {
             if (e is CancellationException) throw e
+            println("DEBUG: FocusRoomRepository - finishSession error: ${e.message}")
             e.printStackTrace()
             ConnectionStateManager.reportServerError()
         }
