@@ -97,16 +97,24 @@ fun OasisPage(
                     val selected = selectedTab == tab
                     Tab(
                         selected = selected,
-                        onClick = { onTabSelected(tab) },
-                        text = {
+                        onClick = { onTabSelected(tab) }
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .padding(horizontal = 4.dp, vertical = 12.dp)
+                                .fillMaxWidth(),
+                            contentAlignment = Alignment.Center
+                        ) {
                             Text(
                                 text = stringResource(tab.titleRes),
-                                style = MaterialTheme.typography.labelLarge,
+                                style = MaterialTheme.typography.labelMedium,
                                 fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                softWrap = false
                             )
                         }
-                    )
+                    }
                 }
             }
 
