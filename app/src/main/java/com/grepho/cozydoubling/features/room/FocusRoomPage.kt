@@ -32,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
@@ -39,6 +40,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.grepho.cozydoubling.R
 import com.grepho.cozydoubling.core.profile.ProfileRepository
 
 // --- THE SCREEN ENTRY POINT ---
@@ -66,7 +68,7 @@ fun FocusRoomScreen(
     val currentUserParticipant = RoomParticipant(
         id = "self",
         name = myName,
-        activeTaskText = uiState.tasks.find { it.id == uiState.activeTaskId }?.text ?: "No active task",
+        activeTaskText = uiState.tasks.find { it.id == uiState.activeTaskId }?.text ?: stringResource(R.string.room_no_active_task),
         completedTasks = uiState.tasks.count { it.isCompleted },
         totalTasks = uiState.tasks.size
     )
@@ -114,7 +116,7 @@ fun FocusRoomPage(
                 title = { /* Minimal as per design */ },
                 navigationIcon = {
                     IconButton(onClick = onExitClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Leave", tint = MaterialTheme.colorScheme.primary)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.room_leave_label), tint = MaterialTheme.colorScheme.primary)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
@@ -140,7 +142,7 @@ fun FocusRoomPage(
         ) {
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Cozy Room",
+                text = stringResource(R.string.room_cozy_room),
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.primary
             )
@@ -153,7 +155,7 @@ fun FocusRoomPage(
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
-                    text = "${allParticipants.size} focusing now",
+                    text = stringResource(R.string.room_focusing_now, allParticipants.size),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -212,7 +214,7 @@ fun ParticipantCard(
                     ) {
                         Icon(
                             imageVector = Icons.Default.MoreVert,
-                            contentDescription = "Options",
+                            contentDescription = stringResource(R.string.room_options_label),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
                             modifier = Modifier.size(16.dp)
                         )
@@ -222,7 +224,7 @@ fun ParticipantCard(
                         onDismissRequest = { showMenu = false }
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Report User") },
+                            text = { Text(stringResource(R.string.friends_report_user)) },
                             onClick = {
                                 showMenu = false
                                 showReportDialog = true
@@ -230,7 +232,7 @@ fun ParticipantCard(
                             leadingIcon = { Icon(Icons.Default.Flag, contentDescription = null, modifier = Modifier.size(18.dp)) }
                         )
                         DropdownMenuItem(
-                            text = { Text("Block User") },
+                            text = { Text(stringResource(R.string.friends_block_user)) },
                             onClick = {
                                 showMenu = false
                                 onBlock()
@@ -290,7 +292,7 @@ fun ParticipantCard(
                 )
 
                 Text(
-                    text = "${participant.activeTaskText} • ${participant.completedTasks}/${participant.totalTasks} done",
+                    text = stringResource(R.string.room_participant_stats, participant.activeTaskText, participant.completedTasks, participant.totalTasks),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
@@ -317,14 +319,21 @@ fun ReportDialog(
     onDismiss: () -> Unit,
     onReport: (String) -> Unit
 ) {
-    val reasons = listOf("Inappropriate Name", "Inappropriate Task", "Harassment", "Spam", "Other")
+    val reasons = listOf(
+        R.string.report_reason_name,
+        R.string.report_reason_task,
+        R.string.report_reason_harassment,
+        R.string.report_reason_spam,
+        R.string.report_reason_other
+    )
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Report User") },
+        title = { Text(stringResource(R.string.friends_report_user)) },
         text = {
             Column {
-                reasons.forEach { reason ->
+                reasons.forEach { reasonRes ->
+                    val reason = stringResource(reasonRes)
                     TextButton(
                         onClick = { onReport(reason) },
                         modifier = Modifier.fillMaxWidth()
@@ -337,7 +346,7 @@ fun ReportDialog(
         confirmButton = {},
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.action_cancel))
             }
         }
     )
@@ -369,7 +378,7 @@ fun TaskBottomSheet(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "My Focus Tasks",
+                    text = stringResource(R.string.room_my_tasks),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
@@ -379,7 +388,7 @@ fun TaskBottomSheet(
                     shape = CircleShape
                 ) {
                     Text(
-                        text = "$completedCount/${tasks.size} Done",
+                        text = stringResource(R.string.room_tasks_done, completedCount, tasks.size),
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -430,7 +439,7 @@ fun TaskBottomSheet(
                             if (isActive && !task.isCompleted) {
                                 Icon(
                                     imageVector = Icons.Default.FlashOn,
-                                    contentDescription = "Active",
+                                    contentDescription = stringResource(R.string.room_active_task_label),
                                     tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(16.dp)
                                 )
@@ -447,7 +456,7 @@ fun TaskBottomSheet(
                 TextField(
                     value = newTaskText,
                     onValueChange = onNewTaskTextChange,
-                    placeholder = { Text("What are you working on next?") },
+                    placeholder = { Text(stringResource(R.string.room_next_task_hint)) },
                     modifier = Modifier
                         .weight(1f)
                         .height(56.dp),
@@ -472,7 +481,7 @@ fun TaskBottomSheet(
                     contentColor = Color.White,
                     modifier = Modifier.size(48.dp)
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = "Add")
+                    Icon(Icons.Default.Add, contentDescription = stringResource(R.string.friends_add_title))
                 }
             }
         }

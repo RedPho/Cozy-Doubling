@@ -1,0 +1,141 @@
+<resources>
+    <string name="app_name">Cozy Doubling</string>
+
+    <!-- Auth / Login -->
+    <string name="login_welcome">Benvenuti su Cozy Doubling</string>
+    <string name="login_description">Uno spazio tranquillo per concentrarsi insieme, senza fretta e con calma.</string>
+    <string name="login_google_signin">Accedi con Google</string>
+    <string name="login_reviewer_access">Accesso revisore</string>
+    <string name="login_error_title">Errore di accesso</string>
+    <string name="login_email_label">Email</string>
+    <string name="login_password_label">Password</string>
+    <string name="login_button">Accedi</string>
+    <string name="login_footer_prefix">"Accedendo, accetti i nostri "</string>
+    <string name="login_footer_terms">termini di servizio</string>
+    <string name="login_footer_and">" e la nostra "</string>
+    <string name="login_footer_privacy">informativa sulla privacy</string>
+    <string name="login_footer_suffix">.</string>
+
+    <!-- Common Actions -->
+    <string name="action_ok">OK</string>
+    <string name="action_cancel">Annulla</string>
+    <string name="action_save">Salva</string>
+    <string name="action_delete">Elimina</string>
+    <string name="action_unlock">Sblocca</string>
+    <string name="action_accept">Accetta</string>
+    <string name="action_reject">Rifiuta</string>
+    <string name="action_continue">Continua</string>
+    <string name="action_retry">Riprova connessione</string>
+
+    <!-- Tabs / Navigation -->
+    <string name="tab_home">Home</string>
+    <string name="tab_oasis">Oasi</string>
+    <string name="tab_shop">Negozio</string>
+    <string name="tab_inventory">Inventario</string>
+    <string name="tab_journey">Viaggio</string>
+    <string name="tab_friends">Amici</string>
+    <string name="nav_settings">Impostazioni</string>
+
+    <!-- Home Screen -->
+    <string name="home_start_focus">Inizia focus</string>
+    <string name="home_ready_prompt">Pronto per una sessione tranquilla? Concentriamoci insieme.</string>
+
+    <!-- Friends Screen -->
+    <string name="friends_add_title">Aggiungi un amico</string>
+    <string name="friends_enter_code_hint">Inserisci codice amico</string>
+    <string name="friends_send_request">Invia richiesta</string>
+    <string name="friends_pending_requests">Richieste in sospeso (%1$d)</string>
+    <string name="friends_neighbourhood_title">Il tuo quartiere (%1$d)</string>
+    <string name="friends_connect_code_label">IL TUO CODICE DI CONNESSIONE</string>
+    <string name="friends_friend_code_clipboard">Codice amico</string>
+    <string name="friends_request_sent">Richiesta di amicizia inviata!</string>
+    <string name="friends_report_user">Segnala utente</string>
+    <string name="friends_report_success">Segnalazione inviata. Grazie.</string>
+    <string name="friends_block_user">Blocca utente</string>
+    <string name="friends_no_sessions">Appena arrivato! Ancora nessuna sessione.</string>
+    <string name="friends_last_focus">Ultimo focus: %1$s \nConcentrato: %2$dm \nUltima attività: %3$s</string>
+
+    <!-- Report Reasons -->
+    <string name="report_reason_name">Nome inappropriato</string>
+    <string name="report_reason_task">Attività inappropriata</string>
+    <string name="report_reason_harassment">Molestie</string>
+    <string name="report_reason_spam">Spam</string>
+    <string name="report_reason_other">Altro</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_title">Impostazioni</string>
+    <string name="settings_edit_username">Modifica nome utente</string>
+    <string name="settings_delete_account">Elimina account</string>
+    <string name="settings_delete_confirm_text">Sei sicuro? Questo eliminerà permanentemente le tue statistiche, le foglie e la lista amici. L\'azione non è reversibile.</string>
+
+    <!-- Shop / Themes -->
+    <string name="shop_unlock_theme_title">Sblocca tema</string>
+    <string name="shop_unlock_theme_confirm">Vuoi sbloccare \'%1$s\' per %2$d foglie?</string>
+    <string name="shop_owned_themes">Temi posseduti</string>
+    <string name="shop_basic_theme">Tema base</string>
+    <string name="shop_leaves_price">%1$d Foglie</string>
+
+    <string name="shop_supporter_title">Sostenitore Cozy</string>
+    <string name="shop_supporter_active">Grazie per essere un sostenitore! ✨ Il tuo contributo aiuta a mantenere Cozy Doubling indipendente, senza pubblicità e tranquillo per tutti.</string>
+    <string name="shop_supporter_inactive">Sostieni lo sviluppo indipendente e sblocca tutti i temi premium per la durata del tuo pass. Il tuo contributo aiuta a mantenere Cozy Doubling senza pubblicità e tranquillo.🌱</string>
+    <string name="shop_get_pass">Ottieni Pass</string>
+    <string name="pass_monthly">Mensile</string>
+    <string name="pass_yearly">Annuale</string>
+    <string name="pass_lifetime">A vita</string>
+    <string name="shop_premium_theme">Tema Premium</string>
+
+    <!-- Inventory -->
+    <string name="inventory_equipped">Equipaggiato</string>
+    <string name="inventory_themes_count">%1$d temi</string>
+
+    <!-- Summary Screen -->
+    <string name="summary_header">Ottimo lavoro per essere venuto oggi!</string>
+    <string name="summary_subheader">Il tuo giardino sta crescendo.</string>
+    <string name="summary_leaves_earned">FOGLIE GUADAGNATE</string>
+    <string name="summary_title">Riepilogo sessione</string>
+    <string name="summary_time_focused">Tempo di focus</string>
+    <string name="summary_tasks_finished">Compiti completati</string>
+    <string name="summary_tasks_count">%1$d compiti</string>
+    <string name="summary_time_format_hours">%1$dh %2$dm</string>
+    <string name="summary_time_format_minutes">%1$dm</string>
+
+    <!-- Focus Room -->
+    <string name="room_next_task_hint">Su cosa lavorerai adesso?</string>
+    <string name="room_cozy_room">Stanza Accogliente</string>
+    <string name="room_focusing_now">%1$d si stanno concentrando</string>
+    <string name="room_participant_stats">%1$s • %2$d/%3$d completati</string>
+    <string name="room_my_tasks">I Miei Compiti</string>
+    <string name="room_tasks_done">%1$d/%2$d Completati</string>
+    <string name="room_leave_label">Esci</string>
+    <string name="room_options_label">Opzioni</string>
+    <string name="room_active_task_label">Attiva</string>
+    <string name="room_focusing">Concentrazione</string>
+    <string name="room_no_active_task">Nessun compito attivo</string>
+
+    <!-- Network Error -->
+    <string name="network_error_title">Problema di connessione</string>
+    <string name="network_no_internet">Nessuna connessione Internet</string>
+    <string name="network_error_message">Sembra che tu sia offline. Controlla la tua connessione e riprova.</string>
+    <string name="network_server_error">Abbiamo problemi a raggiungere i nostri server. Riprova tra un momento.</string>
+    <string name="network_loading_message">Controllo della connessione e aggiornamento dei dati.</string>
+    <string name="status_loading">Caricamento&#8230;</string>
+    <string name="network_retrying">Riprovo&#8230;</string>
+    <string name="network_wait">Attendere prego&#8230;</string>
+    <string name="settings_group_account">DETTAGLI ACCOUNT</string>
+    <string name="settings_group_session">AZIONI SESSIONE</string>
+    <string name="settings_group_legal">LEGALE E INFORMAZIONI</string>
+    <string name="settings_group_danger">ZONA DI PERICOLO</string>
+    <string name="settings_label_username">Nome visualizzato</string>
+    <string name="settings_label_subscription">Gestisci abbonamento</string>
+    <string name="settings_label_restore">Ripristina acquisti</string>
+    <string name="settings_label_signout">Disconnetti</string>
+    <string name="settings_label_privacy">Informativa sulla privacy</string>
+    <string name="settings_label_terms">Termini di servizio</string>
+    <string name="settings_label_version">Versione</string>
+    <string name="settings_subscription_active">Sostenitore attivo</string>
+    <string name="settings_restore_value">Sincronizza con Google Play</string>
+    <string name="settings_restore_success">Acquisti ripristinati con successo!</string>
+    <string name="settings_restore_none">Nessun acquisto attivo trovato da ripristinare.</string>
+    <string name="settings_danger_warning">Una volta eliminato il tuo account, non potrai tornare indietro. Per favore, assicurati di volerlo fare.</string>
+    <string name="settings_delete_button">Elimina account</string>
+</resources>

@@ -10,10 +10,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.grepho.cozydoubling.R
 import com.grepho.cozydoubling.core.network.ConnectionStateManager
 
 @Composable
@@ -25,22 +27,24 @@ fun ConnectionErrorDialog(
 
     val isRefreshing = state is ConnectionStateManager.ConnectionState.Refreshing
 
-    val (title, message, icon) = when (state) {
-        ConnectionStateManager.ConnectionState.Offline -> Triple(
-            "No Internet",
-            "It looks like you're offline. Please check your connection and try again.",
-            Icons.Default.SignalWifiOff
-        )
-        ConnectionStateManager.ConnectionState.ServerError -> Triple(
-            "Connection Problem",
-            "We're having trouble reaching our servers. Please try again in a moment.",
-            Icons.Default.CloudOff
-        )
-        ConnectionStateManager.ConnectionState.Refreshing -> Triple(
-            "Retrying...",
-            "Checking connection and refreshing your data.",
-            Icons.Default.CloudOff // Or a different icon
-        )
+    val title = when (state) {
+        ConnectionStateManager.ConnectionState.Offline -> stringResource(R.string.network_no_internet)
+        ConnectionStateManager.ConnectionState.ServerError -> stringResource(R.string.network_error_title)
+        ConnectionStateManager.ConnectionState.Refreshing -> stringResource(R.string.network_retrying)
+        else -> return
+    }
+
+    val message = when (state) {
+        ConnectionStateManager.ConnectionState.Offline -> stringResource(R.string.network_error_message)
+        ConnectionStateManager.ConnectionState.ServerError -> stringResource(R.string.network_server_error)
+        ConnectionStateManager.ConnectionState.Refreshing -> stringResource(R.string.network_loading_message)
+        else -> return
+    }
+
+    val icon = when (state) {
+        ConnectionStateManager.ConnectionState.Offline -> Icons.Default.SignalWifiOff
+        ConnectionStateManager.ConnectionState.ServerError -> Icons.Default.CloudOff
+        ConnectionStateManager.ConnectionState.Refreshing -> Icons.Default.CloudOff
         else -> return
     }
 
@@ -105,9 +109,9 @@ fun ConnectionErrorDialog(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     if (isRefreshing) {
-                        Text("Please wait...")
+                        Text(stringResource(R.string.network_wait))
                     } else {
-                        Text("Retry Connection")
+                        Text(stringResource(R.string.action_retry))
                     }
                 }
             }

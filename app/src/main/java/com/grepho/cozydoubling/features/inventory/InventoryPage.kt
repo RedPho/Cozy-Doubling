@@ -18,9 +18,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.grepho.cozydoubling.R
 import com.grepho.cozydoubling.features.shop.ThemeMockupPreview
 import androidx.compose.foundation.lazy.items
 import com.grepho.cozydoubling.features.shop.ShopItemUiState
@@ -53,10 +55,10 @@ fun InventoryPage(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(text = "Owned Themes", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Text(text = stringResource(R.string.shop_owned_themes), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = CircleShape) {
                     Text(
-                        text = "${ownedThemes.size} Themes",
+                        text = stringResource(R.string.inventory_themes_count, ownedThemes.size),
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                         style = MaterialTheme.typography.labelMedium
                     )
@@ -120,7 +122,7 @@ fun ThemeInventoryCard(
                         ) {
                             Icon(Icons.Default.CheckCircle, null, tint = Color.White, modifier = Modifier.size(16.dp))
                             Spacer(Modifier.width(4.dp))
-                            Text("Equipped", style = MaterialTheme.typography.labelSmall, color = Color.White)
+                            Text(stringResource(R.string.inventory_equipped), style = MaterialTheme.typography.labelSmall, color = Color.White)
                         }
                     }
                 } else {

@@ -7,6 +7,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
 
+import androidx.annotation.StringRes
+import com.grepho.cozydoubling.R
+
 // 1. Every single destination in your app
 sealed class Screen(val route: String) {
     object Home : Screen("home")
@@ -20,9 +23,9 @@ sealed class Screen(val route: String) {
 }
 
 // 2. Just the destinations that appear on the Bottom Bar
-enum class BottomTab(val route: String, val label: String, val icon: ImageVector) {
-    HOME(Screen.Home.route, "Home", Icons.Rounded.Home),
-    OASIS(Screen.Oasis.route, "Oasis", Icons.Rounded.Spa)
+enum class BottomTab(val route: String, @StringRes val labelRes: Int, val icon: ImageVector) {
+    HOME(Screen.Home.route, R.string.tab_home, Icons.Rounded.Home),
+    OASIS(Screen.Oasis.route, R.string.tab_oasis, Icons.Rounded.Spa)
 }
 
 // 3. Your helper function so the tabs don't stack up infinitely when clicked

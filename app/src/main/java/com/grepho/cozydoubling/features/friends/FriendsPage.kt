@@ -26,11 +26,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.grepho.cozydoubling.R
 import com.grepho.cozydoubling.core.profile.Profile
 import com.grepho.cozydoubling.core.profile.ProfileRepository
 import kotlinx.coroutines.launch
@@ -83,6 +85,7 @@ fun FriendsPage(
     var newFriendTag by remember { mutableStateOf("") }
     val clipboard = LocalClipboard.current
     val scope = rememberCoroutineScope()
+    val clipboardLabel = stringResource(R.string.friends_friend_code_clipboard)
 
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
@@ -100,7 +103,7 @@ fun FriendsPage(
                         modifier = Modifier.padding(24.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text(text = "YOUR CONNECT CODE", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(text = stringResource(R.string.friends_connect_code_label), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(modifier = Modifier.height(8.dp))
                         Surface(
                             shape = CircleShape,
@@ -108,7 +111,7 @@ fun FriendsPage(
                             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                             modifier = Modifier.clickable {
                                 scope.launch {
-                                    val clipData = ClipData.newPlainText("Friend Code", myTag)
+                                    val clipData = ClipData.newPlainText(clipboardLabel, myTag)
                                     clipboard.setClipEntry(ClipEntry(clipData))
                                 }
                             }
@@ -119,7 +122,7 @@ fun FriendsPage(
                             ) {
                                 Text(text = myTag, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                                 Spacer(modifier = Modifier.width(12.dp))
-                                Icon(Icons.Default.ContentCopy, contentDescription = "Copy", modifier = Modifier.size(18.dp), tint = Color.Gray)
+                                Icon(Icons.Default.ContentCopy, contentDescription = stringResource(R.string.action_ok), modifier = Modifier.size(18.dp), tint = Color.Gray)
                             }
                         }
                     }
@@ -133,7 +136,7 @@ fun FriendsPage(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.MailOutline, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color.Gray)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(text = "Pending Requests (${pendingRequests.size})", style = MaterialTheme.typography.titleSmall)
+                        Text(text = stringResource(R.string.friends_pending_requests, pendingRequests.size), style = MaterialTheme.typography.titleSmall)
                     }
                     Spacer(modifier = Modifier.height(16.dp))
                 }
@@ -154,7 +157,7 @@ fun FriendsPage(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.Groups, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color.Gray)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = "Your Neighbourhood (${friendsList.size})", style = MaterialTheme.typography.titleSmall)
+                    Text(text = stringResource(R.string.friends_neighbourhood_title, friendsList.size), style = MaterialTheme.typography.titleSmall)
                 }
                 Spacer(modifier = Modifier.height(16.dp))
             }
@@ -186,12 +189,12 @@ fun FriendsPage(
     if (showAddDialog) {
         AlertDialog(
             onDismissRequest = { showAddDialog = false },
-            title = { Text("Add a Friend") },
+            title = { Text(stringResource(R.string.friends_add_title)) },
             text = {
                 OutlinedTextField(
                     value = newFriendTag,
                     onValueChange = { newFriendTag = it },
-                    placeholder = { Text("Enter Friend Code") },
+                    placeholder = { Text(stringResource(R.string.friends_enter_code_hint)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp)
@@ -206,7 +209,7 @@ fun FriendsPage(
                     },
                     shape = CircleShape
                 ) {
-                    Text("Send Request")
+                    Text(stringResource(R.string.friends_send_request))
                 }
             },
             dismissButton = {
@@ -216,7 +219,7 @@ fun FriendsPage(
                         showAddDialog = false
                     }
                 ) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.action_cancel))
                 }
             }
         )
@@ -244,11 +247,11 @@ fun PendingRequestCard(
                 Text(text = "#$tag", style = MaterialTheme.typography.labelSmall)
             }
             TextButton(onClick = onReject) {
-                Text("Reject", color = MaterialTheme.colorScheme.error)
+                Text(stringResource(R.string.action_reject), color = MaterialTheme.colorScheme.error)
             }
             Spacer(modifier = Modifier.width(8.dp))
             Button(onClick = onAccept, shape = CircleShape) {
-                Text("Accept")
+                Text(stringResource(R.string.action_accept))
             }
         }
     }
@@ -306,10 +309,14 @@ fun FriendCard(
 
                 // The "Story" logic
                 val storyText = if (friend.lastTaskText != null) {
-                    // TODO: Format 'lastSessionDate' to be relative like "Yesterday" later
-                    "Last focus time: ${friend.lastSessionDate?.take(10)} \nFocused: ${friend.lastSessionDuration}m \nLast Task: ${friend.lastTaskText}"
+                    stringResource(
+                        R.string.friends_last_focus,
+                        friend.lastSessionDate?.take(10) ?: "",
+                        friend.lastSessionDuration ?: 0,
+                        friend.lastTaskText
+                    )
                 } else {
-                    "Just joined! No sessions yet."
+                    stringResource(R.string.friends_no_sessions)
                 }
 
                 Text(
@@ -331,7 +338,7 @@ fun FriendCard(
                     onDismissRequest = { showMenu = false }
                 ) {
                     DropdownMenuItem(
-                        text = { Text("Report User") },
+                        text = { Text(stringResource(R.string.friends_report_user)) },
                         onClick = {
                             showMenu = false
                             showReportDialog = true
@@ -339,7 +346,7 @@ fun FriendCard(
                         leadingIcon = { Icon(Icons.Default.Flag, contentDescription = null) }
                     )
                     DropdownMenuItem(
-                        text = { Text("Block User") },
+                        text = { Text(stringResource(R.string.friends_block_user)) },
                         onClick = {
                             showMenu = false
                             onBlock()
@@ -354,8 +361,8 @@ fun FriendCard(
     if (showReportDialog) {
         ReportDialog(
             onDismiss = { showReportDialog = false },
-            onReport = { reason ->
-                onReport(reason)
+            onReport = { reasonRes ->
+                onReport(reasonRes)
                 showReportDialog = false
             }
         )
@@ -367,14 +374,21 @@ fun ReportDialog(
     onDismiss: () -> Unit,
     onReport: (String) -> Unit
 ) {
-    val reasons = listOf("Inappropriate Name", "Inappropriate Task", "Harassment", "Spam", "Other")
+    val reasons = listOf(
+        R.string.report_reason_name,
+        R.string.report_reason_task,
+        R.string.report_reason_harassment,
+        R.string.report_reason_spam,
+        R.string.report_reason_other
+    )
     
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Report User") },
+        title = { Text(stringResource(R.string.friends_report_user)) },
         text = {
             Column {
-                reasons.forEach { reason ->
+                reasons.forEach { reasonRes ->
+                    val reason = stringResource(reasonRes)
                     TextButton(
                         onClick = { onReport(reason) },
                         modifier = Modifier.fillMaxWidth()
@@ -387,7 +401,7 @@ fun ReportDialog(
         confirmButton = {},
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.action_cancel))
             }
         }
     )

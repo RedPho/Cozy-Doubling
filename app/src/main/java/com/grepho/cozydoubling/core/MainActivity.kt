@@ -23,10 +23,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.lifecycle.lifecycleScope
 import com.grepho.cozydoubling.BuildConfig
+import com.grepho.cozydoubling.R
 import com.grepho.cozydoubling.core.components.ConnectionErrorDialog
 import com.grepho.cozydoubling.core.economy.EconomyRepository
 import com.grepho.cozydoubling.core.economy.ThemeState
@@ -120,12 +122,12 @@ fun CozyDoublingApp(sessionStatus: SessionStatus) {
                             icon = {
                                 Icon(
                                     imageVector = tab.icon,
-                                    contentDescription = tab.label
+                                    contentDescription = stringResource(tab.labelRes)
                                 )
                             },
                             label = {
                                 Text(
-                                    text = tab.label,
+                                    text = stringResource(tab.labelRes),
                                     // Use our new typography for the label
                                     style = MaterialTheme.typography.labelMedium
                                 )

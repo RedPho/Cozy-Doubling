@@ -1,3 +1,142 @@
 <resources>
     <string name="app_name">Cozy Doubling</string>
+
+    <!-- Auth / Login -->
+    <string name="login_welcome">Welcome to Cozy Doubling</string>
+    <string name="login_description">A quiet space to focus together, unhurried and calm.</string>
+    <string name="login_google_signin">Sign in with Google</string>
+    <string name="login_reviewer_access">Reviewer Access</string>
+    <string name="login_error_title">Login Error</string>
+    <string name="login_email_label">Email</string>
+    <string name="login_password_label">Password</string>
+    <string name="login_button">Login</string>
+    <string name="login_footer_prefix">"By signing in, you agree to our "</string>
+    <string name="login_footer_terms">terms of service</string>
+    <string name="login_footer_and">" and "</string>
+    <string name="login_footer_privacy">privacy policy</string>
+    <string name="login_footer_suffix">.</string>
+
+    <!-- Common Actions -->
+    <string name="action_ok">OK</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_save">Save</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_unlock">Unlock</string>
+    <string name="action_accept">Accept</string>
+    <string name="action_reject">Reject</string>
+    <string name="action_continue">Continue</string>
+    <string name="action_retry">Retry Connection</string>
+
+    <!-- Tabs / Navigation -->
+    <string name="tab_home">Home</string>
+    <string name="tab_oasis">Oasis</string>
+    <string name="tab_shop">Shop</string>
+    <string name="tab_inventory">Inventory</string>
+    <string name="tab_journey">Journey</string>
+    <string name="tab_friends">Friends</string>
+    <string name="nav_settings">Settings</string>
+
+    <!-- Home Screen -->
+    <string name="home_start_focus">Start Focus</string>
+    <string name="home_ready_prompt">Ready for a quiet session? Lets focus together.</string>
+
+    <!-- Friends Screen -->
+    <string name="friends_add_title">Add a Friend</string>
+    <string name="friends_enter_code_hint">Enter Friend Code</string>
+    <string name="friends_send_request">Send Request</string>
+    <string name="friends_pending_requests">Pending Requests (%1$d)</string>
+    <string name="friends_neighbourhood_title">Your Neighbourhood (%1$d)</string>
+    <string name="friends_connect_code_label">YOUR CONNECT CODE</string>
+    <string name="friends_friend_code_clipboard">Friend Code</string>
+    <string name="friends_request_sent">Friend request sent!</string>
+    <string name="friends_report_user">Report User</string>
+    <string name="friends_report_success">Report submitted. Thank you.</string>
+    <string name="friends_block_user">Block User</string>
+    <string name="friends_no_sessions">Just joined! No sessions yet.</string>
+    <string name="friends_last_focus">Last focus time: %1$s \nFocused: %2$dm \nLast Task: %3$s</string>
+
+    <!-- Report Reasons -->
+    <string name="report_reason_name">Inappropriate Name</string>
+    <string name="report_reason_task">Inappropriate Task</string>
+    <string name="report_reason_harassment">Harassment</string>
+    <string name="report_reason_spam">Spam</string>
+    <string name="report_reason_other">Other</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_edit_username">Edit Username</string>
+    <string name="settings_delete_account">Delete Account</string>
+    <string name="settings_delete_confirm_text">Are you sure? This will permanently delete your stats, leaves, and friends list. This cannot be undone.</string>
+
+    <!-- Shop / Themes -->
+    <string name="shop_unlock_theme_title">Unlock Theme</string>
+    <string name="shop_unlock_theme_confirm">Would you like to unlock \'%1$s\' for %2$d leaves?</string>
+    <string name="shop_owned_themes">Owned Themes</string>
+    <string name="shop_basic_theme">Basic Theme</string>
+    <string name="shop_leaves_price">%1$d Leaves</string>
+
+    <string name="shop_supporter_title">Cozy Supporter</string>
+    <string name="shop_supporter_active">Thank you for being a supporter! ✨ Your contribution helps keep Cozy Doubling independent, ad-free, and calm for everyone.</string>
+    <string name="shop_supporter_inactive">Support independent development and unlock all premium themes for the duration of your pass. Your contribution helps keep Cozy Doubling ad-free and calm.🌱</string>
+    <string name="shop_get_pass">Get Pass</string>
+    <string name="shop_premium_theme">Premium Theme</string>
+
+    <string name="pass_monthly">Monthly</string>
+    <string name="pass_yearly">Yearly</string>
+    <string name="pass_lifetime">Lifetime</string>
+
+    <!-- Inventory -->
+    <string name="inventory_equipped">Equipped</string>
+    <string name="inventory_themes_count">%1$d Themes</string>
+
+    <!-- Summary Screen -->
+    <string name="summary_header">Great job showing up today!</string>
+    <string name="summary_subheader">Your garden is growing.</string>
+    <string name="summary_leaves_earned">LEAVES EARNED</string>
+    <string name="summary_title">Session Summary</string>
+    <string name="summary_time_focused">Time Focused</string>
+    <string name="summary_tasks_finished">Tasks Finished</string>
+    <string name="summary_tasks_count">%1$d tasks</string>
+    <string name="summary_time_format_hours">%1$dh %2$dm</string>
+    <string name="summary_time_format_minutes">%1$dm</string>
+
+    <!-- Focus Room -->
+    <string name="room_next_task_hint">What are you working on next?</string>
+    <string name="room_cozy_room">Cozy Room</string>
+    <string name="room_focusing_now">%1$d focusing now</string>
+    <string name="room_participant_stats">%1$s • %2$d/%3$d done</string>
+    <string name="room_my_tasks">My Focus Tasks</string>
+    <string name="room_tasks_done">%1$d/%2$d Done</string>
+    <string name="room_leave_label">Leave</string>
+    <string name="room_options_label">Options</string>
+    <string name="room_active_task_label">Active</string>
+    <string name="room_focusing">Focusing</string>
+    <string name="room_no_active_task">No active task</string>
+
+    <!-- Network Error -->
+    <string name="network_error_title">Connection Problem</string>
+    <string name="network_no_internet">No Internet</string>
+    <string name="network_error_message">It looks like you\'re offline. Please check your connection and try again.</string>
+    <string name="network_server_error">We\'re having trouble reaching our servers. Please try again in a moment.</string>
+    <string name="network_loading_message">Checking connection and refreshing your data.</string>
+    <string name="status_loading">Loading&#8230;</string>
+    <string name="network_retrying">Retrying&#8230;</string>
+    <string name="network_wait">Please wait&#8230;</string>
+    <string name="settings_group_account">ACCOUNT DETAILS</string>
+    <string name="settings_group_session">SESSION ACTIONS</string>
+    <string name="settings_group_legal">LEGAL &amp; ABOUT</string>
+    <string name="settings_group_danger">DANGER ZONE</string>
+    <string name="settings_label_username">Display Name</string>
+    <string name="settings_label_subscription">Manage Subscription</string>
+    <string name="settings_label_restore">Restore Purchases</string>
+    <string name="settings_label_signout">Sign Out</string>
+    <string name="settings_label_privacy">Privacy Policy</string>
+    <string name="settings_label_terms">Terms of Service</string>
+    <string name="settings_label_version">Version</string>
+    <string name="settings_subscription_active">Active Supporter</string>
+    <string name="settings_restore_value">Sync with Google Play</string>
+    <string name="settings_restore_success">Purchases restored successfully!</string>
+    <string name="settings_restore_none">No active purchases found to restore.</string>
+    <string name="settings_danger_warning">Once you delete your account, there is no going back. Please be certain.</string>
+    <string name="settings_delete_button">Delete Account</string>
 </resources>
