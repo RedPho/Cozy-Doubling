@@ -24,10 +24,12 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.grepho.cozydoubling.BuildConfig
+import com.grepho.cozydoubling.R
 import com.grepho.cozydoubling.core.Supabase
 import io.github.jan.supabase.compose.auth.composable.NativeSignInResult
 import io.github.jan.supabase.compose.auth.composable.rememberSignInWithGoogle
@@ -120,7 +122,7 @@ fun LoginPage(
 
                 // --- App Name ---
                 Text(
-                    text = "Cozy Doubling",
+                    text = stringResource(R.string.app_name),
                     style = MaterialTheme.typography.titleLarge,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold
@@ -130,7 +132,7 @@ fun LoginPage(
 
                 // --- Welcome Text ---
                 Text(
-                    text = "Welcome to Cozy Doubling",
+                    text = stringResource(R.string.login_welcome),
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center
@@ -139,7 +141,7 @@ fun LoginPage(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
-                    text = "A quiet space to focus together, unhurried and calm.",
+                    text = stringResource(R.string.login_description),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
                     textAlign = TextAlign.Center,
@@ -173,7 +175,7 @@ fun LoginPage(
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(
-                            text = "Sign in with Google",
+                            text = stringResource(R.string.login_google_signin),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Medium
                         )
@@ -187,7 +189,7 @@ fun LoginPage(
                     onClick = { showReviewerDialog = true }
                 ) {
                     Text(
-                        text = "Reviewer Access",
+                        text = stringResource(R.string.login_reviewer_access),
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                     )
@@ -198,23 +200,23 @@ fun LoginPage(
                 // --- Footer Text ---
                 val uriHandler = LocalUriHandler.current
                 val annotatedString = buildAnnotatedString {
-                    append("By signing in, you agree to our ")
+                    append(stringResource(R.string.login_footer_prefix))
                     
 
                     pushStringAnnotation(tag = "URL", annotation = BuildConfig.TERMS_OF_SERVICE_URL)
                     withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.primary, textDecoration = TextDecoration.Underline)) {
-                        append("terms of service")
+                        append(stringResource(R.string.login_footer_terms))
                     }
                     pop()
                     
-                    append(" and ")
+                    append(stringResource(R.string.login_footer_and))
 
                     pushStringAnnotation(tag = "URL", annotation = BuildConfig.PRIVACY_POLICY_URL)
                     withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.primary, textDecoration = TextDecoration.Underline)) {
-                        append("privacy policy")
+                        append(stringResource(R.string.login_footer_privacy))
                     }
                     pop()
-                    append(".")
+                    append(stringResource(R.string.login_footer_suffix))
                 }
 
                 ClickableText(
@@ -247,11 +249,11 @@ fun LoginPage(
     if (error != null) {
         AlertDialog(
             onDismissRequest = onClearError,
-            title = { Text("Login Error") },
+            title = { Text(stringResource(R.string.login_error_title)) },
             text = { Text(error) },
             confirmButton = {
                 TextButton(onClick = onClearError) {
-                    Text("OK")
+                    Text(stringResource(R.string.action_ok))
                 }
             }
         )
@@ -268,20 +270,20 @@ fun ReviewerLoginDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Reviewer Access") },
+        title = { Text(stringResource(R.string.login_reviewer_access)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = email,
                     onValueChange = { email = it },
-                    label = { Text("Email") },
+                    label = { Text(stringResource(R.string.login_email_label)) },
                     modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
                 )
                 OutlinedTextField(
                     value = password,
                     onValueChange = { password = it },
-                    label = { Text("Password") },
+                    label = { Text(stringResource(R.string.login_password_label)) },
                     modifier = Modifier.fillMaxWidth(),
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
@@ -293,12 +295,12 @@ fun ReviewerLoginDialog(
                 onClick = { onLogin(email, password) },
                 enabled = email.isNotBlank() && password.isNotBlank()
             ) {
-                Text("Login")
+                Text(stringResource(R.string.login_button))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.action_cancel))
             }
         }
     )

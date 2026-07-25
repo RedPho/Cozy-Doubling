@@ -21,6 +21,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -28,6 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.grepho.cozydoubling.BuildConfig
+import com.grepho.cozydoubling.R
 
 // --- THE SCREEN ENTRY POINT ---
 @Composable
@@ -75,10 +77,10 @@ fun SettingsPage(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Cozy Doubling", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary) },
+                title = { Text(stringResource(R.string.app_name), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_ok))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
@@ -94,7 +96,7 @@ fun SettingsPage(
         ) {
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "Settings",
+                text = stringResource(R.string.settings_title),
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Bold
@@ -102,9 +104,9 @@ fun SettingsPage(
             Spacer(modifier = Modifier.height(32.dp))
 
             // --- ACCOUNT DETAILS ---
-            SettingsGroup(title = "ACCOUNT DETAILS") {
+            SettingsGroup(title = stringResource(R.string.settings_group_account)) {
                 SettingsItem(
-                    label = "Display Name",
+                    label = stringResource(R.string.settings_label_username),
                     value = uiState.username,
                     icon = Icons.Default.Edit,
                     onClick = {
@@ -115,16 +117,16 @@ fun SettingsPage(
                 
                 if (uiState.isSupporter) {
                     SettingsItem(
-                        label = "Manage Subscription",
-                        value = "Active Supporter",
+                        label = stringResource(R.string.settings_label_subscription),
+                        value = stringResource(R.string.settings_subscription_active),
                         icon = Icons.Default.CardMembership,
                         onClick = onManageSubscription
                     )
                 }
 
                 SettingsItem(
-                    label = "Restore Purchases",
-                    value = "Sync with Google Play",
+                    label = stringResource(R.string.settings_label_restore),
+                    value = stringResource(R.string.settings_restore_value),
                     icon = Icons.Default.Refresh,
                     onClick = onRestorePurchases
                 )
@@ -133,9 +135,9 @@ fun SettingsPage(
             Spacer(modifier = Modifier.height(24.dp))
 
             // --- SESSION ACTIONS ---
-            SettingsGroup(title = "SESSION ACTIONS") {
+            SettingsGroup(title = stringResource(R.string.settings_group_session)) {
                 SettingsItem(
-                    label = "Sign Out",
+                    label = stringResource(R.string.settings_label_signout),
                     icon = Icons.AutoMirrored.Filled.ExitToApp,
                     onClick = onSignOut
                 )
@@ -144,14 +146,14 @@ fun SettingsPage(
             Spacer(modifier = Modifier.height(24.dp))
 
             // --- LEGAL & ABOUT ---
-            SettingsGroup(title = "LEGAL & ABOUT") {
+            SettingsGroup(title = stringResource(R.string.settings_group_legal)) {
                 SettingsItem(
-                    label = "Privacy Policy",
+                    label = stringResource(R.string.settings_label_privacy),
                     icon = Icons.Default.Policy,
                     onClick = { onOpenUrl(BuildConfig.PRIVACY_POLICY_URL) }
                 )
                 SettingsItem(
-                    label = "Terms of Service",
+                    label = stringResource(R.string.settings_label_terms),
                     icon = Icons.Default.Description,
                     onClick = { onOpenUrl(BuildConfig.TERMS_OF_SERVICE_URL) }
                 )
@@ -173,7 +175,7 @@ fun SettingsPage(
                 } ?: 1
 
                 SettingsItem(
-                    label = "Version",
+                    label = stringResource(R.string.settings_label_version),
                     value = "$version ($code)",
                     icon = Icons.Default.Info,
                     onClick = { /* No-op */ }
@@ -191,14 +193,14 @@ fun SettingsPage(
             ) {
                 Column(modifier = Modifier.padding(24.dp)) {
                     Text(
-                        text = "DANGER ZONE",
+                        text = stringResource(R.string.settings_group_danger),
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.error,
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "Once you delete your account, there is no going back. Please be certain.",
+                        text = stringResource(R.string.settings_danger_warning),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -209,7 +211,7 @@ fun SettingsPage(
                         shape = CircleShape,
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                     ) {
-                        Text("Delete Account", style = MaterialTheme.typography.titleMedium)
+                        Text(stringResource(R.string.settings_delete_button), style = MaterialTheme.typography.titleMedium)
                     }
                 }
             }
@@ -223,7 +225,7 @@ fun SettingsPage(
     if (showUsernameDialog) {
         AlertDialog(
             onDismissRequest = { showUsernameDialog = false },
-            title = { Text("Edit Username") },
+            title = { Text(stringResource(R.string.settings_edit_username)) },
             text = {
                 OutlinedTextField(
                     value = tempUsername,
@@ -239,12 +241,12 @@ fun SettingsPage(
                         showUsernameDialog = false
                     }
                 ) {
-                    Text("Save")
+                    Text(stringResource(R.string.action_save))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showUsernameDialog = false }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.action_cancel))
                 }
             }
         )
@@ -253,8 +255,8 @@ fun SettingsPage(
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
-            title = { Text("Delete Account") },
-            text = { Text("Are you sure? This will permanently delete your stats, leaves, and friends list. This cannot be undone.") },
+            title = { Text(stringResource(R.string.settings_delete_account)) },
+            text = { Text(stringResource(R.string.settings_delete_confirm_text)) },
             confirmButton = {
                 Button(
                     onClick = {
@@ -263,12 +265,12 @@ fun SettingsPage(
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                 ) {
-                    Text("Delete")
+                    Text(stringResource(R.string.action_delete))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteDialog = false }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.action_cancel))
                 }
             }
         )

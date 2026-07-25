@@ -23,11 +23,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.grepho.cozydoubling.R
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -92,7 +94,11 @@ fun SummaryPage(
     // --- Time Formatting ---
     val hours = uiState.focusedMinutes / 60
     val minutes = uiState.focusedMinutes % 60
-    val timeString = if (hours > 0) "${hours}h ${minutes}m" else "${minutes}m"
+    val timeString = if (hours > 0) {
+        stringResource(R.string.summary_time_format_hours, hours, minutes)
+    } else {
+        stringResource(R.string.summary_time_format_minutes, minutes)
+    }
 
     Column(
         modifier = Modifier
@@ -110,13 +116,13 @@ fun SummaryPage(
         ) {
             // --- Header ---
             Text(
-                text = "Great job showing up today!",
+                text = stringResource(R.string.summary_header),
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.primary,
                 textAlign = TextAlign.Center
             )
             Text(
-                text = "Your garden is growing.",
+                text = stringResource(R.string.summary_subheader),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                 textAlign = TextAlign.Center
@@ -168,7 +174,7 @@ fun SummaryPage(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "LEAVES EARNED",
+                        text = stringResource(R.string.summary_leaves_earned),
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         letterSpacing = 2.sp
@@ -186,7 +192,7 @@ fun SummaryPage(
             ) {
                 Column(modifier = Modifier.padding(24.dp)) {
                     Text(
-                        text = "Session Summary",
+                        text = stringResource(R.string.summary_title),
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.SemiBold
@@ -195,15 +201,15 @@ fun SummaryPage(
 
                     // Time Row
                     SummaryRow(
-                        label = "Time Focused",
+                        label = stringResource(R.string.summary_time_focused),
                         value = timeString,
                         icon = Icons.Default.AccessTime
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     // Tasks Row
                     SummaryRow(
-                        label = "Tasks Finished",
-                        value = "${uiState.tasksFinished} tasks",
+                        label = stringResource(R.string.summary_tasks_finished),
+                        value = stringResource(R.string.summary_tasks_count, uiState.tasksFinished),
                         icon = Icons.Default.CheckCircleOutline
                     )
                 }
@@ -219,7 +225,7 @@ fun SummaryPage(
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Continue", style = MaterialTheme.typography.titleMedium)
+                    Text(stringResource(R.string.action_continue), style = MaterialTheme.typography.titleMedium)
                     Spacer(modifier = Modifier.width(8.dp))
                     Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null)
                 }

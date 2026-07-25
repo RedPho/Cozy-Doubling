@@ -18,6 +18,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.grepho.cozydoubling.core.components.CozyTopBar
 
+import androidx.annotation.StringRes
+import androidx.compose.ui.res.stringResource
+import com.grepho.cozydoubling.R
+
 // Import the Screens instead of the individual UiStates!
 import com.grepho.cozydoubling.features.friends.FriendsScreen
 import com.grepho.cozydoubling.features.home.HomeViewModel
@@ -25,11 +29,11 @@ import com.grepho.cozydoubling.features.inventory.InventoryScreen
 import com.grepho.cozydoubling.features.journey.JourneyScreen
 import com.grepho.cozydoubling.features.shop.ShopScreen
 
-enum class OasisSubTab(val title: String) {
-    SHOP("Shop"),
-    INVENTORY("Inventory"),
-    JOURNEY("Journey"),
-    FRIENDS("Friends")
+enum class OasisSubTab(@StringRes val titleRes: Int) {
+    SHOP(R.string.tab_shop),
+    INVENTORY(R.string.tab_inventory),
+    JOURNEY(R.string.tab_journey),
+    FRIENDS(R.string.tab_friends)
 }
 
 
@@ -45,7 +49,7 @@ fun OasisScreen(
     OasisPage(
         topBar = {
             CozyTopBar(
-                appName = "Cozy Doubling",
+                appName = stringResource(R.string.app_name),
                 currencyCount = profile?.leaves?.toInt() ?: 0,
                 onShopClick = { selectedTab = OasisSubTab.SHOP }, // Switch to shop tab
                 onSettingsClick = onNavigateToSettings
@@ -96,7 +100,7 @@ fun OasisPage(
                         onClick = { onTabSelected(tab) },
                         text = {
                             Text(
-                                text = tab.title,
+                                text = stringResource(tab.titleRes),
                                 style = MaterialTheme.typography.labelLarge,
                                 fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
                                 color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant

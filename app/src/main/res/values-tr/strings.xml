@@ -1,0 +1,141 @@
+<resources>
+    <string name="app_name">Cozy Doubling</string>
+
+    <!-- Auth / Login -->
+    <string name="login_welcome">Cozy Doubling\'e Hoş Geldiniz</string>
+    <string name="login_description">Birlikte odaklanmak için sakin, telaşsız ve huzurlu bir alan.</string>
+    <string name="login_google_signin">Google ile Giriş Yap</string>
+    <string name="login_reviewer_access">İncelemeci Erişimi</string>
+    <string name="login_error_title">Giriş Hatası</string>
+    <string name="login_email_label">E-posta</string>
+    <string name="login_password_label">Şifre</string>
+    <string name="login_button">Giriş Yap</string>
+    <string name="login_footer_prefix">"Giriş yaparak, "</string>
+    <string name="login_footer_terms">hizmet şartlarımızı</string>
+    <string name="login_footer_and">" ve "</string>
+    <string name="login_footer_privacy">gizlilik politikamızı</string>
+    <string name="login_footer_suffix">" kabul etmiş olursunuz."</string>
+
+    <!-- Common Actions -->
+    <string name="action_ok">Tamam</string>
+    <string name="action_cancel">İptal</string>
+    <string name="action_save">Kaydet</string>
+    <string name="action_delete">Sil</string>
+    <string name="action_unlock">Kilidi Aç</string>
+    <string name="action_accept">Kabul Et</string>
+    <string name="action_reject">Reddet</string>
+    <string name="action_continue">Devam Et</string>
+    <string name="action_retry">Bağlantıyı Tekrar Dene</string>
+
+    <!-- Tabs / Navigation -->
+    <string name="tab_home">Ana Sayfa</string>
+    <string name="tab_oasis">Vaha</string>
+    <string name="tab_shop">Mağaza</string>
+    <string name="tab_inventory">Envanter</string>
+    <string name="tab_journey">Yolculuk</string>
+    <string name="tab_friends">Arkadaşlar</string>
+    <string name="nav_settings">Ayarlar</string>
+
+    <!-- Home Screen -->
+    <string name="home_start_focus">Odaklanmaya Başla</string>
+    <string name="home_ready_prompt">Haydi birlikte odaklanalım.</string>
+
+    <!-- Friends Screen -->
+    <string name="friends_add_title">Arkadaş Ekle</string>
+    <string name="friends_enter_code_hint">Arkadaş Kodunu Gir</string>
+    <string name="friends_send_request">İstek Gönder</string>
+    <string name="friends_pending_requests">Bekleyen İstekler (%1$d)</string>
+    <string name="friends_neighbourhood_title">Mahallen (%1$d)</string>
+    <string name="friends_connect_code_label">BAĞLANTI KODUN</string>
+    <string name="friends_friend_code_clipboard">Arkadaş Kodu</string>
+    <string name="friends_request_sent">Arkadaşlık isteği gönderildi!</string>
+    <string name="friends_report_user">Kullanıcıyı Bildir</string>
+    <string name="friends_report_success">Bildirim gönderildi. Teşekkürler.</string>
+    <string name="friends_block_user">Kullanıcıyı Engelle</string>
+    <string name="friends_no_sessions">Yeni katıldı! Henüz seansı yok.</string>
+    <string name="friends_last_focus">Son odaklanma: %1$s \nOdaklanılan: %2$dd \nSon Görev: %3$s</string>
+
+    <!-- Report Reasons -->
+    <string name="report_reason_name">Uygunsuz İsim</string>
+    <string name="report_reason_task">Uygunsuz Görev</string>
+    <string name="report_reason_harassment">Taciz</string>
+    <string name="report_reason_spam">Spam</string>
+    <string name="report_reason_other">Diğer</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_title">Ayarlar</string>
+    <string name="settings_edit_username">Kullanıcı Adını Düzenle</string>
+    <string name="settings_delete_account">Hesabı Sil</string>
+    <string name="settings_delete_confirm_text">Emin misin? Bu işlem istatistiklerini, yapraklarını ve arkadaş listeni kalıcı olarak silecektir. Bu işlem geri alınamaz.</string>
+
+    <!-- Shop / Themes -->
+    <string name="shop_unlock_theme_title">Temanın Kilidini Aç</string>
+    <string name="shop_unlock_theme_confirm">\'%1$s\' temasını %2$d yaprak karşılığında açmak ister misin?</string>
+    <string name="shop_owned_themes">Sahip Olunan Temalar</string>
+    <string name="shop_basic_theme">Temel Tema</string>
+    <string name="shop_leaves_price">%1$d Yaprak</string>
+
+    <string name="shop_supporter_title">Cozy Destekçisi</string>
+    <string name="shop_supporter_active">Destekçi olduğunuz için teşekkürler! ✨ Katkınız Cozy Doubling\'in herkes için bağımsız, reklamsız ve huzurlu kalmasına yardımcı oluyor.</string>
+    <string name="shop_supporter_inactive">Bağımsız geliştirmeyi destekleyin ve destek süreniz boyunca tüm premium temaların kilidini açın. Katkınız Cozy Doubling\'in reklamsız ve huzurlu kalmasına yardımcı olur.🌱</string>
+    <string name="shop_get_pass">Destek ol</string>
+    <string name="pass_monthly">Aylık</string>
+    <string name="pass_yearly">Yıllık</string>
+    <string name="pass_lifetime">Ömür Boyu</string>
+    <string name="shop_premium_theme">Premium Tema</string>
+
+    <!-- Inventory -->
+    <string name="inventory_equipped">Kuşanıldı</string>
+    <string name="inventory_themes_count">%1$d tema</string>
+
+    <!-- Summary Screen -->
+    <string name="summary_header">Harika bir iş çıkardın!</string>
+    <string name="summary_subheader">Bahçen büyüyor.</string>
+    <string name="summary_leaves_earned">KAZANILAN YAPRAKLAR</string>
+    <string name="summary_title">Seans Özeti</string>
+    <string name="summary_time_focused">Odaklanma Süresi</string>
+    <string name="summary_tasks_finished">Bitirilen Görevler</string>
+    <string name="summary_tasks_count">%1$d görev</string>
+    <string name="summary_time_format_hours">%1$ds %2$dd</string>
+    <string name="summary_time_format_minutes">%1$dd</string>
+
+    <!-- Focus Room -->
+    <string name="room_next_task_hint">Ne üzerinde çalışıyorsun?</string>
+    <string name="room_cozy_room">Huzurlu Oda</string>
+    <string name="room_focusing_now">Şu an %1$d kişi odaklanıyor</string>
+    <string name="room_participant_stats">%1$s • %2$d/%3$d tamamlandı</string>
+    <string name="room_my_tasks">Odaklandığım Görevler</string>
+    <string name="room_tasks_done">%1$d/%2$d Tamamlandı</string>
+    <string name="room_leave_label">Ayrıl</string>
+    <string name="room_options_label">Seçenekler</string>
+    <string name="room_active_task_label">Aktif</string>
+    <string name="room_focusing">Odaklanıyor</string>
+    <string name="room_no_active_task">Aktif görev yok</string>
+
+    <!-- Network Error -->
+    <string name="network_error_title">Bağlantı Sorunu</string>
+    <string name="network_no_internet">İnternet Yok</string>
+    <string name="network_error_message">Çevrimdışı görünüyorsunuz. Lütfen bağlantınızı kontrol edip tekrar deneyiniz.</string>
+    <string name="network_server_error">Sunucularımıza ulaşmakta sorun yaşıyoruz. Lütfen birazdan tekrar dene.</string>
+    <string name="network_loading_message">Bağlantı kontrol ediliyor ve verilerin yenileniyor.</string>
+    <string name="status_loading">Yükleniyor&#8230;</string>
+    <string name="network_retrying">Tekrar deneniyor&#8230;</string>
+    <string name="network_wait">Lütfen bekle&#8230;</string>
+    <string name="settings_group_account">HESAP DETAYLARI</string>
+    <string name="settings_group_session">OTURUM İŞLEMLERİ</string>
+    <string name="settings_group_legal">YASAL VE HAKKINDA</string>
+    <string name="settings_group_danger">TEHLİKE BÖLGESİ</string>
+    <string name="settings_label_username">Görünen Ad</string>
+    <string name="settings_label_subscription">Aboneliği Yönet</string>
+    <string name="settings_label_restore">Satın Alımları Geri Yükle</string>
+    <string name="settings_label_signout">Oturumu Kapat</string>
+    <string name="settings_label_privacy">Gizlilik Politikası</string>
+    <string name="settings_label_terms">Hizmet Şartları</string>
+    <string name="settings_label_version">Versiyon</string>
+    <string name="settings_subscription_active">Aktif Destekçi</string>
+    <string name="settings_restore_value">Google Play ile senkronize et</string>
+    <string name="settings_restore_success">Satın alımlar başarıyla geri yüklendi!</string>
+    <string name="settings_restore_none">Geri yüklenecek aktif satın alım bulunamadı.</string>
+    <string name="settings_danger_warning">Hesabınızı bir kez sildiğinizde, geri dönüş yoktur. Lütfen emin olun.</string>
+    <string name="settings_delete_button">Hesabı Sil</string>
+</resources>
