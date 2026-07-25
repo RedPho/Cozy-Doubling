@@ -25,8 +25,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.filled.Stars
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.sp
+import com.grepho.cozydoubling.R
 import kotlinx.coroutines.launch
 
 // --- THE SCREEN ENTRY POINT ---
@@ -99,8 +101,8 @@ fun ShopPage(
     if (pendingThemePurchase != null) {
         AlertDialog(
             onDismissRequest = { pendingThemePurchase = null },
-            title = { Text("Unlock Theme") },
-            text = { Text("Would you like to unlock '${pendingThemePurchase?.name}' for ${pendingThemePurchase?.leafPrice} leaves?") },
+            title = { Text(stringResource(R.string.shop_unlock_theme_title)) },
+            text = { Text(stringResource(R.string.shop_unlock_theme_confirm, pendingThemePurchase?.name ?: "", pendingThemePurchase?.leafPrice ?: 0)) },
             confirmButton = {
                 Button(
                     onClick = {
@@ -108,12 +110,12 @@ fun ShopPage(
                         pendingThemePurchase = null
                     }
                 ) {
-                    Text("Unlock")
+                    Text(stringResource(R.string.action_unlock))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { pendingThemePurchase = null }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.action_cancel))
                 }
             }
         )
@@ -146,7 +148,7 @@ fun ThemeShopCard(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(text = theme.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Text(text = if (theme.isPremium) "Premium Theme" else "Basic Theme", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                    Text(text = stringResource(if (theme.isPremium) R.string.shop_premium_theme else R.string.shop_basic_theme), style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                 }
 
                 if (isAvailable) {
@@ -160,7 +162,7 @@ fun ThemeShopCard(
                             contentColor = if (theme.isPremium) Color.White else MaterialTheme.colorScheme.onSecondaryContainer
                         )
                     ) {
-                        Text(if (theme.isPremium) "Get Pass" else "${theme.leafPrice} Leaves")
+                        Text(if (theme.isPremium) stringResource(R.string.shop_get_pass) else stringResource(R.string.shop_leaves_price, theme.leafPrice))
                     }
                 }
             }
@@ -249,7 +251,7 @@ fun SupporterSectionCard(section: ShopItemUiState.SupporterSection, isSupporter:
                 )
                 Spacer(Modifier.width(16.dp))
                 Text(
-                    text = "Cozy Supporter",
+                    text = stringResource(R.string.shop_supporter_title),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )
@@ -259,14 +261,14 @@ fun SupporterSectionCard(section: ShopItemUiState.SupporterSection, isSupporter:
 
             if (isSupporter) {
                 Text(
-                    text = "Thank you for being a supporter! ✨ Your contribution helps keep Cozy Doubling independent, ad-free, and calm for everyone.",
+                    text = stringResource(R.string.shop_supporter_active),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     lineHeight = 22.sp
                 )
             } else {
                 Text(
-                    text = "Support independent development and unlock all premium themes for the duration of your pass. Your contribution helps keep Cozy Doubling ad-free and calm.\uD83C\uDF31",
+                    text = stringResource(R.string.shop_supporter_inactive),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     lineHeight = 22.sp
@@ -287,9 +289,14 @@ fun SupporterSectionCard(section: ShopItemUiState.SupporterSection, isSupporter:
                             contentPadding = PaddingValues(vertical = 12.dp)
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                // Extracts "Monthly", "Yearly", etc. from name
+                                val label = when {
+                                    pass.name.contains("Monthly", ignoreCase = true) -> stringResource(R.string.pass_monthly)
+                                    pass.name.contains("Yearly", ignoreCase = true) -> stringResource(R.string.pass_yearly)
+                                    pass.name.contains("Lifetime", ignoreCase = true) -> stringResource(R.string.pass_lifetime)
+                                    else -> pass.name.split(" ")[0]
+                                }
                                 Text(
-                                    text = pass.name.split(" ")[0],
+                                    text = label,
                                     style = MaterialTheme.typography.labelSmall
                                 )
                                 Text(

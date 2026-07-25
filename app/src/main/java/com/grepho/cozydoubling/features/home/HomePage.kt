@@ -14,10 +14,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PaintingStyle.Companion.Stroke
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.grepho.cozydoubling.R
 import com.grepho.cozydoubling.core.components.CozyTopBar
 
 // --- THE SCREEN ENTRY POINT ---
@@ -35,7 +37,7 @@ fun HomeScreen(
     HomePage(
         topBar = {
             CozyTopBar(
-                appName = "Cozy Doubling",
+                appName = stringResource(R.string.app_name),
                 // 2. Use the real leaves count!
                 currencyCount = profile?.leaves?.toInt() ?: 0,
                 onShopClick = onNavigateToShop,
@@ -100,7 +102,7 @@ fun HomePage(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Start Focus",
+                            text = stringResource(R.string.home_start_focus),
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onTertiary
                         )
@@ -112,7 +114,7 @@ fun HomePage(
 
             // Description Text
             Text(
-                text = "Ready for a quiet session? Lets focus together.",
+                text = stringResource(R.string.home_ready_prompt),
                 style = MaterialTheme.typography.bodyLarge,
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
