@@ -32,12 +32,14 @@ class FocusRoomViewModel : ViewModel() {
             try {
                 println("DEBUG: FocusRoomViewModel - [1/4] Starting room setup sequence")
                 // 1. Start session in DB
-                val sessionId = roomRepository.startSession()
+                val sessionId = roomRepository.startSession() ?: throw IllegalStateException("Failed to start session")
                 currentSessionId = sessionId
                 println("DEBUG: FocusRoomViewModel - [2/4] Session ID: $sessionId")
 
                 // 2. Prepare flows (DO NOT subscribe yet)
-                val presenceFlow = roomRepository.joinRoom()
+                val profile = ProfileRepository.profile.value ?: throw IllegalStateException("Profile not found")
+                val uniquePresenceId = "${profile.id}:$sessionId"
+                val presenceFlow = roomRepository.joinRoom(uniquePresenceId)
                 val broadcastFlow = roomRepository.listenForBroadcasts()
 
                 // 3. Setup Broadcast Processor (Instant Overrides)
@@ -50,7 +52,7 @@ class FocusRoomViewModel : ViewModel() {
                 // 4. START LISTENING (Parallel coroutine)
                 // This ensures we are listening BEFORE the subscription starts.
                 launch {
-                    println("DEBUG: FocusRoomViewModel - [3/4] Listener coroutine active")
+                    println("DEBUG: FocusRoomViewModel - [3/4] Listener coroutine active. My ID: $uniquePresenceId")
                     presenceFlow
                         .onEach { list -> println("DEBUG: FocusRoomViewModel - RECEIVED PRESENCE: ${list.size} users") }
                         .map { list -> list.associateBy { it.id } }
@@ -58,10 +60,10 @@ class FocusRoomViewModel : ViewModel() {
                             presenceMap.mapValues { (id, presence) -> broadcasts[id] ?: presence }
                         }
                         .combine(SafetyRepository.blockedUserIds) { participantsMap, blockedIds ->
-                            val mySessionId = currentSessionId ?: ""
-                            participantsMap.values.filter { 
-                                val profileId = it.id.split(":").first()
-                                it.id.contains(mySessionId).not() && profileId !in blockedIds
+                            participantsMap.values.filter { participant ->
+                                val profileId = participant.id.split(":").first()
+                                // Use exact ID match for self-exclusion and profileId for block list
+                                participant.id != uniquePresenceId && profileId !in blockedIds
                             }
                         }
                         .flowOn(Dispatchers.Default)

@@ -25,11 +25,16 @@ class FocusRoomRepository {
     /**
      * Prepares the focus room channel and returns a flow of participants.
      * Note: This does NOT initiate the connection. Call [subscribe] to connect.
+     * @param presenceKey A unique key for this participant to avoid collisions in Supabase Presence.
      */
-    fun joinRoom(): Flow<List<ParticipantPresence>> {
-        println("DEBUG: FocusRoomRepository - Preparing channel 'focus-room'")
+    fun joinRoom(presenceKey: String): Flow<List<ParticipantPresence>> {
+        println("DEBUG: FocusRoomRepository - Preparing channel 'focus-room' with key $presenceKey")
         
-        val channel = Supabase.client.realtime.channel("focus-room")
+        val channel = Supabase.client.realtime.channel("focus-room") {
+            presence {
+                key = presenceKey
+            }
+        }
         roomChannel = channel
 
         // Monitor status changes
