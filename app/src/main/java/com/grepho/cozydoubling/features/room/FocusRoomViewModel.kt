@@ -1,22 +1,26 @@
 package com.grepho.cozydoubling.features.room
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.grepho.cozydoubling.core.profile.ProfileRepository
 import com.grepho.cozydoubling.core.safety.SafetyRepository
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.Json
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
-class FocusRoomViewModel : ViewModel() {
+class FocusRoomViewModel(private val savedStateHandle: SavedStateHandle) : ViewModel() {
 
     private val roomRepository = FocusRoomRepository()
 
-    private val _uiState = MutableStateFlow(FocusRoomUiState())
+    private val _uiState = MutableStateFlow(restoreUiState())
     val uiState: StateFlow<FocusRoomUiState> = _uiState.asStateFlow()
 
-    private var currentSessionId: String? = null
+    private var currentSessionId: String? = savedStateHandle["session_id"]
 
     // Throttling state for Presence (track)
     private var lastPresenceSyncTime = 0L
@@ -31,10 +35,17 @@ class FocusRoomViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 println("DEBUG: FocusRoomViewModel - [1/4] Starting room setup sequence")
-                // 1. Start session in DB
-                val sessionId = roomRepository.startSession() ?: throw IllegalStateException("Failed to start session")
-                currentSessionId = sessionId
-                println("DEBUG: FocusRoomViewModel - [2/4] Session ID: $sessionId")
+                
+                // 1. Start session in DB or RESTORE existing one
+                val sessionId = if (currentSessionId == null) {
+                    val newId = roomRepository.startSession() ?: throw IllegalStateException("Failed to start session")
+                    currentSessionId = newId
+                    savedStateHandle["session_id"] = newId
+                    newId
+                } else {
+                    println("DEBUG: FocusRoomViewModel - RESTORED Session ID: $currentSessionId")
+                    currentSessionId!!
+                }
 
                 // 2. Prepare flows (DO NOT subscribe yet)
                 val profile = ProfileRepository.profile.value ?: throw IllegalStateException("Profile not found")
@@ -170,6 +181,7 @@ class FocusRoomViewModel : ViewModel() {
 
     fun onTaskClick(taskId: String) {
         _uiState.update { it.copy(activeTaskId = taskId) }
+        savedStateHandle["active_task_id"] = taskId
         triggerSync()
     }
 
@@ -178,6 +190,7 @@ class FocusRoomViewModel : ViewModel() {
             val updatedTasks = state.tasks.map {
                 if (it.id == taskId) it.copy(isCompleted = !it.isCompleted) else it
             }
+            saveTasks(updatedTasks)
             state.copy(tasks = updatedTasks)
         }
         triggerSync()
@@ -189,12 +202,42 @@ class FocusRoomViewModel : ViewModel() {
 
         _uiState.update { state ->
             val updatedTasks = state.tasks + newTask
+            val newActiveId = state.activeTaskId ?: newTask.id
+            saveTasks(updatedTasks)
+            savedStateHandle["active_task_id"] = newActiveId
             state.copy(
                 tasks = updatedTasks,
-                activeTaskId = state.activeTaskId ?: newTask.id
+                activeTaskId = newActiveId
             )
         }
         triggerSync()
+    }
+
+    private fun saveTasks(tasks: List<FocusTask>) {
+        try {
+            savedStateHandle["tasks_json"] = Json.encodeToString(tasks)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun restoreUiState(): FocusRoomUiState {
+        val tasksJson: String? = savedStateHandle["tasks_json"]
+        val activeTaskId: String? = savedStateHandle["active_task_id"]
+        
+        val tasks = tasksJson?.let {
+            try {
+                Json.decodeFromString<List<FocusTask>>(it)
+            } catch (e: Exception) {
+                println("DEBUG: FocusRoomViewModel - Failed to restore tasks: ${e.message}")
+                emptyList()
+            }
+        } ?: emptyList()
+
+        return FocusRoomUiState(
+            tasks = tasks,
+            activeTaskId = activeTaskId
+        )
     }
 
     fun onBlockUser(userId: String) {

@@ -14,19 +14,33 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.stateIn
+
+sealed class ProfileState {
+    object Loading : ProfileState()
+    data class Success(val profile: Profile?) : ProfileState()
+    data class Error(val message: String) : ProfileState()
+}
 
 object ProfileRepository {
 
     private val repoScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     // 1. This is the local "cache" that the UI observes
-    private val _profile = MutableStateFlow<Profile?>(null)
-    val profile: StateFlow<Profile?> = _profile.asStateFlow()
+    private val _profileState = MutableStateFlow<ProfileState>(ProfileState.Loading)
+    val profileState: StateFlow<ProfileState> = _profileState.asStateFlow()
+
+    // Compatibility property for existing code
+    val profile: StateFlow<Profile?> = _profileState
+        .map { if (it is ProfileState.Success) it.profile else null }
+        .stateIn(repoScope, SharingStarted.Eagerly, null)
 
     private val _syncEvents = MutableSharedFlow<Unit>(replay = 0)
     val syncEvents: SharedFlow<Unit> = _syncEvents.asSharedFlow()
@@ -50,9 +64,9 @@ object ProfileRepository {
                         println("DEBUG: ProfileRepository - Not authenticated")
                         // Log out of RevenueCat to protect privacy
                         Purchases.sharedInstance.logOut()
-                        _profile.emit(null)
+                        _profileState.emit(ProfileState.Success(null))
                     }
-                    else -> { /* Loading... */ }
+                    else -> { /* Loading... stay in Loading state */ }
                 }
             }
             .launchIn(repoScope)
@@ -70,7 +84,7 @@ object ProfileRepository {
             val fetchedProfile = Supabase.client.postgrest["profiles"]
                 .select { filter { eq("id", user.id) } }
                 .decodeSingle<Profile>()
-            _profile.emit(fetchedProfile)
+            _profileState.emit(ProfileState.Success(fetchedProfile))
             println("DEBUG: refreshProfile - Profile fetched. Supporter status: ${fetchedProfile.isSupporter}")
             
             // 🚀 Signal other repositories (like Friends) to sync their data
@@ -79,6 +93,7 @@ object ProfileRepository {
             if (e is CancellationException) throw e
             println("ERROR: refreshProfile - Failed to fetch profile: ${e.message}")
             e.printStackTrace()
+            _profileState.emit(ProfileState.Error(e.message ?: "Failed to fetch profile"))
             ConnectionStateManager.reportServerError()
         }
     }
@@ -111,12 +126,12 @@ object ProfileRepository {
         try {
             println("DEBUG: ProfileRepository - Signing out...")
             Supabase.client.auth.signOut()
-            _profile.emit(null) // Clear local cache
+            _profileState.emit(ProfileState.Success(null)) // Clear local cache
         } catch (e: Exception) {
             println("ERROR: signOut - Failed: ${e.message}")
             e.printStackTrace()
             // Even if sign out fails on server, we should probably clear local state
-            _profile.emit(null)
+            _profileState.emit(ProfileState.Success(null))
         }
     }
 

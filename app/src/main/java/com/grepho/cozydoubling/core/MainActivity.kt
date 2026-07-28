@@ -46,6 +46,8 @@ import com.revenuecat.purchases.Purchases
 import com.revenuecat.purchases.PurchasesConfiguration
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.status.SessionStatus
+import com.grepho.cozydoubling.core.profile.ProfileRepository
+import com.grepho.cozydoubling.core.profile.ProfileState
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 
@@ -69,12 +71,11 @@ class MainActivity : ComponentActivity() {
         setContent {
             val themeState by EconomyRepository.themeState.collectAsState()
             val connectionState by ConnectionStateManager.state.collectAsState()
-            val sessionStatus by remember { Supabase.client.auth.sessionStatus }.collectAsState(initial = SessionStatus.Initializing)
+            val profileState by ProfileRepository.profileState.collectAsState()
+            val sessionStatus by remember { Supabase.client.auth.sessionStatus }.collectAsState()
 
             // 1. Hold on a Splash screen while Loading
-            // We consider the session "Loading" if it's Initializing OR if it's briefly
-            // NotAuthenticated during a resume (handled by AppNavHost's delay).
-            val isAuthLoading = sessionStatus is SessionStatus.Initializing
+            val isAuthLoading = profileState is ProfileState.Loading
             if ((themeState is ThemeState.Loading || isAuthLoading) && connectionState == ConnectionStateManager.ConnectionState.Available) {
                 // Show a solid background matching your brand (BackgroundCream)
                 Box(modifier = Modifier.fillMaxSize().background(BackgroundCream))
