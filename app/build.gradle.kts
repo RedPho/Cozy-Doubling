@@ -17,8 +17,8 @@ android {
         applicationId = "com.grepho.cozydoubling"
         minSdk = 24
         targetSdk = 36
-        versionCode = 4
-        versionName = "1.0.3"
+        versionCode = 5
+        versionName = "1.0.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -40,6 +40,16 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+
+    bundle {
+        language {
+            enableSplit = false
+        }
+    }
+
+    androidResources {
+        localeFilters += listOf("en", "tr", "de", "fr", "es", "it")
     }
 }
 
