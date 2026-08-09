@@ -85,6 +85,7 @@ fun FocusRoomScreen(
         onNewTaskTextChange = { newTaskText = it },
         onTaskClick = { viewModel.onTaskClick(it) },
         onTaskToggleStatus = { viewModel.onTaskToggleStatus(it) },
+        onDeleteTask = { viewModel.onDeleteTask(it) },
         onAddTask = {
             viewModel.onAddTask(newTaskText)
             newTaskText = ""
@@ -105,6 +106,7 @@ fun FocusRoomPage(
     onNewTaskTextChange: (String) -> Unit,
     onTaskClick: (String) -> Unit,
     onTaskToggleStatus: (String) -> Unit,
+    onDeleteTask: (String) -> Unit,
     onAddTask: () -> Unit,
     onBlockUser: (String) -> Unit,
     onReportUser: (String, String) -> Unit,
@@ -128,6 +130,7 @@ fun FocusRoomPage(
                 activeTaskId = uiState.activeTaskId,
                 onTaskClick = onTaskClick,
                 onTaskToggleStatus = onTaskToggleStatus,
+                onDeleteTask = onDeleteTask,
                 newTaskText = newTaskText,
                 onNewTaskTextChange = onNewTaskTextChange,
                 onAddTask = onAddTask
@@ -358,6 +361,7 @@ fun TaskBottomSheet(
     activeTaskId: String?,
     onTaskClick: (String) -> Unit,
     onTaskToggleStatus: (String) -> Unit,
+    onDeleteTask: (String) -> Unit,
     newTaskText: String,
     onNewTaskTextChange: (String) -> Unit,
     onAddTask: () -> Unit
@@ -443,6 +447,21 @@ fun TaskBottomSheet(
                                     tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(16.dp)
                                 )
+                                Spacer(modifier = Modifier.width(8.dp))
+                            }
+
+                            if (!task.isCompleted) {
+                                IconButton(
+                                    onClick = { onDeleteTask(task.id) },
+                                    modifier = Modifier.size(24.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = stringResource(R.string.action_delete),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
                             }
                         }
                     }

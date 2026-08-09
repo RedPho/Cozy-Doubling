@@ -51,6 +51,7 @@ import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.status.SessionStatus
 import com.grepho.cozydoubling.core.profile.ProfileRepository
 import com.grepho.cozydoubling.core.profile.ProfileState
+import com.grepho.cozydoubling.features.room.LocalTaskDataSource
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 
@@ -58,6 +59,7 @@ import kotlinx.coroutines.flow.onEach
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        LocalTaskDataSource.init(this)
         Purchases.logLevel = LogLevel.DEBUG
         Purchases.configure(
             PurchasesConfiguration.Builder(this, BuildConfig.REVENUECAT_APIKEY).build()
