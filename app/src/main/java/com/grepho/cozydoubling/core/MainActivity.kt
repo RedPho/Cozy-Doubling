@@ -19,7 +19,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -74,9 +77,23 @@ class MainActivity : ComponentActivity() {
             val profileState by ProfileRepository.profileState.collectAsState()
             val sessionStatus by remember { Supabase.client.auth.sessionStatus }.collectAsState()
 
+            var hasInitialized by rememberSaveable { mutableStateOf(false) }
+
             // 1. Hold on a Splash screen while Loading
-            val isAuthLoading = profileState is ProfileState.Loading
-            if ((themeState is ThemeState.Loading || isAuthLoading) && connectionState == ConnectionStateManager.ConnectionState.Available) {
+            val isAuthLoading = profileState is ProfileState.Loading || sessionStatus is SessionStatus.Initializing
+            val isThemeLoading = themeState is ThemeState.Loading
+
+            // We only show the splash if we haven't successfully initialized yet.
+            // This prevents background refreshes from killing the NavHost composition.
+            val shouldShowSplash = !hasInitialized && (isThemeLoading || isAuthLoading) && 
+                connectionState == ConnectionStateManager.ConnectionState.Available
+
+            // Once both are ready for the first time, we mark as initialized.
+            if (!isThemeLoading && !isAuthLoading) {
+                hasInitialized = true
+            }
+
+            if (shouldShowSplash) {
                 // Show a solid background matching your brand (BackgroundCream)
                 Box(modifier = Modifier.fillMaxSize().background(BackgroundCream))
             } else {
