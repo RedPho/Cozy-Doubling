@@ -221,9 +221,34 @@ class FocusRoomViewModel(private val savedStateHandle: SavedStateHandle) : ViewM
         triggerSync()
     }
 
+    fun onDeleteTask(taskId: String) {
+        _uiState.update { state ->
+            val task = state.tasks.find { it.id == taskId }
+            // Only allow deleting non-finished tasks
+            if (task == null || task.isCompleted) return@update state
+            
+            val updatedTasks = state.tasks.filter { it.id != taskId }
+            val newActiveId = if (state.activeTaskId == taskId) {
+                // If we deleted the active task, pick the first remaining one or null
+                updatedTasks.firstOrNull()?.id
+            } else {
+                state.activeTaskId
+            }
+            
+            saveTasks(updatedTasks)
+            savedStateHandle["active_task_id"] = newActiveId
+            state.copy(
+                tasks = updatedTasks,
+                activeTaskId = newActiveId
+            )
+        }
+        triggerSync()
+    }
+
     private fun saveTasks(tasks: List<FocusTask>) {
         try {
             savedStateHandle["tasks_json"] = Json.encodeToString(tasks)
+            LocalTaskDataSource.saveUnfinishedTasks(tasks)
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -240,11 +265,13 @@ class FocusRoomViewModel(private val savedStateHandle: SavedStateHandle) : ViewM
                 println("DEBUG: FocusRoomViewModel - Failed to restore tasks: ${e.message}")
                 emptyList()
             }
-        } ?: emptyList()
+        } ?: LocalTaskDataSource.loadUnfinishedTasks()
+
+        val restoredActiveId = activeTaskId ?: tasks.firstOrNull { !it.isCompleted }?.id
 
         return FocusRoomUiState(
             tasks = tasks,
-            activeTaskId = activeTaskId
+            activeTaskId = restoredActiveId
         )
     }
 
