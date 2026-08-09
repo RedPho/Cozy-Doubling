@@ -32,6 +32,9 @@ sealed class ThemeState {
 
 object EconomyRepository {
     private val repoScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    
+    // Sticky theme cache to prevent flicker during lifecycle events
+    private var lastPalette: ThemePalette? = null
 
     // 1. Pre-loaded Shop Items (Eagerly starts loading on app start)
     val shopItems: StateFlow<List<ShopItemUiState>> = ProfileRepository.profile
@@ -51,8 +54,8 @@ object EconomyRepository {
         when (status) {
             is SessionStatus.Authenticated -> {
                 if (profile == null) {
-                    println("DEBUG: EconomyRepository - Authenticated but profile is null, Loading.")
-                    return@combine ThemeState.Loading
+                    println("DEBUG: EconomyRepository - Authenticated but profile is null. Using sticky palette if available.")
+                    return@combine lastPalette?.let { ThemeState.Custom(it) } ?: ThemeState.Loading
                 }
                 val themeId = profile.equippedThemeId ?: run {
                     println("DEBUG: EconomyRepository - No theme equipped, Default.")
@@ -60,15 +63,23 @@ object EconomyRepository {
                 }
                 println("DEBUG: EconomyRepository - Fetching palette for theme $themeId")
                 val palette = fetchThemePalette(themeId)
-                if (palette != null) ThemeState.Custom(palette) else ThemeState.Default
+                if (palette != null) {
+                    lastPalette = palette
+                    ThemeState.Custom(palette)
+                } else {
+                    lastPalette?.let { ThemeState.Custom(it) } ?: ThemeState.Default
+                }
             }
             is SessionStatus.NotAuthenticated -> {
                 println("DEBUG: EconomyRepository - Not authenticated, Default.")
                 ThemeState.Default
             }
-            else -> ThemeState.Loading
+            else -> {
+                // For other states (Loading/Refreshing), try to stay sticky
+                lastPalette?.let { ThemeState.Custom(it) } ?: ThemeState.Loading
+            }
         }
-    }.stateIn(repoScope, SharingStarted.WhileSubscribed(5000), ThemeState.Loading)
+    }.stateIn(repoScope, SharingStarted.Eagerly, ThemeState.Loading)
 
     private suspend fun fetchThemePalette(themeId: String): ThemePalette? {
         return try {

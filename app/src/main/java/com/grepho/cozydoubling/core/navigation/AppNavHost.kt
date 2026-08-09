@@ -8,6 +8,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
@@ -24,6 +25,7 @@ import com.grepho.cozydoubling.features.room.FocusRoomScreen
 import com.grepho.cozydoubling.features.settings.SettingsScreen
 import com.grepho.cozydoubling.features.summary.SummaryScreen
 import io.github.jan.supabase.auth.status.SessionStatus
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 
 @Composable
@@ -46,7 +48,13 @@ fun AppNavHost(
                     }
                 }
                 is SessionStatus.NotAuthenticated -> {
-                    // User is logged out! Send them to Login
+                    // ⏳ DEBOUNCE: Wait a moment before kicking the user out.
+                    // This prevents flickers during token refresh or lifecycle events.
+                    // If a new status (like Authenticated) arrives during this delay,
+                    // collectLatest will cancel this block and the user won't be redirected.
+                    delay(1000)
+
+                    // User is definitively logged out! Send them to Login
                     if (navController.currentDestination?.route != Screen.Login.route) {
                         navController.navigate(Screen.Login.route) {
                             popUpTo(0)
@@ -65,9 +73,16 @@ fun AppNavHost(
         }
     }
 
+    // 🛡️ STABLE NAVIGATION GRAPH
+    // We remember the initial start destination to prevent the NavHost from rebuilding 
+    // its entire backstack if the sessionStatus flickers to 'Initializing' or 'Loading'.
+    val initialStartDestination = remember {
+        if (sessionStatus is SessionStatus.Authenticated) Screen.Home.route else Screen.Login.route
+    }
+
     NavHost(
         navController = navController,
-        startDestination = if (sessionStatus is SessionStatus.Authenticated) Screen.Home.route else Screen.Login.route,
+        startDestination = initialStartDestination,
         modifier = modifier,
         enterTransition = {
             val initialRoute = initialState.destination.route

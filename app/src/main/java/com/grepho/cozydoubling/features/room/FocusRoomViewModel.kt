@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.grepho.cozydoubling.core.profile.ProfileRepository
 import com.grepho.cozydoubling.core.safety.SafetyRepository
+import io.github.jan.supabase.realtime.RealtimeChannel
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlinx.serialization.encodeToString
@@ -95,15 +96,22 @@ class FocusRoomViewModel(private val savedStateHandle: SavedStateHandle) : ViewM
                         }
                 }
 
-                // 5. INITIATE SUBSCRIPTION (Parallel)
+                // 5. AUTO-SYNC ON RECONNECT
+                // This ensures presence is re-announced whenever the socket connects or reconnects.
+                launch {
+                    roomRepository.getChannelStatus()
+                        .filter { it == RealtimeChannel.Status.SUBSCRIBED }
+                        .collect {
+                            println("DEBUG: FocusRoomViewModel - Channel SUBSCRIBED, triggering sync")
+                            syncWithOthers()
+                        }
+                }
+
+                // 6. INITIATE SUBSCRIPTION (Parallel)
                 launch {
                     delay(200.milliseconds) // Tiny delay to let the listener definitely start
                     println("DEBUG: FocusRoomViewModel - [4/4] Triggering WebSocket subscription")
                     roomRepository.subscribe()
-                    
-                    // Initial sync after join
-                    delay(500)
-                    syncWithOthers()
                 }
 
             } catch (e: Exception) {
