@@ -125,6 +125,9 @@ object ProfileRepository {
     suspend fun signOut() {
         try {
             println("DEBUG: ProfileRepository - Signing out...")
+            // Clear FCM token before signing out
+            com.grepho.cozydoubling.core.notifications.NotificationRepository.clearToken()
+            
             Supabase.client.auth.signOut()
             _profileState.emit(ProfileState.Success(null)) // Clear local cache
         } catch (e: Exception) {

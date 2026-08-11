@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "424626484013",
+    "project_id": "cozy-doubling-17db0",
+    "storage_bucket": "cozy-doubling-17db0.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:424626484013:android:90f798c6894bd09e2259a4",
+        "android_client_info": {
+          "package_name": "com.grepho.cozydoubling"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCFCsgUO6V6E2k3KdQh0kuvjBh9km3yAS0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

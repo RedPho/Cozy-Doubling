@@ -17,5 +17,6 @@ data class Profile(
     val createdAt: String? = null,
     @SerialName("total_minutes_focused")
     val totalMinutesFocused: Long = 0,
-    @SerialName("is_supporter") val isSupporter: Boolean = false
+    @SerialName("is_supporter") val isSupporter: Boolean = false,
+    @SerialName("fcm_token") val fcmToken: String? = null
 )
