@@ -37,4 +37,15 @@ object LocalTaskDataSource {
             emptyList()
         }
     }
+
+    /**
+     * Wipes all local task data. Call this on logout or account deletion.
+     */
+    fun clear() {
+        try {
+            prefs?.edit()?.remove(KEY_UNFINISHED_TASKS)?.apply()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
 }

@@ -6,14 +6,11 @@ Cozy Doubling is an Android application designed to provide a peaceful environme
 
 ---
 
-## 🔒 Closed Beta Status
+## 📥 Download
 
-Cozy Doubling is currently in **Closed Beta**. 
+Cozy Doubling is now available on the Google Play Store!
 
-While the source code is public for educational purposes and community trust, access to the production app and backend services is limited to authorized beta testers.
-
-**Interested in joining?**
-If you'd like to be part of the beta, please [join our testers group](https://groups.google.com/g/cozydoublingtest).
+<a href='https://play.google.com/store/apps/details?id=com.grepho.cozydoubling&pcampaignid=pcampaignidMKT-Other-global-all-co-prtnr-py-PartBadge-Mar2515-1'><img alt='Get it on Google Play' src='https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png' width="200"/></a>
 
 ---
 

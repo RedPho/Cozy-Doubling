@@ -128,6 +128,9 @@ object ProfileRepository {
             // Clear FCM token before signing out
             com.grepho.cozydoubling.core.notifications.NotificationRepository.clearToken()
             
+            // NEW: Wipe local task cache to prevent data leakage between accounts
+            com.grepho.cozydoubling.features.room.LocalTaskDataSource.clear()
+
             Supabase.client.auth.signOut()
             _profileState.emit(ProfileState.Success(null)) // Clear local cache
         } catch (e: Exception) {
