@@ -3,6 +3,7 @@ package com.grepho.cozydoubling.features.room
 import com.grepho.cozydoubling.core.Supabase
 import com.grepho.cozydoubling.core.network.ConnectionStateManager
 import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.functions.functions
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.rpc
 import io.github.jan.supabase.realtime.*
@@ -147,6 +148,18 @@ class FocusRoomRepository {
                 .insert(mapOf("user_id" to user.id)) { select() }
                 .decodeSingle<FocusSession>()
             println("DEBUG: FocusRoomRepository - Session started: ${session.id}")
+            
+            // Trigger friend notification via Edge Function (Minimalist)
+            repoScope.launch {
+                try {
+                    val response = Supabase.client.functions.invoke("send-friend-notification")
+                    println("DEBUG: FocusRoomRepository - Friend notification triggered. Response: $response")
+                } catch (e: Exception) {
+                    println("WARNING: FocusRoomRepository - Failed to trigger notification: ${e.message}")
+                    e.printStackTrace()
+                }
+            }
+
             session.id
         } catch (e: Exception) {
             if (e is CancellationException) throw e
