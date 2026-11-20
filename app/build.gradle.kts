@@ -80,6 +80,7 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.9.8")
     implementation(libs.androidx.compose.ui.text.google.fonts)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.okhttp)
 
     // Firebase
     implementation(platform(libs.firebase.bom))

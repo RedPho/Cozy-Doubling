@@ -7,11 +7,20 @@ import com.grepho.cozydoubling.core.notifications.NotificationRepository
 import com.grepho.cozydoubling.core.profile.ProfileRepository
 import com.grepho.cozydoubling.core.safety.SafetyRepository
 import com.grepho.cozydoubling.data.fake.FakeAppContainer
+import com.grepho.cozydoubling.data.remote.DefaultAppContainer
 import com.grepho.cozydoubling.features.friends.FriendsRepository
 import com.grepho.cozydoubling.features.room.FocusRoomRepository
 
 object ServiceLocator {
-    var container: AppContainer = FakeAppContainer()
+    var container: AppContainer = DefaultAppContainer()
+
+    fun useFakeContainer() {
+        container = FakeAppContainer()
+    }
+
+    fun useDefaultContainer(baseUrl: String = "http://10.0.2.2:8000") {
+        container = DefaultAppContainer(baseUrl = baseUrl)
+    }
 
     val authRepository: AuthRepository get() = container.authRepository
     val profileRepository: ProfileRepository get() = container.profileRepository
