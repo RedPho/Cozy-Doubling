@@ -30,42 +30,14 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.grepho.cozydoubling.BuildConfig
 import com.grepho.cozydoubling.R
-import com.grepho.cozydoubling.core.Supabase
-import io.github.jan.supabase.compose.auth.composable.NativeSignInResult
-import io.github.jan.supabase.compose.auth.composable.rememberSignInWithGoogle
-import io.github.jan.supabase.compose.auth.composeAuth
 
 // --- THE SCREEN ENTRY POINT ---
 @Composable
 fun LoginScreen(viewModel: LoginViewModel = viewModel()) {
     val error by viewModel.error.collectAsState()
 
-    // This hook manages the Google Sign-In intent and the response from Android
-    val action = Supabase.client.composeAuth.rememberSignInWithGoogle(
-        onResult = { result ->
-            when (result) {
-                is NativeSignInResult.Success -> println("DEBUG: Google Success")
-                is NativeSignInResult.Error -> {
-                    val msg = "Google Error: ${result.message}"
-                    println("DEBUG: $msg")
-                    viewModel.setError(msg)
-                }
-                NativeSignInResult.ClosedByUser -> {
-                    println("DEBUG: Google Other: ClosedByUser")
-                    // Optional: You could show a message here too if you want, 
-                    // but usually ClosedByUser means the user just swiped it away.
-                }
-                else -> {
-                    val msg = "Google Other: $result"
-                    println("DEBUG: $msg")
-                    viewModel.setError(msg)
-                }
-            }
-        }
-    )
-
     LoginPage(
-        onSignInClick = { action.startFlow() },
+        onSignInClick = { viewModel.signInWithGoogle() },
         onReviewerLogin = { email, pass -> viewModel.signInWithEmail(email, pass) },
         error = error,
         onClearError = { viewModel.clearError() }

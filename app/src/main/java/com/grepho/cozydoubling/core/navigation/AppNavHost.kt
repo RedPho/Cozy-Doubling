@@ -16,7 +16,8 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
-import com.grepho.cozydoubling.core.profile.ProfileRepository
+import com.grepho.cozydoubling.core.auth.AuthStatus
+import com.grepho.cozydoubling.core.di.ServiceLocator
 import com.grepho.cozydoubling.features.auth.LoginScreen
 import com.grepho.cozydoubling.features.auth.LoginViewModel
 import com.grepho.cozydoubling.features.home.HomeScreen
@@ -24,14 +25,13 @@ import com.grepho.cozydoubling.features.oasis.OasisScreen
 import com.grepho.cozydoubling.features.room.FocusRoomScreen
 import com.grepho.cozydoubling.features.settings.SettingsScreen
 import com.grepho.cozydoubling.features.summary.SummaryScreen
-import io.github.jan.supabase.auth.status.SessionStatus
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 
 @Composable
 fun AppNavHost(
     navController: NavHostController,
-    sessionStatus: SessionStatus,
+    authStatus: AuthStatus,
     modifier: Modifier = Modifier,
     authViewModel: LoginViewModel = viewModel()
 ) {
@@ -39,7 +39,7 @@ fun AppNavHost(
     LaunchedEffect(Unit) {
         authViewModel.sessionStatus.collectLatest { status ->
             when (status) {
-                is SessionStatus.Authenticated -> {
+                is AuthStatus.Authenticated -> {
                     // ONLY navigate to Home if we are currently stuck on the Login screen.
                     if (navController.currentDestination?.route == Screen.Login.route) {
                         navController.navigate(Screen.Home.route) {
@@ -47,12 +47,9 @@ fun AppNavHost(
                         }
                     }
                 }
-                is SessionStatus.NotAuthenticated -> {
-                    // ⏳ DEBOUNCE: Wait a moment before kicking the user out.
-                    // This prevents flickers during token refresh or lifecycle events.
-                    // If a new status (like Authenticated) arrives during this delay,
-                    // collectLatest will cancel this block and the user won't be redirected.
-                    delay(1000)
+                is AuthStatus.NotAuthenticated -> {
+                    // ⏳ DEBOUNCE: Short delay before redirecting to Login screen.
+                    delay(150)
 
                     // User is definitively logged out! Send them to Login
                     if (navController.currentDestination?.route != Screen.Login.route) {
@@ -69,7 +66,7 @@ fun AppNavHost(
     // 🚀 NEW: Refresh profile on every screen change
     LaunchedEffect(navController) {
         navController.currentBackStackEntryFlow.collect { _ ->
-            ProfileRepository.refreshProfile()
+            ServiceLocator.profileRepository.refreshProfile()
         }
     }
 
@@ -77,7 +74,7 @@ fun AppNavHost(
     // We remember the initial start destination to prevent the NavHost from rebuilding 
     // its entire backstack if the sessionStatus flickers to 'Initializing' or 'Loading'.
     val initialStartDestination = remember {
-        if (sessionStatus is SessionStatus.Authenticated) Screen.Home.route else Screen.Login.route
+        if (authStatus is AuthStatus.Authenticated) Screen.Home.route else Screen.Login.route
     }
 
     NavHost(

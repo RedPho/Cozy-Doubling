@@ -1,6 +1,6 @@
 package com.grepho.cozydoubling.core.network
 
-import com.grepho.cozydoubling.core.profile.ProfileRepository
+import com.grepho.cozydoubling.core.di.ServiceLocator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -60,7 +60,7 @@ object ConnectionStateManager {
             _state.value = ConnectionState.Refreshing
             
             // Re-trigger core repository refreshes
-            ProfileRepository.refreshProfile()
+            ServiceLocator.profileRepository.refreshProfile()
             
             // Broadcast retry to other parts of the app (like FocusRoom)
             _retryEvents.emit(Unit)

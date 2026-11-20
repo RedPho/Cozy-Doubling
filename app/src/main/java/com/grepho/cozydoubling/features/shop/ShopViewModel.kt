@@ -1,41 +1,38 @@
 package com.grepho.cozydoubling.features.shop
 
 import android.app.Activity
-import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.grepho.cozydoubling.core.billing.BillingRepository
+import com.grepho.cozydoubling.core.di.ServiceLocator
 import com.grepho.cozydoubling.core.economy.EconomyRepository
 import com.grepho.cozydoubling.core.profile.ProfileRepository
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
-import com.grepho.cozydoubling.core.theming.ThemePalette
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-class ShopViewModel : ViewModel() {
+class ShopViewModel(
+    private val economyRepository: EconomyRepository = ServiceLocator.economyRepository,
+    private val billingRepository: BillingRepository = ServiceLocator.billingRepository,
+    private val profileRepository: ProfileRepository = ServiceLocator.profileRepository
+) : ViewModel() {
 
     val items: StateFlow<List<ShopItemUiState>> = combine(
-        EconomyRepository.shopItems,
-        BillingRepository.offerings
+        economyRepository.shopItems,
+        billingRepository.offerings
     ) { rawItems, offerings ->
-        // Find the RevenueCat packages
-        val rcPackages = offerings?.current?.availablePackages ?: emptyList()
+        val availablePackages = offerings?.availablePackages ?: emptyList()
 
         rawItems.map { item ->
             if (item is ShopItemUiState.Pass) {
-                // Find the real price for this pass
-                val rcPackage = rcPackages.find { it.product.id == item.iapId }
-                item.copy(priceString = rcPackage?.product?.price?.formatted ?: "...")
+                val pkg = availablePackages.find { it.productId == item.iapId }
+                item.copy(priceString = pkg?.formattedPrice ?: item.priceString)
             } else item
         }.let { hydratedList ->
-            // Now group into sections
             val themes = hydratedList.filterIsInstance<ShopItemUiState.Theme>()
             val passes = hydratedList.filterIsInstance<ShopItemUiState.Pass>()
                 .sortedBy { pass ->
@@ -56,9 +53,7 @@ class ShopViewModel : ViewModel() {
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-
-
-    val isSupporter: StateFlow<Boolean> = ProfileRepository.profile
+    val isSupporter: StateFlow<Boolean> = profileRepository.profile
         .map { it?.isSupporter ?: false }
         .stateIn(
             scope = viewModelScope,
@@ -66,36 +61,29 @@ class ShopViewModel : ViewModel() {
             initialValue = false
         )
 
-
-
-    // 2. Handle Actions
     fun onBuyWithLeavesClicked(itemId: String) {
         viewModelScope.launch {
             try {
-                EconomyRepository.purchaseWithLeaves(itemId)
-                // This triggers the repo to re-fetch and all UIs update automatically!
-                ProfileRepository.refreshProfile()
-            } catch (e: Exception) { e.printStackTrace() }
+                economyRepository.purchaseWithLeaves(itemId)
+                profileRepository.refreshProfile()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 
     fun onBuyWithCashClicked(activity: Activity, itemId: String, onResult: (String) -> Unit) {
         viewModelScope.launch {
             val currentItems = items.value
-            // 1. Find the Pass in our list to get its real 'iapId'
             val pass = currentItems.filterIsInstance<ShopItemUiState.SupporterSection>()
                 .firstOrNull()?.passes?.find { it.id == itemId } ?: return@launch
 
-            val offerings = BillingRepository.offerings.value ?: return@launch
-            // 2. Now find the RevenueCat package using the IAP ID
-            val rcPackage = offerings.current?.availablePackages?.find { it.product.id == pass.iapId } ?: return@launch
-
-            val success = BillingRepository.purchase(activity, rcPackage)
+            val success = billingRepository.purchase(activity, pass.iapId)
             if (success) {
                 onResult("Success! Your Supporter status is being updated...")
-                repeat(3) {
-                    delay(1000)
-                    ProfileRepository.refreshProfile()
+                repeat(2) {
+                    delay(500)
+                    profileRepository.refreshProfile()
                 }
             } else {
                 onResult("Purchase cancelled or failed.")

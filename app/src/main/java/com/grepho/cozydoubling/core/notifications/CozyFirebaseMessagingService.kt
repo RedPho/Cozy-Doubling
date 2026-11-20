@@ -10,6 +10,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.grepho.cozydoubling.R
 import com.grepho.cozydoubling.core.MainActivity
+import com.grepho.cozydoubling.core.di.ServiceLocator
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import kotlinx.coroutines.CoroutineScope
@@ -24,9 +25,8 @@ class CozyFirebaseMessagingService : FirebaseMessagingService() {
     override fun onNewToken(token: String) {
         super.onNewToken(token)
         println("DEBUG: FCM - New token generated: $token")
-        // Sync to Supabase immediately
         serviceScope.launch {
-            NotificationRepository.updateToken(token)
+            ServiceLocator.notificationRepository.updateToken(token)
         }
     }
 

@@ -78,17 +78,8 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.navigation:navigation-compose:2.9.8")
-    implementation(platform(libs.supabase.bom))
-    implementation(libs.supabase.postgrest)
-    implementation(libs.supabase.auth)
-    implementation(libs.supabase.realtime)
-    // Forced version check (optional, but good to know)
-    implementation(libs.supabase.functions)
-    implementation(libs.supabase.compose.auth)
-    implementation(libs.ktor.client.okhttp)
     implementation(libs.androidx.compose.ui.text.google.fonts)
-    implementation(libs.revenuecat.purchases)
-    implementation(libs.google.billing)
+    implementation(libs.kotlinx.serialization.json)
 
     // Firebase
     implementation(platform(libs.firebase.bom))

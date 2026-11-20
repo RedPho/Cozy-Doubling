@@ -2,6 +2,7 @@ package com.grepho.cozydoubling.features.summary
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.grepho.cozydoubling.core.di.ServiceLocator
 import com.grepho.cozydoubling.features.room.FocusRoomRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -9,8 +10,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-class SummaryViewModel : ViewModel() {
-    private val repository = FocusRoomRepository()
+class SummaryViewModel(
+    private val repository: FocusRoomRepository = ServiceLocator.focusRoomRepository
+) : ViewModel() {
     private val _uiState = MutableStateFlow(SummaryUiState())
     val uiState: StateFlow<SummaryUiState> = _uiState.asStateFlow()
 
@@ -32,5 +34,4 @@ class SummaryViewModel : ViewModel() {
             }
         }
     }
-
 }

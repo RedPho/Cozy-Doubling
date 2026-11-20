@@ -27,7 +27,7 @@ import com.grepho.cozydoubling.core.theming.ThemePalette
  * (SettingsPage) intentionally keep a fixed, non-themed error color —
  * a "Delete Account" button shouldn't get softer just because someone
  * bought a pastel theme. Define error once in the app's base theme,
- * not per-theme in Supabase.
+ * not per-theme in the backend.
  *
  * If a new screen reads a role not listed here, add it before shipping
  * any theme that would leave that screen with an undefined color.

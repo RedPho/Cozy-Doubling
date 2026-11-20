@@ -41,7 +41,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.grepho.cozydoubling.R
-import com.grepho.cozydoubling.core.profile.ProfileRepository
 
 // --- THE SCREEN ENTRY POINT ---
 @Composable
@@ -50,7 +49,7 @@ fun FocusRoomScreen(
     viewModel: FocusRoomViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val profile by ProfileRepository.profile.collectAsState()
+    val profile by viewModel.profile.collectAsState()
     val myName = profile?.displayName ?: "You"
 
     val handleExit = {
