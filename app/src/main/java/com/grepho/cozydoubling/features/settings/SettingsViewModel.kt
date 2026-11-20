@@ -5,14 +5,35 @@ import android.content.Intent
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.grepho.cozydoubling.core.auth.AuthRepository
+import com.grepho.cozydoubling.core.billing.BillingRepository
+import com.grepho.cozydoubling.core.di.ServiceLocator
+import com.grepho.cozydoubling.core.notifications.NotificationRepository
 import com.grepho.cozydoubling.core.profile.ProfileRepository
-import kotlinx.coroutines.flow.*
+import com.grepho.cozydoubling.features.room.LocalTaskDataSource
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-class SettingsViewModel : ViewModel() {
+class SettingsViewModel(
+    private val profileRepository: ProfileRepository = ServiceLocator.profileRepository,
+    private val billingRepository: BillingRepository = ServiceLocator.billingRepository,
+    private val authRepository: AuthRepository = ServiceLocator.authRepository,
+    private val notificationRepository: NotificationRepository = ServiceLocator.notificationRepository
+) : ViewModel() {
+
+    constructor() : this(
+        profileRepository = ServiceLocator.profileRepository,
+        billingRepository = ServiceLocator.billingRepository,
+        authRepository = ServiceLocator.authRepository,
+        notificationRepository = ServiceLocator.notificationRepository
+    )
 
     // 1. Map the real profile into the Settings UI State
-    val uiState: StateFlow<SettingsUiState> = ProfileRepository.profile
+    val uiState: StateFlow<SettingsUiState> = profileRepository.profile
         .map { profile ->
             SettingsUiState(
                 username = profile?.displayName ?: "Loading...",
@@ -29,7 +50,7 @@ class SettingsViewModel : ViewModel() {
         if (newName.isBlank()) return
         viewModelScope.launch {
             try {
-                ProfileRepository.updateDisplayName(newName)
+                profileRepository.updateDisplayName(newName)
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -38,14 +59,24 @@ class SettingsViewModel : ViewModel() {
 
     fun onSignOut() {
         viewModelScope.launch {
-            ProfileRepository.signOut()
+            try {
+                notificationRepository.clearToken()
+                LocalTaskDataSource.clear()
+                profileRepository.signOut()
+                authRepository.signOut()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 
     fun onDeleteAccount() {
         viewModelScope.launch {
             try {
-                ProfileRepository.deleteAccount()
+                notificationRepository.clearToken()
+                LocalTaskDataSource.clear()
+                profileRepository.deleteAccount()
+                authRepository.signOut()
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -69,17 +100,13 @@ class SettingsViewModel : ViewModel() {
 
     fun onRestorePurchases(onResult: (String) -> Unit) {
         viewModelScope.launch {
-            val success = com.grepho.cozydoubling.core.billing.BillingRepository.restorePurchases()
+            val success = billingRepository.restorePurchases()
             if (success) {
-                // Force backend to sync with RevenueCat
-                ProfileRepository.triggerBackendRestoreSync()
-                
-                // Optional: Short retry loop in case the backend process takes a moment
+                profileRepository.triggerBackendRestoreSync()
                 repeat(2) {
-                    kotlinx.coroutines.delay(1000)
-                    ProfileRepository.refreshProfile()
+                    delay(500)
+                    profileRepository.refreshProfile()
                 }
-
                 onResult("Purchases restored successfully!")
             } else {
                 onResult("No active purchases found to restore.")
@@ -96,4 +123,3 @@ class SettingsViewModel : ViewModel() {
         }
     }
 }
-

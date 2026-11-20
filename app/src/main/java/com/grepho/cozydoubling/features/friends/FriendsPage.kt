@@ -34,7 +34,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.grepho.cozydoubling.R
 import com.grepho.cozydoubling.core.profile.Profile
-import com.grepho.cozydoubling.core.profile.ProfileRepository
 import kotlinx.coroutines.launch
 
 // --- THE SCREEN ENTRY POINT ---
@@ -47,7 +46,7 @@ fun FriendsScreen(
     val friendsList by viewModel.friends.collectAsState()
     val pendingRequests by viewModel.pendingRequests.collectAsState()
 
-    val profile by ProfileRepository.profile.collectAsState()
+    val profile by viewModel.profile.collectAsState()
 
     LaunchedEffect(Unit) {
         viewModel.uiEvents.collect { message ->

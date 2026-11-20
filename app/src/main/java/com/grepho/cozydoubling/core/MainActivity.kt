@@ -32,16 +32,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import androidx.lifecycle.lifecycleScope
-import com.grepho.cozydoubling.BuildConfig
-import com.grepho.cozydoubling.R
+import com.grepho.cozydoubling.core.auth.AuthStatus
 import com.grepho.cozydoubling.core.components.ConnectionErrorDialog
-import com.grepho.cozydoubling.core.economy.EconomyRepository
+import com.grepho.cozydoubling.core.di.ServiceLocator
 import com.grepho.cozydoubling.core.economy.ThemeState
 import com.grepho.cozydoubling.core.navigation.AppNavHost
 import com.grepho.cozydoubling.core.navigation.BottomTab
@@ -49,45 +48,29 @@ import com.grepho.cozydoubling.core.navigation.Screen
 import com.grepho.cozydoubling.core.navigation.navigateToBottomTab
 import com.grepho.cozydoubling.core.network.ConnectionStateManager
 import com.grepho.cozydoubling.core.network.ConnectivityObserver
-import com.grepho.cozydoubling.core.notifications.NotificationRepository
-import com.grepho.cozydoubling.core.safety.SafetyRepository
-import com.grepho.cozydoubling.ui.theme.BackgroundCream
-import com.grepho.cozydoubling.ui.theme.CozyDoublingTheme
-import com.revenuecat.purchases.LogLevel
-import com.revenuecat.purchases.Purchases
-import com.revenuecat.purchases.PurchasesConfiguration
-import io.github.jan.supabase.auth.auth
-import io.github.jan.supabase.auth.status.SessionStatus
-import com.grepho.cozydoubling.core.profile.ProfileRepository
 import com.grepho.cozydoubling.core.profile.ProfileState
 import com.grepho.cozydoubling.features.room.LocalTaskDataSource
+import com.grepho.cozydoubling.ui.theme.BackgroundCream
+import com.grepho.cozydoubling.ui.theme.CozyDoublingTheme
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
-
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         LocalTaskDataSource.init(this)
-        Purchases.logLevel = LogLevel.DEBUG
-        Purchases.configure(
-            PurchasesConfiguration.Builder(this, BuildConfig.REVENUECAT_APIKEY).build()
-        )
 
         ConnectivityObserver(this).isOnline
             .onEach { ConnectionStateManager.updateConnectivity(it) }
             .launchIn(lifecycleScope)
 
-        // Force initialization of SafetyRepository to warm up Realtime connection
-        SafetyRepository.blockedUserIds
-
         enableEdgeToEdge()
         setContent {
             val context = LocalContext.current
-            val themeState by EconomyRepository.themeState.collectAsState()
+            val themeState by ServiceLocator.economyRepository.themeState.collectAsState()
             val connectionState by ConnectionStateManager.state.collectAsState()
-            val profileState by ProfileRepository.profileState.collectAsState()
-            val sessionStatus by remember { Supabase.client.auth.sessionStatus }.collectAsState()
+            val profileState by ServiceLocator.profileRepository.profileState.collectAsState()
+            val authStatus by ServiceLocator.authRepository.authStatus.collectAsState()
 
             var hasInitialized by rememberSaveable { mutableStateOf(false) }
 
@@ -96,7 +79,7 @@ class MainActivity : ComponentActivity() {
                 ActivityResultContracts.RequestPermission()
             ) { isGranted ->
                 if (isGranted) {
-                    NotificationRepository.syncToken()
+                    ServiceLocator.notificationRepository.syncToken()
                 }
             }
 
@@ -109,36 +92,31 @@ class MainActivity : ComponentActivity() {
             }
 
             // Sync token when authenticated
-            LaunchedEffect(sessionStatus) {
-                if (sessionStatus is SessionStatus.Authenticated) {
-                    NotificationRepository.syncToken()
+            LaunchedEffect(authStatus) {
+                if (authStatus is AuthStatus.Authenticated) {
+                    ServiceLocator.notificationRepository.syncToken()
                 }
             }
 
             // 1. Hold on a Splash screen while Loading
-            val isAuthLoading = profileState is ProfileState.Loading || sessionStatus is SessionStatus.Initializing
+            val isAuthLoading = profileState is ProfileState.Loading || authStatus is AuthStatus.Initializing
             val isThemeLoading = themeState is ThemeState.Loading
 
-            // We only show the splash if we haven't successfully initialized yet.
-            // This prevents background refreshes from killing the NavHost composition.
             val shouldShowSplash = !hasInitialized && (isThemeLoading || isAuthLoading) && 
                 connectionState == ConnectionStateManager.ConnectionState.Available
 
-            // Once both are ready for the first time, we mark as initialized.
             if (!isThemeLoading && !isAuthLoading) {
                 hasInitialized = true
             }
 
             if (shouldShowSplash) {
-                // Show a solid background matching your brand (BackgroundCream)
                 Box(modifier = Modifier.fillMaxSize().background(BackgroundCream))
             } else {
-                // 2. Resolve the palette (Custom or Default)
                 val customPalette = (themeState as? ThemeState.Custom)?.palette
 
                 CozyDoublingTheme(customPalette = customPalette) {
                     Box {
-                        CozyDoublingApp(sessionStatus)
+                        CozyDoublingApp(authStatus)
                         
                         ConnectionErrorDialog(
                             state = connectionState,
@@ -152,7 +130,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun CozyDoublingApp(sessionStatus: SessionStatus) {
+fun CozyDoublingApp(authStatus: AuthStatus) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route ?: Screen.Home.route
@@ -163,7 +141,6 @@ fun CozyDoublingApp(sessionStatus: SessionStatus) {
         bottomBar = {
             if (isBottomTab) {
                 NavigationBar(
-                    // Transparent background so the cream shows through
                     containerColor = Color.Transparent,
                     tonalElevation = 0.dp
                 ) {
@@ -182,17 +159,13 @@ fun CozyDoublingApp(sessionStatus: SessionStatus) {
                             label = {
                                 Text(
                                     text = stringResource(tab.labelRes),
-                                    // Use our new typography for the label
                                     style = MaterialTheme.typography.labelMedium
                                 )
                             },
                             colors = NavigationBarItemDefaults.colors(
-                                // The capsule/pill color
                                 indicatorColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f),
-                                // Colors for the icon and label when selected
                                 selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
                                 selectedTextColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                                // Colors for when NOT selected
                                 unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                                 unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                             )
@@ -204,11 +177,10 @@ fun CozyDoublingApp(sessionStatus: SessionStatus) {
     ) { innerPadding ->
         AppNavHost(
             navController = navController,
-            sessionStatus = sessionStatus,
+            authStatus = authStatus,
             modifier = Modifier
                 .padding(innerPadding)
                 .consumeWindowInsets(innerPadding)
         )
     }
 }
-

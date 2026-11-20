@@ -1,21 +1,22 @@
 package com.grepho.cozydoubling.features.auth
 
 import androidx.lifecycle.ViewModel
-import com.grepho.cozydoubling.core.Supabase
-import io.github.jan.supabase.auth.auth
 import androidx.lifecycle.viewModelScope
-import io.github.jan.supabase.auth.auth
-import io.github.jan.supabase.auth.providers.builtin.Email
-import io.github.jan.supabase.auth.status.SessionStatus
+import com.grepho.cozydoubling.core.auth.AuthRepository
+import com.grepho.cozydoubling.core.auth.AuthStatus
+import com.grepho.cozydoubling.core.di.ServiceLocator
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-class LoginViewModel : ViewModel() {
-    // This allows us to observe whether the user is logged in,
-    // logged out, or if the session is still loading.
-    val sessionStatus: Flow<SessionStatus> = Supabase.client.auth.sessionStatus
+class LoginViewModel(
+    private val authRepository: AuthRepository = ServiceLocator.authRepository
+) : ViewModel() {
+
+    constructor() : this(ServiceLocator.authRepository)
+
+    val sessionStatus: Flow<AuthStatus> = authRepository.authStatus
 
     private val _error = MutableStateFlow<String?>(null)
     val error = _error.asStateFlow()
@@ -23,14 +24,19 @@ class LoginViewModel : ViewModel() {
     fun signInWithEmail(email: String, pass: String) {
         viewModelScope.launch {
             _error.value = null
-            try {
-                Supabase.client.auth.signInWith(Email) {
-                    this.email = email
-                    password = pass
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-                _error.value = e.message ?: "An unexpected error occurred"
+            val result = authRepository.signInWithEmail(email, pass)
+            if (result.isFailure) {
+                _error.value = result.exceptionOrNull()?.message ?: "An unexpected error occurred"
+            }
+        }
+    }
+
+    fun signInWithGoogle() {
+        viewModelScope.launch {
+            _error.value = null
+            val result = authRepository.signInWithGoogle()
+            if (result.isFailure) {
+                _error.value = result.exceptionOrNull()?.message ?: "Google sign-in failed"
             }
         }
     }

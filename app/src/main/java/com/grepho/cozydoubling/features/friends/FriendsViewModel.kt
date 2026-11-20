@@ -2,38 +2,36 @@ package com.grepho.cozydoubling.features.friends
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.grepho.cozydoubling.core.di.ServiceLocator
 import com.grepho.cozydoubling.core.profile.Profile
 import com.grepho.cozydoubling.core.profile.ProfileRepository
 import com.grepho.cozydoubling.core.safety.SafetyRepository
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-class FriendsViewModel : ViewModel() {
+class FriendsViewModel(
+    private val friendsRepository: FriendsRepository = ServiceLocator.friendsRepository,
+    private val safetyRepository: SafetyRepository = ServiceLocator.safetyRepository,
+    private val profileRepository: ProfileRepository = ServiceLocator.profileRepository
+) : ViewModel() {
 
     // 1. We keep two lists now: real friends and pending requests
-    val friends = FriendsRepository.friends
-    val pendingRequests = FriendsRepository.pendingRequests
+    val friends: StateFlow<List<FriendUiState>> = friendsRepository.friends
+    val pendingRequests: StateFlow<List<Profile>> = friendsRepository.pendingRequests
+    val profile: StateFlow<Profile?> = profileRepository.profile
 
     private val _uiEvents = MutableSharedFlow<String>()
     val uiEvents: SharedFlow<String> = _uiEvents.asSharedFlow()
-
 
     fun onSendRequest(tag: String) {
         if (tag.isBlank()) return
         viewModelScope.launch {
             try {
-                FriendsRepository.sendFriendRequest(tag)
-                // Trigger a refresh by updating the profile (our chain reaction)
-                ProfileRepository.refreshProfile()
+                friendsRepository.sendFriendRequest(tag)
+                profileRepository.refreshProfile()
                 _uiEvents.emit("Friend request sent!")
             } catch (e: Exception) { 
                 e.printStackTrace() 
@@ -45,8 +43,8 @@ class FriendsViewModel : ViewModel() {
     fun onAcceptRequest(senderId: String) {
         viewModelScope.launch {
             try {
-                FriendsRepository.acceptFriendRequest(senderId)
-                ProfileRepository.refreshProfile()
+                friendsRepository.acceptFriendRequest(senderId)
+                profileRepository.refreshProfile()
             } catch (e: Exception) { e.printStackTrace() }
         }
     }
@@ -54,21 +52,21 @@ class FriendsViewModel : ViewModel() {
     fun onRejectRequest(senderId: String) {
         viewModelScope.launch {
             try {
-                FriendsRepository.rejectFriendRequest(senderId)
-                ProfileRepository.refreshProfile()
+                friendsRepository.rejectFriendRequest(senderId)
+                profileRepository.refreshProfile()
             } catch (e: Exception) { e.printStackTrace() }
         }
     }
 
     fun onBlockUser(userId: String) {
         viewModelScope.launch {
-            SafetyRepository.blockUser(userId)
+            safetyRepository.blockUser(userId)
         }
     }
 
     fun onReportUser(userId: String, reason: String) {
         viewModelScope.launch {
-            SafetyRepository.reportUser(userId, reason)
+            safetyRepository.reportUser(userId, reason)
             _uiEvents.emit("Report submitted. Thank you.")
         }
     }

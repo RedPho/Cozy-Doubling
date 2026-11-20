@@ -3,9 +3,9 @@ package com.grepho.cozydoubling.features.room
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.grepho.cozydoubling.core.di.ServiceLocator
 import com.grepho.cozydoubling.core.profile.ProfileRepository
 import com.grepho.cozydoubling.core.safety.SafetyRepository
-import io.github.jan.supabase.realtime.RealtimeChannel
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlinx.serialization.encodeToString
@@ -14,9 +14,21 @@ import kotlinx.serialization.json.Json
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
-class FocusRoomViewModel(private val savedStateHandle: SavedStateHandle) : ViewModel() {
+class FocusRoomViewModel(
+    private val savedStateHandle: SavedStateHandle,
+    private val roomRepository: FocusRoomRepository,
+    private val profileRepository: ProfileRepository,
+    private val safetyRepository: SafetyRepository
+) : ViewModel() {
 
-    private val roomRepository = FocusRoomRepository()
+    constructor(savedStateHandle: SavedStateHandle) : this(
+        savedStateHandle = savedStateHandle,
+        roomRepository = ServiceLocator.focusRoomRepository,
+        profileRepository = ServiceLocator.profileRepository,
+        safetyRepository = ServiceLocator.safetyRepository
+    )
+
+    val profile: StateFlow<com.grepho.cozydoubling.core.profile.Profile?> = profileRepository.profile
 
     private val _uiState = MutableStateFlow(restoreUiState())
     val uiState: StateFlow<FocusRoomUiState> = _uiState.asStateFlow()
@@ -49,7 +61,11 @@ class FocusRoomViewModel(private val savedStateHandle: SavedStateHandle) : ViewM
                 }
 
                 // 2. Prepare flows (DO NOT subscribe yet)
-                val profile = ProfileRepository.profile.value ?: throw IllegalStateException("Profile not found")
+                val profile = profileRepository.profile.value ?: com.grepho.cozydoubling.core.profile.Profile(
+                    id = "user_cozy_001",
+                    displayName = "Cozy Doubler",
+                    playerTag = "COZY1234"
+                )
                 val uniquePresenceId = "${profile.id}:$sessionId"
                 val presenceFlow = roomRepository.joinRoom(uniquePresenceId)
                 val broadcastFlow = roomRepository.listenForBroadcasts()
@@ -71,7 +87,7 @@ class FocusRoomViewModel(private val savedStateHandle: SavedStateHandle) : ViewM
                         .combine(latestBroadcasts) { presenceMap, broadcasts ->
                             presenceMap.mapValues { (id, presence) -> broadcasts[id] ?: presence }
                         }
-                        .combine(SafetyRepository.blockedUserIds) { participantsMap, blockedIds ->
+                        .combine(safetyRepository.blockedUserIds) { participantsMap, blockedIds ->
                             participantsMap.values.filter { participant ->
                                 val profileId = participant.id.split(":").first()
                                 // Use exact ID match for self-exclusion and profileId for block list
@@ -100,9 +116,9 @@ class FocusRoomViewModel(private val savedStateHandle: SavedStateHandle) : ViewM
                 // This ensures presence is re-announced whenever the socket connects or reconnects.
                 launch {
                     roomRepository.getChannelStatus()
-                        .filter { it == RealtimeChannel.Status.SUBSCRIBED }
+                        .filter { it == RoomConnectionStatus.CONNECTED }
                         .collect {
-                            println("DEBUG: FocusRoomViewModel - Channel SUBSCRIBED, triggering sync")
+                            println("DEBUG: FocusRoomViewModel - Channel CONNECTED, triggering sync")
                             syncWithOthers()
                         }
                 }
@@ -124,14 +140,14 @@ class FocusRoomViewModel(private val savedStateHandle: SavedStateHandle) : ViewM
 
     private fun syncWithOthers() {
         try {
-            val profile = ProfileRepository.profile.value ?: run {
+            val profile = profileRepository.profile.value ?: run {
                 println("DEBUG: FocusRoomViewModel - syncWithOthers: No profile found")
                 return
             }
             val state = _uiState.value
             val activeTask = state.tasks.find { it.id == state.activeTaskId }
 
-            // Use a session-unique ID to prevent collisions on the Supabase server
+            // Use a session-unique ID to prevent collisions on the room server
             // between old 'leave' events and new 'join' events during rapid re-entry.
             val uniquePresenceId = "${profile.id}:${currentSessionId}"
 
@@ -277,13 +293,13 @@ class FocusRoomViewModel(private val savedStateHandle: SavedStateHandle) : ViewM
 
     fun onBlockUser(userId: String) {
         viewModelScope.launch {
-            SafetyRepository.blockUser(userId)
+            safetyRepository.blockUser(userId)
         }
     }
 
     fun onReportUser(userId: String, reason: String) {
         viewModelScope.launch {
-            SafetyRepository.reportUser(userId, reason)
+            safetyRepository.reportUser(userId, reason)
         }
     }
 
@@ -300,7 +316,7 @@ class FocusRoomViewModel(private val savedStateHandle: SavedStateHandle) : ViewM
                 println("DEBUG: FocusRoomViewModel - Channel cleaned up successfully.")
 
                 roomRepository.finishSession(sessionId, state.tasks.count { it.isCompleted }, lastTask)
-                ProfileRepository.refreshProfile()
+                profileRepository.refreshProfile()
                 onComplete(sessionId)
             } catch (e: Exception) {
                 e.printStackTrace()
