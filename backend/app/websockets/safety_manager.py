@@ -10,6 +10,10 @@ class SafetyManager:
         # user_id -> set of active WebSockets
         self.user_connections: Dict[str, Set[WebSocket]] = {}
 
+    def clear(self):
+        """Used in test teardowns to reset active safety sockets."""
+        self.user_connections.clear()
+
     async def connect(self, user_id: str, websocket: WebSocket):
         await websocket.accept()
         if user_id not in self.user_connections:
@@ -29,7 +33,7 @@ class SafetyManager:
         if user_id in self.user_connections:
             msg = json.dumps(event_data)
             dead_sockets = set()
-            for ws in self.user_connections[user_id]:
+            for ws in list(self.user_connections[user_id]):
                 try:
                     await ws.send_text(msg)
                 except Exception:

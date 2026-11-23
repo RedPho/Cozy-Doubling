@@ -14,7 +14,9 @@ from app.models.profile import Profile
 security = HTTPBearer(auto_error=False)
 
 def hash_password(password: str) -> str:
-    salt = bcrypt.gensalt()
+    import os
+    rounds = 4 if os.getenv("TESTING") == "1" else 12
+    salt = bcrypt.gensalt(rounds=rounds)
     return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:

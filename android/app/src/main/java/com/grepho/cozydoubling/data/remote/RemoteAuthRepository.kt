@@ -17,24 +17,45 @@ class RemoteAuthRepository(
 
     private var currentUserId: String? = null
 
+    // Generates a random session mock id once per repository instance so two emulators never collide on Google Sign-In
+    private val mockDeviceId: String by lazy {
+        java.util.UUID.randomUUID().toString().take(8)
+    }
+
     override suspend fun signInWithEmail(email: String, pass: String): Result<Unit> {
-        val loginBody = apiClient.json.encodeToString(LoginRequestDto(email = email, password = pass))
-        var loginResult = apiClient.post("/api/auth/login", loginBody) { body ->
+        val cleanEmail = email.trim().lowercase()
+        val cleanPass = pass.trim()
+        val loginBody = apiClient.json.encodeToString(LoginRequestDto(email = cleanEmail, password = cleanPass))
+        val loginResult = apiClient.post("/api/auth/login", loginBody) { body ->
             apiClient.json.decodeFromString<AuthResponseDto>(body)
         }
 
-        // Auto-register convenience for new accounts
-        if (loginResult.isFailure) {
-            val regBody = apiClient.json.encodeToString(RegisterRequestDto(email = email, password = pass))
-            val regResult = apiClient.post("/api/auth/register", regBody) { body ->
-                apiClient.json.decodeFromString<AuthResponseDto>(body)
+        // Auto-register convenience for new accounts (only when server returns 401/404)
+        val finalResult = if (loginResult.isFailure) {
+            val exception = loginResult.exceptionOrNull()
+            if (exception is ApiException && (exception.code == 401 || exception.code == 404)) {
+                val regBody = apiClient.json.encodeToString(RegisterRequestDto(email = cleanEmail, password = cleanPass))
+                val regResult = apiClient.post("/api/auth/register", regBody) { body ->
+                    apiClient.json.decodeFromString<AuthResponseDto>(body)
+                }
+                if (regResult.isSuccess) {
+                    regResult
+                } else {
+                    val regMsg = regResult.exceptionOrNull()?.message ?: ""
+                    if (regMsg.contains("already registered", ignoreCase = true)) {
+                        Result.failure(java.io.IOException("Incorrect password for this account."))
+                    } else {
+                        regResult
+                    }
+                }
+            } else {
+                loginResult
             }
-            if (regResult.isSuccess) {
-                loginResult = regResult
-            }
+        } else {
+            loginResult
         }
 
-        return loginResult.fold(
+        return finalResult.fold(
             onSuccess = { authResp ->
                 apiClient.authToken = authResp.accessToken
                 fetchAndSetUser()
@@ -46,7 +67,7 @@ class RemoteAuthRepository(
     }
 
     override suspend fun signInWithGoogle(): Result<Unit> {
-        val googleToken = "mock:google:sample_google_uid:Cozy Doubler:cozy@google.com"
+        val googleToken = "mock:google:dev_$mockDeviceId:Cozy Doubler $mockDeviceId:cozy_$mockDeviceId@google.com"
         val body = apiClient.json.encodeToString(GoogleAuthRequestDto(idToken = googleToken))
         val result = apiClient.post("/api/auth/google", body) { res ->
             apiClient.json.decodeFromString<AuthResponseDto>(res)

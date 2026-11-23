@@ -48,6 +48,7 @@ class RemoteProfileRepository(
     }
 
     override suspend fun refreshProfile() {
+        if (apiClient.authToken == null) return
         val result = apiClient.get("/api/profile") { body ->
             apiClient.json.decodeFromString<Profile>(body)
         }

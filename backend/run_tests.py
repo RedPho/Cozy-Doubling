@@ -1,6 +1,7 @@
 import sys
 import os
 
+os.environ["TESTING"] = "1"
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from starlette.testclient import TestClient
@@ -118,15 +119,50 @@ test_revenuecat_webhook_and_auto_revert(client)
 print("[PASS] test_revenuecat_webhook_and_auto_revert", flush=True)
 
 from tests.test_websockets import (
-    test_focus_room_websocket_presence,
-    test_safety_websocket,
+    test_two_clients_full_presence_lifecycle,
+    test_three_concurrent_clients_presence,
+    test_safety_blocking_filters_presence_bidirectionally,
+    test_realtime_block_separates_room_participants,
+    test_reconnect_replaces_old_socket_cleanly,
+    test_room_capacity_limit_rejection,
+    test_invalid_token_rejected_on_connect,
+    test_safety_websocket_realtime_events,
+    test_two_clients_same_account_distinct_sessions,
 )
 reset_db()
-test_focus_room_websocket_presence(client)
-print("[PASS] test_focus_room_websocket_presence", flush=True)
+test_two_clients_full_presence_lifecycle(client)
+print("[PASS] test_two_clients_full_presence_lifecycle", flush=True)
 
 reset_db()
-test_safety_websocket(client)
-print("[PASS] test_safety_websocket", flush=True)
+test_three_concurrent_clients_presence(client)
+print("[PASS] test_three_concurrent_clients_presence", flush=True)
 
-print("=== ALL 16 BACKEND TESTS PASSED SUCCESSFULLY! ===", flush=True)
+reset_db()
+test_safety_blocking_filters_presence_bidirectionally(client)
+print("[PASS] test_safety_blocking_filters_presence_bidirectionally", flush=True)
+
+reset_db()
+test_realtime_block_separates_room_participants(client)
+print("[PASS] test_realtime_block_separates_room_participants", flush=True)
+
+reset_db()
+test_reconnect_replaces_old_socket_cleanly(client)
+print("[PASS] test_reconnect_replaces_old_socket_cleanly", flush=True)
+
+reset_db()
+test_room_capacity_limit_rejection(client)
+print("[PASS] test_room_capacity_limit_rejection", flush=True)
+
+reset_db()
+test_invalid_token_rejected_on_connect(client)
+print("[PASS] test_invalid_token_rejected_on_connect", flush=True)
+
+reset_db()
+test_safety_websocket_realtime_events(client)
+print("[PASS] test_safety_websocket_realtime_events", flush=True)
+
+reset_db()
+test_two_clients_same_account_distinct_sessions(client)
+print("[PASS] test_two_clients_same_account_distinct_sessions", flush=True)
+
+print("=== ALL 23 BACKEND TESTS PASSED SUCCESSFULLY! ===", flush=True)

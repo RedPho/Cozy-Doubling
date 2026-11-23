@@ -89,10 +89,18 @@ def finish_session(
         (FocusSession.user_id == profile.id)
     ).first()
 
-    if not session or session.is_processed:
+    if not session:
+        session = FocusSession(
+            id=session_id,
+            user_id=profile.id,
+            start_time=datetime.datetime.utcnow(),
+            is_processed=False
+        )
+        db.add(session)
+    elif session.is_processed:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Session not found or already processed."
+            detail="Session already processed."
         )
 
     end_time = datetime.datetime.utcnow()

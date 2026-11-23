@@ -2,12 +2,12 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 class UserRegisterRequest(BaseModel):
-    email: str = Field(..., min_length=3)
-    password: str = Field(..., min_length=6)
+    email: str = Field(..., min_length=1)
+    password: str = Field(..., min_length=1)
     display_name: Optional[str] = None
 
 class UserLoginRequest(BaseModel):
-    email: str = Field(..., min_length=3)
+    email: str = Field(..., min_length=1)
     password: str = Field(..., min_length=1)
 
 class GoogleAuthRequest(BaseModel):

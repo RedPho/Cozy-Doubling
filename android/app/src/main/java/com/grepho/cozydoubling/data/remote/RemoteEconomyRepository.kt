@@ -65,9 +65,14 @@ class RemoteEconomyRepository(
 
     init {
         scope.launch {
-            profileRepository.profile.collect {
-                fetchShopItems()
-                updateThemeState()
+            profileRepository.profile.collect { profile ->
+                if (profile != null && apiClient.authToken != null) {
+                    fetchShopItems()
+                    updateThemeState()
+                } else {
+                    _shopItems.value = defaultShopItems
+                    _themeState.value = ThemeState.Default
+                }
             }
         }
     }

@@ -28,16 +28,19 @@ logger = logging.getLogger("cozy-backend")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Initializing database schema...")
-    Base.metadata.create_all(bind=engine)
-    with SessionLocal() as session:
-        seed_catalog_if_empty(session)
-    logger.info("Database schema initialized and catalog seeded.")
+    import os
+    if not os.getenv("TESTING"):
+        logger.info("Initializing database schema...")
+        Base.metadata.create_all(bind=engine)
+        with SessionLocal() as session:
+            seed_catalog_if_empty(session)
+        logger.info("Database schema initialized and catalog seeded.")
     
     yield
     
-    engine.dispose()
-    logger.info("Database connection closed.")
+    if not os.getenv("TESTING"):
+        engine.dispose()
+        logger.info("Database connection closed.")
 
 app = FastAPI(
     title="Cozy Doubling Backend API",
@@ -127,11 +130,12 @@ async def focus_room_websocket(
                 await focus_room_manager.update_presence(p_key, updated_presence)
             elif msg_type == "ping":
                 await websocket.send_text(json.dumps({"type": "pong"}))
-    except WebSocketDisconnect:
-        await focus_room_manager.disconnect(p_key)
+    except WebSocketDisconnect as e:
+        logger.info(f"WebSocket client disconnected for {p_key}: code={e.code}")
+        await focus_room_manager.disconnect(p_key, websocket=websocket)
     except Exception as e:
         logger.warning(f"WebSocket error for {p_key}: {e}")
-        await focus_room_manager.disconnect(p_key)
+        await focus_room_manager.disconnect(p_key, websocket=websocket)
 
 @app.websocket("/ws/safety")
 async def safety_websocket(

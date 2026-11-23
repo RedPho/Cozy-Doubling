@@ -18,14 +18,16 @@ class FocusRoomViewModel(
     private val savedStateHandle: SavedStateHandle,
     private val roomRepository: FocusRoomRepository,
     private val profileRepository: ProfileRepository,
-    private val safetyRepository: SafetyRepository
+    private val safetyRepository: SafetyRepository,
+    private val authRepository: com.grepho.cozydoubling.core.auth.AuthRepository = ServiceLocator.authRepository
 ) : ViewModel() {
 
     constructor(savedStateHandle: SavedStateHandle) : this(
         savedStateHandle = savedStateHandle,
         roomRepository = ServiceLocator.focusRoomRepository,
         profileRepository = ServiceLocator.profileRepository,
-        safetyRepository = ServiceLocator.safetyRepository
+        safetyRepository = ServiceLocator.safetyRepository,
+        authRepository = ServiceLocator.authRepository
     )
 
     val profile: StateFlow<com.grepho.cozydoubling.core.profile.Profile?> = profileRepository.profile
@@ -51,7 +53,13 @@ class FocusRoomViewModel(
                 
                 // 1. Start session in DB or RESTORE existing one
                 val sessionId = if (currentSessionId == null) {
-                    val newId = roomRepository.startSession() ?: throw IllegalStateException("Failed to start session")
+                    val newId = try {
+                        roomRepository.startSession()
+                    } catch (e: Exception) {
+                        println("DEBUG: FocusRoomViewModel - startSession exception: ${e.message}")
+                        null
+                    } ?: java.util.UUID.randomUUID().toString()
+                    println("DEBUG: FocusRoomViewModel - Using Session ID: $newId")
                     currentSessionId = newId
                     savedStateHandle["session_id"] = newId
                     newId
@@ -61,53 +69,42 @@ class FocusRoomViewModel(
                 }
 
                 // 2. Prepare flows (DO NOT subscribe yet)
-                val profile = profileRepository.profile.value ?: com.grepho.cozydoubling.core.profile.Profile(
-                    id = "user_cozy_001",
-                    displayName = "Cozy Doubler",
-                    playerTag = "COZY1234"
-                )
-                val uniquePresenceId = "${profile.id}:$sessionId"
+                val currentProfile = profileRepository.profile.value 
+                    ?: withTimeoutOrNull(2000) { profileRepository.profile.filterNotNull().first() }
+                val myUserId = currentProfile?.id ?: authRepository.getCurrentUserId() ?: "user_default"
+                val uniquePresenceId = "$myUserId:$sessionId"
                 val presenceFlow = roomRepository.joinRoom(uniquePresenceId)
-                val broadcastFlow = roomRepository.listenForBroadcasts()
 
-                // 3. Setup Broadcast Processor (Instant Overrides)
-                val latestBroadcasts = broadcastFlow
-                    .scan(emptyMap<String, ParticipantPresence>()) { acc, update ->
-                        acc + (update.id to update)
-                    }
-                    .onStart { emit(emptyMap()) }
-
-                // 4. START LISTENING (Parallel coroutine)
+                // 3. START LISTENING (Parallel coroutine)
                 // This ensures we are listening BEFORE the subscription starts.
                 launch {
                     println("DEBUG: FocusRoomViewModel - [3/4] Listener coroutine active. My ID: $uniquePresenceId")
                     presenceFlow
                         .onEach { list -> println("DEBUG: FocusRoomViewModel - RECEIVED PRESENCE: ${list.size} users") }
-                        .map { list -> list.associateBy { it.id } }
-                        .combine(latestBroadcasts) { presenceMap, broadcasts ->
-                            presenceMap.mapValues { (id, presence) -> broadcasts[id] ?: presence }
-                        }
-                        .combine(safetyRepository.blockedUserIds) { participantsMap, blockedIds ->
-                            participantsMap.values.filter { participant ->
-                                val profileId = participant.id.split(":").first()
-                                // Use exact ID match for self-exclusion and profileId for block list
-                                participant.id != uniquePresenceId && profileId !in blockedIds
+                        .combine(safetyRepository.blockedUserIds) { participants, blockedIds ->
+                            participants.filter { participant ->
+                                val participantProfileId = participant.id.split(":").first()
+                                // Exclude own profile and blocked users
+                                participantProfileId != myUserId && participantProfileId !in blockedIds
                             }
                         }
                         .flowOn(Dispatchers.Default)
                         .collect { participants ->
                             println("DEBUG: FocusRoomViewModel - Updating UI with ${participants.size} other participants")
-                            _uiState.update { state ->
-                                state.copy(otherParticipants = participants.map { p ->
-                                    val profileId = p.id.split(":").first()
+                            val uniqueParticipants = participants
+                                .groupBy { it.id.split(":").first() }
+                                .map { (pId, presenceList) ->
+                                    val p = presenceList.last()
                                     RoomParticipant(
-                                        id = profileId,
+                                        id = pId,
                                         name = p.name,
-                                        activeTaskText = p.activeTaskText,
+                                        activeTaskText = p.displayTaskText,
                                         completedTasks = p.completedTasks,
                                         totalTasks = p.totalTasks,
                                     )
-                                })
+                                }
+                            _uiState.update { state ->
+                                state.copy(otherParticipants = uniqueParticipants)
                             }
                         }
                 }
@@ -140,20 +137,22 @@ class FocusRoomViewModel(
 
     private fun syncWithOthers() {
         try {
-            val profile = profileRepository.profile.value ?: run {
-                println("DEBUG: FocusRoomViewModel - syncWithOthers: No profile found")
+            val myProfile = profileRepository.profile.value
+            val myId = myProfile?.id ?: authRepository.getCurrentUserId() ?: run {
+                println("DEBUG: FocusRoomViewModel - syncWithOthers: No user ID found")
                 return
             }
+            val myName = myProfile?.displayName ?: "Cozy Doubler"
             val state = _uiState.value
             val activeTask = state.tasks.find { it.id == state.activeTaskId }
 
             // Use a session-unique ID to prevent collisions on the room server
             // between old 'leave' events and new 'join' events during rapid re-entry.
-            val uniquePresenceId = "${profile.id}:${currentSessionId}"
+            val uniquePresenceId = "$myId:${currentSessionId}"
 
             val presence = ParticipantPresence(
                 id = uniquePresenceId,
-                name = profile.displayName,
+                name = myName,
                 activeTaskText = activeTask?.text ?: "No active task",
                 completedTasks = state.tasks.count { it.isCompleted },
                 totalTasks = state.tasks.size
@@ -169,10 +168,6 @@ class FocusRoomViewModel(
     private fun broadcastUpdate(presence: ParticipantPresence) {
         viewModelScope.launch {
             try {
-                // 1. Instant Path: Broadcast to everyone currently in the room
-                roomRepository.broadcastPresence(presence)
-
-                // 2. Throttled Path: Update stable Presence (track) at most once per 10s
                 val now = System.currentTimeMillis()
                 
                 // Cancel any pending sync since we have a fresh one
@@ -183,7 +178,8 @@ class FocusRoomViewModel(
                     lastPresenceSyncTime = now
                     roomRepository.updatePresence(presence)
                 } else {
-                    // Frequent update, schedule a trailing sync
+                    // Instant broadcast path, schedule a trailing sync
+                    roomRepository.broadcastPresence(presence)
                     pendingPresenceJob = launch {
                         delay(7.seconds)
                         lastPresenceSyncTime = System.currentTimeMillis()
@@ -305,21 +301,28 @@ class FocusRoomViewModel(
 
     fun finishWork(onComplete: (String) -> Unit) {
         println("DEBUG: FocusRoomViewModel - Starting global cleanup (finishWork)...")
-        val sessionId = currentSessionId ?: return
+        val sessionId = currentSessionId ?: java.util.UUID.randomUUID().toString()
         val state = _uiState.value
         val lastTask = state.tasks.find { it.id == state.activeTaskId }?.text ?: "Focusing"
 
         viewModelScope.launch {
             try {
                 // 1. Immediate unsubscription to free up the channel for next potential join
-                roomRepository.leaveRoom()
-                println("DEBUG: FocusRoomViewModel - Channel cleaned up successfully.")
+                try {
+                    roomRepository.leaveRoom()
+                    println("DEBUG: FocusRoomViewModel - Channel cleaned up successfully.")
+                } catch (e: Exception) {
+                    println("DEBUG: FocusRoomViewModel - leaveRoom error: ${e.message}")
+                }
 
-                roomRepository.finishSession(sessionId, state.tasks.count { it.isCompleted }, lastTask)
-                profileRepository.refreshProfile()
+                try {
+                    roomRepository.finishSession(sessionId, state.tasks.count { it.isCompleted }, lastTask)
+                    profileRepository.refreshProfile()
+                } catch (e: Exception) {
+                    println("DEBUG: FocusRoomViewModel - finishSession error: ${e.message}")
+                }
+            } finally {
                 onComplete(sessionId)
-            } catch (e: Exception) {
-                e.printStackTrace()
             }
         }
     }

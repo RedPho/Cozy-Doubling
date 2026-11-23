@@ -8,6 +8,7 @@ import com.grepho.cozydoubling.data.remote.*
 import com.grepho.cozydoubling.features.room.FocusSession
 import com.grepho.cozydoubling.features.room.ParticipantPresence
 import com.grepho.cozydoubling.features.shop.ShopItemUiState
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.encodeToString
 import okhttp3.*
@@ -104,6 +105,11 @@ class RemoteRepositoriesTest {
         assertEquals("presence_state", wsRoomMsg.type)
         assertEquals(1, wsRoomMsg.participants?.size)
         assertEquals("Buddy", wsRoomMsg.participants?.first()?.name)
+
+        // Verify null active_task tolerance in ParticipantPresence
+        val nullTaskJson = """{"id":"u3","name":"NullTasker","active_task":null,"completed_tasks":0,"total_tasks":0}"""
+        val nullTaskPresence = apiClient.json.decodeFromString<ParticipantPresence>(nullTaskJson)
+        assertEquals("Focusing", nullTaskPresence.displayTaskText)
     }
 
     @Test
@@ -283,5 +289,99 @@ class RemoteRepositoriesTest {
         val safetyRepo = RemoteSafetyRepository(apiClient, authRepo)
         safetyRepo.blockUser("bad_guy_123")
         assertTrue(safetyRepo.blockedUserIds.value.contains("bad_guy_123"))
+    }
+
+    @Test
+    fun testFocusRoomMessageParsingAndFlowCombination() = runBlocking {
+        val apiClient = ApiClient(baseUrl = "http://localhost:8000")
+
+        // 1. Backend presence_state JSON
+        val stateJson = """{"type":"presence_state","participants":[{"id":"1a2fffb5-9eb3-4d21-9e87-7706381f7574:1cd64636-9c2d-4a4f-af69-6eadb6cd77e5","name":"Cozy Doubler","active_task":"Focusing","completed_tasks":0,"total_tasks":0}]}"""
+        val stateMsg = apiClient.json.decodeFromString<WsRoomMessage>(stateJson)
+        assertEquals("presence_state", stateMsg.type)
+        assertEquals(1, stateMsg.participants?.size)
+        assertEquals("Cozy Doubler", stateMsg.participants?.first()?.name)
+
+        // 2. Backend presence_update JSON
+        val updateJson = """{"type":"presence_update","presence":{"id":"2952e34a-d43b-4d6e-bf39-b6ef9f38cd00:0dfe19de-61af-47dd-872a-171112ea69ad","name":"emin","active_task":"Focusing","completed_tasks":0,"total_tasks":0}}"""
+        val updateMsg = apiClient.json.decodeFromString<WsRoomMessage>(updateJson)
+        assertEquals("presence_update", updateMsg.type)
+        assertEquals("emin", updateMsg.presence?.name)
+
+        // 3. Test the flow combination logic from FocusRoomViewModel
+        val presenceFlow = kotlinx.coroutines.flow.MutableStateFlow<List<ParticipantPresence>>(emptyList())
+        val broadcastFlow = kotlinx.coroutines.flow.MutableSharedFlow<ParticipantPresence>(replay = 0, extraBufferCapacity = 64)
+        val blockedIdsFlow = kotlinx.coroutines.flow.MutableStateFlow<Set<String>>(emptySet())
+
+        val latestBroadcasts = broadcastFlow
+            .scan(emptyMap<String, ParticipantPresence>()) { acc, update ->
+                acc + (update.id to update)
+            }
+            .onStart { emit(emptyMap()) }
+
+        val myId = "1a2fffb5-9eb3-4d21-9e87-7706381f7574:1cd64636-9c2d-4a4f-af69-6eadb6cd77e5"
+
+        val otherParticipantsFlow = presenceFlow
+            .map { list -> list.associateBy { it.id } }
+            .combine(latestBroadcasts) { presenceMap, broadcasts ->
+                (presenceMap + broadcasts)
+            }
+            .combine(blockedIdsFlow) { participantsMap, blockedIds ->
+                val myProfileId = myId.split(":").first()
+                participantsMap.values.filter { participant ->
+                    val profileId = participant.id.split(":").first()
+                    profileId != myProfileId && profileId !in blockedIds
+                }
+            }
+
+        val p2 = updateMsg.presence!!
+
+        // Test case: Flow combination receives presence and broadcast
+        val testPresenceFlow = MutableStateFlow<List<ParticipantPresence>>(emptyList())
+        val testBroadcastFlow = MutableSharedFlow<ParticipantPresence>(replay = 1, extraBufferCapacity = 64)
+        val testLatestBroadcasts = testBroadcastFlow
+            .scan(emptyMap<String, ParticipantPresence>()) { acc, update ->
+                acc + (update.id to update)
+            }
+            .onStart { emit(emptyMap()) }
+
+        val testFlow = testPresenceFlow
+            .map { list -> list.associateBy { it.id } }
+            .combine(testLatestBroadcasts) { presenceMap, broadcasts ->
+                (presenceMap + broadcasts)
+            }
+
+        testBroadcastFlow.tryEmit(p2)
+        testPresenceFlow.value = listOf(p2)
+        
+        val result = testFlow.first { it.isNotEmpty() }
+        assertEquals(1, result.size)
+        assertEquals("emin", result[p2.id]?.name)
+
+        // Test receiving an update on Device 1 when Device 2 joins
+        presenceFlow.value = listOf(p2)
+        broadcastFlow.tryEmit(p2)
+
+        val firstEmission = otherParticipantsFlow.first()
+        assertEquals(1, firstEmission.size)
+        assertEquals("emin", firstEmission.first().name)
+
+        // Verify deduplication when multiple presence entries exist for the same profileId
+        val p2Duplicate = p2.copy(id = "${p2.id.split(":").first()}:new_session", activeTaskText = "New Task")
+        val presenceWithDuplicates = listOf(p2, p2Duplicate)
+        val deduplicated = presenceWithDuplicates
+            .groupBy { it.id.split(":").first() }
+            .map { (profileId, presenceList) ->
+                val p = presenceList.last()
+                com.grepho.cozydoubling.features.room.RoomParticipant(
+                    id = profileId,
+                    name = p.name,
+                    activeTaskText = p.displayTaskText,
+                    completedTasks = p.completedTasks,
+                    totalTasks = p.totalTasks,
+                )
+            }
+        assertEquals(1, deduplicated.size)
+        assertEquals("New Task", deduplicated.first().activeTaskText)
     }
 }

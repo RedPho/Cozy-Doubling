@@ -9,6 +9,8 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 
+class ApiException(val code: Int, message: String) : IOException(message)
+
 class ApiClient(
     var baseUrl: String = "http://10.0.2.2:8000",
     customOkHttpClient: OkHttpClient? = null
@@ -45,18 +47,44 @@ class ApiClient(
         return builder
     }
 
+    private fun extractErrorMessage(code: Int, bodyString: String): String {
+        try {
+            if (bodyString.contains("\"detail\"")) {
+                val jsonElement = json.parseToJsonElement(bodyString)
+                if (jsonElement is kotlinx.serialization.json.JsonObject) {
+                    val detail = jsonElement["detail"]
+                    if (detail is kotlinx.serialization.json.JsonPrimitive && detail.isString) {
+                        return detail.content
+                    }
+                }
+            }
+        } catch (_: Exception) {}
+        return if (bodyString.isNotBlank()) bodyString else "HTTP $code error"
+    }
+
+    private fun mapNetworkException(path: String, e: Exception): Exception {
+        println("DEBUG: ApiClient - $path exception: ${e.message}")
+        return if (e is java.net.ConnectException || e is java.net.SocketTimeoutException || e.message?.contains("failed to connect", ignoreCase = true) == true) {
+            IOException("Cannot connect to server at $baseUrl. Please ensure backend is running (python backend/run.py).", e)
+        } else {
+            e
+        }
+    }
+
     suspend fun <T> get(path: String, deserializer: (String) -> T): Result<T> = withContext(Dispatchers.IO) {
         try {
             val request = newRequestBuilder(path).get().build()
             val response = okHttpClient.newCall(request).execute()
             val bodyString = response.body?.string() ?: ""
             if (!response.isSuccessful) {
-                Result.failure(IOException("HTTP ${response.code}: $bodyString"))
+                val err = extractErrorMessage(response.code, bodyString)
+                println("DEBUG: ApiClient - GET $path HTTP ${response.code}: $err")
+                Result.failure(ApiException(response.code, err))
             } else {
                 Result.success(deserializer(bodyString))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(mapNetworkException("GET $path", e))
         }
     }
 
@@ -67,12 +95,14 @@ class ApiClient(
             val response = okHttpClient.newCall(request).execute()
             val bodyString = response.body?.string() ?: ""
             if (!response.isSuccessful) {
-                Result.failure(IOException("HTTP ${response.code}: $bodyString"))
+                val err = extractErrorMessage(response.code, bodyString)
+                println("DEBUG: ApiClient - POST $path HTTP ${response.code}: $err")
+                Result.failure(ApiException(response.code, err))
             } else {
                 Result.success(deserializer(bodyString))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(mapNetworkException("POST $path", e))
         }
     }
 
@@ -83,12 +113,14 @@ class ApiClient(
             val response = okHttpClient.newCall(request).execute()
             val bodyString = response.body?.string() ?: ""
             if (!response.isSuccessful) {
-                Result.failure(IOException("HTTP ${response.code}: $bodyString"))
+                val err = extractErrorMessage(response.code, bodyString)
+                println("DEBUG: ApiClient - PATCH $path HTTP ${response.code}: $err")
+                Result.failure(ApiException(response.code, err))
             } else {
                 Result.success(deserializer(bodyString))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(mapNetworkException("PATCH $path", e))
         }
     }
 
@@ -98,13 +130,22 @@ class ApiClient(
             val response = okHttpClient.newCall(request).execute()
             val bodyString = response.body?.string() ?: ""
             if (!response.isSuccessful) {
-                Result.failure(IOException("HTTP ${response.code}: $bodyString"))
+                val err = extractErrorMessage(response.code, bodyString)
+                println("DEBUG: ApiClient - DELETE $path HTTP ${response.code}: $err")
+                Result.failure(ApiException(response.code, err))
             } else {
                 Result.success(deserializer(bodyString))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(mapNetworkException("DELETE $path", e))
         }
+    }
+
+    private val webSocketClient: OkHttpClient by lazy {
+        okHttpClient.newBuilder()
+            .readTimeout(0, TimeUnit.MILLISECONDS)
+            .pingInterval(10, TimeUnit.SECONDS)
+            .build()
     }
 
     fun openWebSocket(path: String, listener: WebSocketListener): WebSocket {
@@ -115,6 +156,6 @@ class ApiClient(
         val request = Request.Builder()
             .url(fullUrl)
             .build()
-        return okHttpClient.newWebSocket(request, listener)
+        return webSocketClient.newWebSocket(request, listener)
     }
 }

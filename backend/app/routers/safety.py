@@ -13,19 +13,12 @@ from app.schemas.safety import (
 )
 from app.services.auth import get_current_user_and_profile
 from app.websockets.safety_manager import safety_manager
+from app.websockets.room_manager import focus_room_manager
 
 router = APIRouter(prefix="/api/safety", tags=["safety"])
 
-def fire_and_forget(coro):
-    try:
-        loop = asyncio.get_running_loop()
-        loop.create_task(coro)
-    except RuntimeError:
-        # If no loop is running, close the unawaited coroutine cleanly to prevent warnings
-        coro.close()
-
 @router.post("/block")
-def block_user(
+async def block_user(
     req: BlockUserRequest,
     user_and_profile: tuple[User, Profile] = Depends(get_current_user_and_profile),
     db: Session = Depends(get_db)
@@ -47,15 +40,20 @@ def block_user(
         db.add(UserBlock(blocker_id=my_id, blocked_id=target_id))
         db.commit()
 
-    fire_and_forget(safety_manager.notify_block_change(my_id, {
+    await safety_manager.notify_block_change(my_id, {
         "type": "block_added",
         "blocked_id": target_id
-    }))
+    })
+    await safety_manager.notify_block_change(target_id, {
+        "type": "block_added",
+        "blocked_id": my_id
+    })
+    await focus_room_manager.handle_user_blocked(my_id, target_id)
 
     return {"ok": True, "message": "User blocked"}
 
 @router.post("/unblock")
-def unblock_user(
+async def unblock_user(
     req: BlockUserRequest,
     user_and_profile: tuple[User, Profile] = Depends(get_current_user_and_profile),
     db: Session = Depends(get_db)
@@ -69,10 +67,14 @@ def unblock_user(
     ).delete()
     db.commit()
 
-    fire_and_forget(safety_manager.notify_block_change(my_id, {
+    await safety_manager.notify_block_change(my_id, {
         "type": "block_removed",
         "blocked_id": target_id
-    }))
+    })
+    await safety_manager.notify_block_change(target_id, {
+        "type": "block_removed",
+        "blocked_id": my_id
+    })
 
     return {"ok": True, "message": "User unblocked"}
 

@@ -57,10 +57,17 @@ class RemoteSafetyRepository(
 
     private fun connectSafetyWebSocket() {
         val token = apiClient.authToken ?: return
-        safetyWebSocket?.close(1000, "Reconnecting")
+        val oldWs = safetyWebSocket
+        safetyWebSocket = null
+        oldWs?.close(1000, "Reconnecting")
 
-        safetyWebSocket = apiClient.openWebSocket("/ws/safety?token=$token", object : WebSocketListener() {
+        val ws = apiClient.openWebSocket("/ws/safety?token=$token", object : WebSocketListener() {
+            override fun onOpen(webSocket: WebSocket, response: Response) {
+                safetyWebSocket = webSocket
+            }
+
             override fun onMessage(webSocket: WebSocket, text: String) {
+                if (safetyWebSocket != null && webSocket !== safetyWebSocket) return
                 try {
                     val msg = apiClient.json.decodeFromString<WsSafetyMessage>(text)
                     when (msg.type) {
@@ -79,7 +86,25 @@ class RemoteSafetyRepository(
                     e.printStackTrace()
                 }
             }
+
+            override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+                if (safetyWebSocket != null && webSocket !== safetyWebSocket) return
+                webSocket.close(code, reason)
+            }
+
+            override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                if (safetyWebSocket === webSocket) {
+                    safetyWebSocket = null
+                }
+            }
+
+            override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                if (safetyWebSocket === webSocket) {
+                    safetyWebSocket = null
+                }
+            }
         })
+        safetyWebSocket = ws
     }
 
     override suspend fun blockUser(targetId: String) {

@@ -18,14 +18,16 @@ data class FocusTask(
 @Serializable
 data class ParticipantPresence(
     val id: String,
-    val name: String,
+    val name: String = "Cozy Doubler",
     @SerialName("active_task")
-    val activeTaskText: String,
+    val activeTaskText: String? = "",
     @SerialName("completed_tasks")
-    val completedTasks: Int,
+    val completedTasks: Int = 0,
     @SerialName("total_tasks")
-    val totalTasks: Int
-)
+    val totalTasks: Int = 0
+) {
+    val displayTaskText: String get() = if (activeTaskText.isNullOrBlank()) "Focusing" else activeTaskText
+}
 
 
 data class RoomParticipant(

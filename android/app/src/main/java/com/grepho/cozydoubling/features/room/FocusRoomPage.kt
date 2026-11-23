@@ -174,7 +174,7 @@ fun FocusRoomPage(
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                items(allParticipants) { participant ->
+                items(allParticipants, key = { it.id }) { participant ->
                     ParticipantCard(
                         participant = participant,
                         onBlock = { onBlockUser(participant.id) },
