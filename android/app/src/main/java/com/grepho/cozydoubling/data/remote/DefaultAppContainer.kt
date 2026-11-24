@@ -1,0 +1,27 @@
+package com.grepho.cozydoubling.data.remote
+
+import com.grepho.cozydoubling.BuildConfig
+import com.grepho.cozydoubling.core.auth.AuthRepository
+import com.grepho.cozydoubling.core.billing.BillingRepository
+import com.grepho.cozydoubling.core.di.AppContainer
+import com.grepho.cozydoubling.core.economy.EconomyRepository
+import com.grepho.cozydoubling.core.notifications.NotificationRepository
+import com.grepho.cozydoubling.core.profile.ProfileRepository
+import com.grepho.cozydoubling.core.safety.SafetyRepository
+import com.grepho.cozydoubling.features.friends.FriendsRepository
+import com.grepho.cozydoubling.features.room.FocusRoomRepository
+
+class DefaultAppContainer(
+    val baseUrl: String = BuildConfig.API_BASE_URL
+) : AppContainer {
+    val apiClient: ApiClient by lazy { ApiClient(baseUrl = baseUrl) }
+
+    override val authRepository: AuthRepository by lazy { RemoteAuthRepository(apiClient) }
+    override val profileRepository: ProfileRepository by lazy { RemoteProfileRepository(apiClient, authRepository) }
+    override val focusRoomRepository: FocusRoomRepository by lazy { RemoteFocusRoomRepository(apiClient, profileRepository) }
+    override val economyRepository: EconomyRepository by lazy { RemoteEconomyRepository(apiClient, profileRepository) }
+    override val friendsRepository: FriendsRepository by lazy { RemoteFriendsRepository(apiClient, profileRepository) }
+    override val safetyRepository: SafetyRepository by lazy { RemoteSafetyRepository(apiClient, authRepository) }
+    override val notificationRepository: NotificationRepository by lazy { RemoteNotificationRepository(apiClient) }
+    override val billingRepository: BillingRepository by lazy { RemoteBillingRepository(apiClient, profileRepository) }
+}

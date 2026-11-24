@@ -9,7 +9,7 @@ An executive overview of the product domains, goals, scopes, and associated stor
 **Scope:**
 - Google One-Tap / Native sign-in and email/password authentication
 - Automatic profile initialization with unique 8-character player tag generation
-- Session persistence, debounced offline recovery, and token refresh
+- Session persistence, graceful offline recovery, and token refresh
 - Display name customization
 - Clean sign-out with local task wiping and push token unlinking
 - Permanent 5-step cascade account deletion
@@ -25,7 +25,7 @@ An executive overview of the product domains, goals, scopes, and associated stor
 - Session task CRUD (add, select active, toggle status, delete unfinished)
 - Offline local task persistence across app restarts
 - Real-time participant presence and instant task status broadcasting
-- Single global room architecture with a 1,000 active participant safety ceiling
+- Single global room architecture with room capacity limits
 - Dispatching push notifications to accepted friends upon entering
 **Stories:** `[ROOM-01]` to `[ROOM-05]`
 
@@ -34,7 +34,7 @@ An executive overview of the product domains, goals, scopes, and associated stor
 ## Epic 3: Session Completion & Leaf Economy
 **Goal:** Reward users for productive focus time by accurately computing and granting Leaf currency, updating verified focus statistics, and displaying an accomplishment summary.  
 **Scope:**
-- Ending a focus session with single-processing (`is_processed`) anti-cheat protection
+- Ending a focus session with verified single-processing reward protection
 - Server-derived duration computation based strictly on timestamps
 - Leaf reward formula: $(duration \times 1) + (tasks \times 3)$, minimum 1 leaf
 - Atomic increments to user leaf balance and lifetime focus minutes
@@ -59,7 +59,7 @@ An executive overview of the product domains, goals, scopes, and associated stor
 ## Epic 5: Shop & Supporter Subscriptions
 **Goal:** Offer a monetized economy where users can purchase aesthetic themes using earned Leaves or subscribe to a Supporter Pass to unlock premium perks.  
 **Scope:**
-- Browsing themes with full 18-color Material 3 palette mockups
+- Browsing themes with complete visual color palette previews
 - Purchasing non-premium themes using earned Leaves (balance, ownership, and non-premium checks)
 - Subscribing to Supporter Passes (Monthly, Yearly, Lifetime) via Google Play Billing
 - Restoring previous in-app purchases
@@ -75,7 +75,7 @@ An executive overview of the product domains, goals, scopes, and associated stor
 - Viewing owned themes (System Default + purchased + active supporter unlocked)
 - Dynamically equipping theme palettes to recolor all app screens instantly
 - Reverting to the system default warm cream and sage palette
-- Sticky in-memory theme caching to eliminate screen flickers during app lifecycle events
+- Flicker-free theme presentation across app lifecycle events
 **Stories:** `[THEME-01]` to `[THEME-04]`
 
 ---
