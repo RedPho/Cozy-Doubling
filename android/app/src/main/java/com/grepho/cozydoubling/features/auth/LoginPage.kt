@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextDecoration
@@ -249,14 +250,18 @@ fun ReviewerLoginDialog(
                     value = email,
                     onValueChange = { email = it },
                     label = { Text(stringResource(R.string.login_email_label)) },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("login_email_input"),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
                 )
                 OutlinedTextField(
                     value = password,
                     onValueChange = { password = it },
                     label = { Text(stringResource(R.string.login_password_label)) },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("login_password_input"),
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
                 )
@@ -265,7 +270,8 @@ fun ReviewerLoginDialog(
         confirmButton = {
             Button(
                 onClick = { onLogin(email, password) },
-                enabled = email.isNotBlank() && password.isNotBlank()
+                enabled = email.isNotBlank() && password.isNotBlank(),
+                modifier = Modifier.testTag("login_submit_button")
             ) {
                 Text(stringResource(R.string.login_button))
             }

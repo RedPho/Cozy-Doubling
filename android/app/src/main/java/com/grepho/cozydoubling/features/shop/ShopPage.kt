@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.Stars
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.sp
 import com.grepho.cozydoubling.R
 import kotlinx.coroutines.launch
@@ -69,7 +70,10 @@ fun ShopPage(
     
     LazyColumn(
         state = listState,
-        modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 24.dp)
+            .testTag("shop_list"),
         contentPadding = PaddingValues(vertical = 24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -133,7 +137,9 @@ fun ThemeShopCard(
     val isAvailable = if (theme.isPremium) isSupporter else theme.isOwned
 
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("shop_theme_card_${theme.id}"),
         shape = RoundedCornerShape(32.dp),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
     ) {
@@ -152,10 +158,18 @@ fun ThemeShopCard(
                 }
 
                 if (isAvailable) {
-                    Icon(Icons.Default.CheckCircle, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
+                    Icon(
+                        Icons.Default.CheckCircle,
+                        null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .size(24.dp)
+                            .testTag("shop_theme_owned_${theme.id}")
+                    )
                 } else {
                     Button(
                         onClick = { if (theme.isPremium) onBuyWithCash(theme.id) else onBuyWithLeaves(theme.id) },
+                        modifier = Modifier.testTag("shop_theme_buy_${theme.id}"),
                         shape = CircleShape,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if (theme.isPremium) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,

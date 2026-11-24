@@ -43,19 +43,19 @@ class RemoteFriendsRepository(
     override suspend fun sendFriendRequest(playerTag: String) {
         val cleanTag = playerTag.trim().uppercase().removePrefix("#")
         val body = apiClient.json.encodeToString(FriendRequestDto(playerTag = cleanTag))
-        apiClient.post("/api/friends/request", body) { }
+        apiClient.post("/api/friends/request", body) { }.getOrThrow()
         fetchFriendsWithStories()
         fetchIncomingRequests()
     }
 
     override suspend fun acceptFriendRequest(senderId: String) {
-        apiClient.post("/api/friends/$senderId/accept", null) { }
+        apiClient.post("/api/friends/$senderId/accept", null) { }.getOrThrow()
         fetchFriendsWithStories()
         fetchIncomingRequests()
     }
 
     override suspend fun rejectFriendRequest(senderId: String) {
-        apiClient.post("/api/friends/$senderId/reject", null) { }
+        apiClient.post("/api/friends/$senderId/reject", null) { }.getOrThrow()
         fetchIncomingRequests()
     }
 
@@ -93,8 +93,8 @@ class RemoteFriendsRepository(
                         name = dto.displayName,
                         playerTag = dto.playerTag,
                         lastSessionDuration = dto.durationMinutes,
-                        lastSessionDate = dto.endTime ?: "Just now",
-                        lastTaskText = dto.lastTaskText ?: "Focusing",
+                        lastSessionDate = dto.endTime,
+                        lastTaskText = dto.lastTaskText,
                         friendsSince = dto.acceptedAt ?: "Recently"
                     )
                 }

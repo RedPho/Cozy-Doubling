@@ -1,100 +1,95 @@
 # Cozy Doubling — Epic Catalog & Story Map
 
-An executive overview of the product domains, goals, scopes, and associated story mappings across Cozy Doubling.
+An executive overview of product domains, goals, current implementation status, and story mappings across Cozy Doubling. Full story specifications live in [01_product_backlog.md](01_product_backlog.md); E2E test automation tickets live in [02_e2e_test_tickets.md](02_e2e_test_tickets.md).
 
 ---
 
 ## Epic 1: Authentication & Account Lifecycle
 **Goal:** Enable users to seamlessly register, authenticate across devices, maintain persistent sessions, customize profile identity, and control their account lifecycle up to complete deletion.  
-**Scope:**
-- Google One-Tap / Native sign-in and email/password authentication
-- Automatic profile initialization with unique 8-character player tag generation
-- Session persistence, graceful offline recovery, and token refresh
-- Display name customization
-- Clean sign-out with local task wiping and push token unlinking
-- Permanent 5-step cascade account deletion
-- *(Planned)* Guest access mode and self-serve email registration
-**Stories:** `[AUTH-01]` to `[AUTH-08]`
+**Stories:**
+- `[AUTH-01]` Sign In with Google *(Implemented)*
+- `[AUTH-02]` Sign In with Email & Password *(Implemented)*
+- `[AUTH-03]` Automatic Profile & Player Tag Initialization *(Implemented)*
+- `[AUTH-04]` Session Persistence & Automatic Re-authentication *(Partially Implemented — see `[AUTH-09]`)*
+- `[AUTH-05]` Update Display Name *(Implemented)*
+- `[AUTH-06]` Sign Out & Device Data Sanitization *(Implemented)*
+- `[AUTH-07]` Permanent Account Deletion *(Implemented)*
+- `[AUTH-08]` Guest Access & Self-Serve Email Registration *(Planned)*
+- `[AUTH-09]` Persistent Encrypted Token Storage & Seamless Cold-Start Auto-Login *(Planned — High)*
 
 ---
 
 ## Epic 2: Live Focus Room & Body Doubling
-**Goal:** Provide an engaging, real-time virtual body-doubling room where users can focus on their personal tasks alongside other active participants, broadcast live progress, and stay motivated.  
-**Scope:**
-- Starting and resuming focus sessions
-- Session task CRUD (add, select active, toggle status, delete unfinished)
-- Offline local task persistence across app restarts
-- Real-time participant presence and instant task status broadcasting
-- Single global room architecture with room capacity limits
-- Dispatching push notifications to accepted friends upon entering
-**Stories:** `[ROOM-01]` to `[ROOM-05]`
+**Goal:** Provide a calm, reliable real-time virtual body-doubling room where users focus on personal tasks alongside active participants — even when switching apps or locking the screen.  
+**Stories:**
+- `[ROOM-01]` Enter Focus Room & Start Session *(Implemented)*
+- `[ROOM-02]` Manage Session Tasks *(Implemented)*
+- `[ROOM-03]` Local Task Persistence & Cache Recovery *(Implemented)*
+- `[ROOM-04]` Real-Time Participant Presence & Status Broadcasting *(Implemented)*
+- `[ROOM-05]` Notify Friends Upon Entering Room *(Implemented)*
+- `[ROOM-06]` Robust Background Focus Continuity (Foreground Service, Persistent Notification & Floating Mini-Widget) *(Planned — High)*
+- `[ROOM-07]` Structured Focus Timer & Pomodoro Interval Modes *(Planned — High)*
+- `[ROOM-08]` Private / Friend-Only Focus Rooms with Invite Codes *(Planned — Medium)*
+- `[ROOM-09]` Task Editing, Reordering & Ambient Cozy Soundscapes *(Planned — Low)*
 
 ---
 
 ## Epic 3: Session Completion & Leaf Economy
-**Goal:** Reward users for productive focus time by accurately computing and granting Leaf currency, updating verified focus statistics, and displaying an accomplishment summary.  
-**Scope:**
-- Ending a focus session with verified single-processing reward protection
-- Server-derived duration computation based strictly on timestamps
-- Leaf reward formula: $(duration \times 1) + (tasks \times 3)$, minimum 1 leaf
-- Atomic increments to user leaf balance and lifetime focus minutes
-- Post-session celebration summary display
-**Stories:** `[ECON-01]` to `[ECON-03]`
+**Goal:** Reward users for productive focus time by accurately computing and granting Leaf currency, preventing abuse, updating verified focus statistics, and displaying an accomplishment summary.  
+**Stories:**
+- `[ECON-01]` End Focus Session & Server-Side Verification *(Implemented)*
+- `[ECON-02]` Leaf & Minutes Calculation Formula *(Implemented)*
+- `[ECON-03]` Post-Session Summary Screen *(Implemented)*
+- `[ECON-04]` Session Duration Cap & Abandoned Session Auto-Finalize *(Planned — Medium)*
 
 ---
 
 ## Epic 4: Friends & Social Activity
-**Goal:** Help users stay connected and motivated with study buddies by exchanging player tags, tracking friend activity, and observing friends' focus accomplishments.  
-**Scope:**
-- Searching players by 8-character player tag
-- Sending, accepting, declining, and auto-accepting mutual friend requests
-- Removing / unfriending existing friends
-- Viewing friends list enriched with recent session duration, task description, and timestamp
-- Receiving friend focus room entry push notifications
-- *(Planned)* Setting to mute friend alerts and targeted friend nudges/invites
-**Stories:** `[SOC-01]` to `[SOC-05]`
+**Goal:** Help users stay connected and motivated with study buddies by exchanging player tags, managing friendships cleanly, and observing friends' focus accomplishments.  
+**Stories:**
+- `[SOC-01]` Search Players by Tag & Send Friend Request *(Implemented)*
+- `[SOC-02]` Automatic Mutual Request Acceptance *(Implemented)*
+- `[SOC-03]` Accept or Decline Pending Friend Requests *(Implemented)*
+- `[SOC-04]` View Friends List with Recent Session Stories *(Implemented)*
+- `[SOC-05]` Remove / Unfriend an Existing Friend *(Backend Ready — Client UI Needed — High)*
+- `[SOC-06]` View & Cancel Outgoing Pending Friend Requests *(Planned — Medium)*
+- `[SOC-07]` Friend Notification Mute Toggle & Targeted Room Invites *(Planned — Medium)*
 
 ---
 
 ## Epic 5: Shop & Supporter Subscriptions
-**Goal:** Offer a monetized economy where users can purchase aesthetic themes using earned Leaves or subscribe to a Supporter Pass to unlock premium perks.  
-**Scope:**
-- Browsing themes with complete visual color palette previews
-- Purchasing non-premium themes using earned Leaves (balance, ownership, and non-premium checks)
-- Subscribing to Supporter Passes (Monthly, Yearly, Lifetime) via Google Play Billing
-- Restoring previous in-app purchases
-- Deep-linking to Google Play Store subscription management
-- Automatic theme reversion to System Default when a Supporter Pass expires
-**Stories:** `[SHOP-01]` to `[SHOP-05]`
+**Goal:** Offer a calm, ad-free economy where users unlock aesthetic themes using earned Leaves or subscribe to a Supporter Pass to unlock premium perks.  
+**Stories:**
+- `[SHOP-01]` Browse Shop Catalog *(Implemented)*
+- `[SHOP-02]` Purchase Themes with Earned Leaves *(Implemented)*
+- `[SHOP-03]` Purchase Supporter Pass Subscription & Expiration Auto-Revert *(Implemented)*
+- `[SHOP-04]` Restore Previous In-App Purchases *(Implemented)*
+- `[SHOP-05]` Manage Subscription Deep-Linking *(Implemented)*
 
 ---
 
 ## Epic 6: Inventory & Theme Customization
-**Goal:** Allow users to manage their acquired themes, preview cohesive color schemes, and customize the visual aesthetic of the entire application.  
-**Scope:**
-- Viewing owned themes (System Default + purchased + active supporter unlocked)
-- Dynamically equipping theme palettes to recolor all app screens instantly
-- Reverting to the system default warm cream and sage palette
-- Flicker-free theme presentation across app lifecycle events
-**Stories:** `[THEME-01]` to `[THEME-04]`
+**Goal:** Allow users to manage acquired themes, preview cohesive Material 3 palettes, and customize the visual aesthetic of the entire application without flicker.  
+**Stories:**
+- `[THEME-01]` View Owned and Supporter-Unlocked Themes *(Implemented)*
+- `[THEME-02]` Equip Theme Palette & App-Wide Dynamic Theming *(Implemented)*
+- `[THEME-03]` Unequip Theme & Revert to System Default *(Implemented)*
+- `[THEME-04]` Flicker-Free Theme Presentation *(Implemented)*
 
 ---
 
 ## Epic 7: User Safety & Moderation
-**Goal:** Protect users from harassment and inappropriate conduct by providing instant blocking and formal violation reporting tools.  
-**Scope:**
-- Blocking abusive players from focus rooms and friends lists
-- Real-time block synchronization to hide blocked players immediately across the app
-- Suppressing push notifications and friend requests from blocked users
-- Submitting user conduct violation reports with reporter attribution
-**Stories:** `[SAFE-01]` to `[SAFE-03]`
+**Goal:** Protect users from harassment and inappropriate conduct with instant blocking, reversible block management, and formal violation reporting tools.  
+**Stories:**
+- `[SAFE-01]` Block User from Focus Room or Friends List *(Implemented)*
+- `[SAFE-02]` Real-Time Filtering of Blocked Users *(Implemented)*
+- `[SAFE-03]` Report Inappropriate User Conduct *(Implemented)*
+- `[SAFE-04]` Manage & Unblock Blocked Users in Settings *(Backend Ready — Client UI Needed — High)*
 
 ---
 
 ## Epic 8: Journey & Personal Progress
-**Goal:** Give users visibility into their long-term focus habits, accumulated wealth, and milestones through an inspiring personal dashboard.  
-**Scope:**
-- Account longevity bio (`"Cozy Doubler since YYYY-MM"`)
-- Total accumulated Leaf balance display
-- Verified lifetime focus minutes counter display
-**Stories:** `[JOURN-01]`
+**Goal:** Give users visibility into long-term focus habits, streaks, accumulated leaves, and milestones through an inspiring personal dashboard.  
+**Stories:**
+- `[JOURN-01]` View Personal Journey Dashboard *(Implemented — "Member Since" bio pending UI restore)*
+- `[JOURN-02]` Focus Session History, Daily Streaks & Milestones *(Planned — Medium)*

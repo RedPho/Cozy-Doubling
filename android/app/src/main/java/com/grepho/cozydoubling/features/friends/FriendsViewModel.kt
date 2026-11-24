@@ -8,8 +8,11 @@ import com.grepho.cozydoubling.core.profile.ProfileRepository
 import com.grepho.cozydoubling.core.safety.SafetyRepository
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class FriendsViewModel(
@@ -18,13 +21,44 @@ class FriendsViewModel(
     private val profileRepository: ProfileRepository = ServiceLocator.profileRepository
 ) : ViewModel() {
 
-    // 1. We keep two lists now: real friends and pending requests
-    val friends: StateFlow<List<FriendUiState>> = friendsRepository.friends
-    val pendingRequests: StateFlow<List<Profile>> = friendsRepository.pendingRequests
+    // Filter friends and pending requests against the real-time blocked set
+    val friends: StateFlow<List<FriendUiState>> = combine(
+        friendsRepository.friends,
+        safetyRepository.blockedUserIds
+    ) { list, blockedIds ->
+        list.filter { it.id !in blockedIds }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = friendsRepository.friends.value.filter { it.id !in safetyRepository.blockedUserIds.value }
+    )
+
+    val pendingRequests: StateFlow<List<Profile>> = combine(
+        friendsRepository.pendingRequests,
+        safetyRepository.blockedUserIds
+    ) { list, blockedIds ->
+        list.filter { it.id !in blockedIds }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = friendsRepository.pendingRequests.value.filter { it.id !in safetyRepository.blockedUserIds.value }
+    )
+
     val profile: StateFlow<Profile?> = profileRepository.profile
 
     private val _uiEvents = MutableSharedFlow<String>()
     val uiEvents: SharedFlow<String> = _uiEvents.asSharedFlow()
+
+    fun refresh() {
+        viewModelScope.launch {
+            try {
+                friendsRepository.fetchFriendsWithStories()
+                friendsRepository.fetchIncomingRequests()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
 
     fun onSendRequest(tag: String) {
         if (tag.isBlank()) return
