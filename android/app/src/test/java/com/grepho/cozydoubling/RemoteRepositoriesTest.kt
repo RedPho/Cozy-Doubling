@@ -50,7 +50,7 @@ class RemoteRepositoriesTest {
         assertTrue(finishReqJson.contains("tasks_completed"))
         assertTrue(finishReqJson.contains("4"))
 
-        // 3. FocusSession DTO
+        // 3. FocusSessionDto -> FocusSession mapping
         val sessionJson = """
             {
                 "id": "sess_abc",
@@ -63,10 +63,27 @@ class RemoteRepositoriesTest {
                 "duration_minutes": 25
             }
         """.trimIndent()
-        val sessionObj = apiClient.json.decodeFromString<FocusSession>(sessionJson)
+        val sessionObj = apiClient.json.decodeFromString<FocusSessionDto>(sessionJson).toDomain()
         assertEquals("sess_abc", sessionObj.id)
         assertEquals(34L, sessionObj.earnedLeaves)
         assertEquals(25, sessionObj.durationMinutes)
+
+        // 3b. ProfileDto -> Profile mapping
+        val profileJson = """
+            {
+                "id": "prof_1",
+                "display_name": "Osman",
+                "player_tag": "OSMN1234",
+                "leaves": 42,
+                "total_minutes_focused": 120,
+                "is_supporter": true
+            }
+        """.trimIndent()
+        val profileObj = apiClient.json.decodeFromString<ProfileDto>(profileJson).toDomain()
+        assertEquals("prof_1", profileObj.id)
+        assertEquals("Osman", profileObj.displayName)
+        assertEquals(42L, profileObj.leaves)
+        assertTrue(profileObj.isSupporter)
 
         // 4. Friend DTOs
         val storyJson = """
@@ -94,7 +111,7 @@ class RemoteRepositoriesTest {
             completedTasks = 2,
             totalTasks = 3
         )
-        val wsUpdate = WsPresenceUpdate(presence = presence)
+        val wsUpdate = WsPresenceUpdate(presence = ParticipantPresenceDto.fromDomain(presence))
         val wsJson = apiClient.json.encodeToString(wsUpdate)
         assertTrue(wsJson.contains("presence_update"))
         assertTrue(wsJson.contains("Cozy Tester"))
@@ -106,9 +123,9 @@ class RemoteRepositoriesTest {
         assertEquals(1, wsRoomMsg.participants?.size)
         assertEquals("Buddy", wsRoomMsg.participants?.first()?.name)
 
-        // Verify null active_task tolerance in ParticipantPresence
+        // Verify null active_task tolerance in ParticipantPresenceDto -> ParticipantPresence
         val nullTaskJson = """{"id":"u3","name":"NullTasker","active_task":null,"completed_tasks":0,"total_tasks":0}"""
-        val nullTaskPresence = apiClient.json.decodeFromString<ParticipantPresence>(nullTaskJson)
+        val nullTaskPresence = apiClient.json.decodeFromString<ParticipantPresenceDto>(nullTaskJson).toDomain()
         assertEquals("Focusing", nullTaskPresence.displayTaskText)
     }
 
@@ -334,7 +351,7 @@ class RemoteRepositoriesTest {
                 }
             }
 
-        val p2 = updateMsg.presence!!
+        val p2 = updateMsg.presence!!.toDomain()
 
         // Test case: Flow combination receives presence and broadcast
         val testPresenceFlow = MutableStateFlow<List<ParticipantPresence>>(emptyList())

@@ -9,7 +9,7 @@ if __name__ == "__main__":
         port=8000,
         reload=True,
         reload_dirs=[backend_dir],
-        ws_ping_interval=10.0,
-        ws_ping_timeout=10.0
+        ws_ping_interval=25.0,
+        ws_ping_timeout=25.0
     )
 

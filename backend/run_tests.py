@@ -165,4 +165,16 @@ reset_db()
 test_two_clients_same_account_distinct_sessions(client)
 print("[PASS] test_two_clients_same_account_distinct_sessions", flush=True)
 
-print("=== ALL 23 BACKEND TESTS PASSED SUCCESSFULLY! ===", flush=True)
+from tests.test_websockets_live import (
+    test_live_uvicorn_two_clients_bidirectional_presence_and_keepalive,
+    test_live_uvicorn_many_websockets_do_not_exhaust_db_pool,
+)
+reset_db()
+test_live_uvicorn_two_clients_bidirectional_presence_and_keepalive(client)
+print("[PASS] test_live_uvicorn_two_clients_bidirectional_presence_and_keepalive", flush=True)
+
+reset_db()
+test_live_uvicorn_many_websockets_do_not_exhaust_db_pool(client)
+print("[PASS] test_live_uvicorn_many_websockets_do_not_exhaust_db_pool", flush=True)
+
+print("=== ALL 25 BACKEND TESTS PASSED SUCCESSFULLY! ===", flush=True)

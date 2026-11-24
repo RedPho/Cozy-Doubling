@@ -2,7 +2,6 @@ package com.grepho.cozydoubling.data.remote
 
 import com.grepho.cozydoubling.core.auth.AuthRepository
 import com.grepho.cozydoubling.core.auth.AuthStatus
-import com.grepho.cozydoubling.core.profile.Profile
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -86,7 +85,7 @@ class RemoteAuthRepository(
 
     private suspend fun fetchAndSetUser(): Result<Unit> {
         val meResult = apiClient.get("/api/auth/me") { body ->
-            apiClient.json.decodeFromString<Profile>(body)
+            apiClient.json.decodeFromString<ProfileDto>(body).toDomain()
         }
         return meResult.fold(
             onSuccess = { profile ->

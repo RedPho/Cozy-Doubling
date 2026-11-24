@@ -18,8 +18,8 @@ object ServiceLocator {
         container = FakeAppContainer()
     }
 
-    fun useDefaultContainer(baseUrl: String = "http://10.0.2.2:8000") {
-        container = DefaultAppContainer(baseUrl = baseUrl)
+    fun useDefaultContainer(baseUrl: String? = null) {
+        container = if (baseUrl != null) DefaultAppContainer(baseUrl = baseUrl) else DefaultAppContainer()
     }
 
     val authRepository: AuthRepository get() = container.authRepository

@@ -63,9 +63,9 @@ class ApiClient(
     }
 
     private fun mapNetworkException(path: String, e: Exception): Exception {
-        println("DEBUG: ApiClient - $path exception: ${e.message}")
+        println("DEBUG: ApiClient - $path ($baseUrl) exception: ${e.message}")
         return if (e is java.net.ConnectException || e is java.net.SocketTimeoutException || e.message?.contains("failed to connect", ignoreCase = true) == true) {
-            IOException("Cannot connect to server at $baseUrl. Please ensure backend is running (python backend/run.py).", e)
+            IOException("Unable to connect to the server. Please check your connection and try again.", e)
         } else {
             e
         }
@@ -144,7 +144,7 @@ class ApiClient(
     private val webSocketClient: OkHttpClient by lazy {
         okHttpClient.newBuilder()
             .readTimeout(0, TimeUnit.MILLISECONDS)
-            .pingInterval(10, TimeUnit.SECONDS)
+            .pingInterval(25, TimeUnit.SECONDS)
             .build()
     }
 

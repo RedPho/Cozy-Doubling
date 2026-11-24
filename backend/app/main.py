@@ -74,6 +74,21 @@ def health_check():
 
 # ── WebSockets ────────────────────────────────────────────────────────────────
 
+def _fetch_blocked_ids(user_id: str) -> set[str]:
+    db_dep = app.dependency_overrides.get(get_db, get_db)
+    gen = db_dep()
+    db = next(gen)
+    try:
+        blocks = db.query(UserBlock).filter(
+            (UserBlock.blocker_id == user_id) | (UserBlock.blocked_id == user_id)
+        ).all()
+        return {
+            b.blocked_id if b.blocker_id == user_id else b.blocker_id
+            for b in blocks
+        }
+    finally:
+        gen.close()
+
 @app.websocket("/ws/room")
 async def focus_room_websocket(
     websocket: WebSocket,
@@ -83,7 +98,6 @@ async def focus_room_websocket(
     active_task: Optional[str] = Query("Focusing"),
     completed_tasks: Optional[int] = Query(0),
     total_tasks: Optional[int] = Query(0),
-    db: Session = Depends(get_db)
 ):
     payload = decode_access_token(token)
     if not payload or "sub" not in payload:
@@ -92,14 +106,7 @@ async def focus_room_websocket(
 
     user_id = payload["sub"]
     p_key = presence_key or f"{user_id}:default"
-
-    blocks = db.query(UserBlock).filter(
-        (UserBlock.blocker_id == user_id) | (UserBlock.blocked_id == user_id)
-    ).all()
-    blocked_ids = {
-        b.blocked_id if b.blocker_id == user_id else b.blocker_id
-        for b in blocks
-    }
+    blocked_ids = _fetch_blocked_ids(user_id)
 
     initial_presence = {
         "id": p_key,
@@ -123,7 +130,11 @@ async def focus_room_websocket(
     try:
         while True:
             data = await websocket.receive_text()
-            msg = json.loads(data)
+            try:
+                msg = json.loads(data)
+            except json.JSONDecodeError as e:
+                logger.warning(f"Malformed JSON from {p_key}: {e}")
+                continue
             msg_type = msg.get("type")
             if msg_type == "presence_update":
                 updated_presence = msg.get("presence", {})

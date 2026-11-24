@@ -1,9 +1,87 @@
 package com.grepho.cozydoubling.data.remote
 
 import androidx.compose.ui.graphics.Color
+import com.grepho.cozydoubling.core.profile.Profile
 import com.grepho.cozydoubling.core.theming.ThemePalette
+import com.grepho.cozydoubling.features.room.FocusSession
+import com.grepho.cozydoubling.features.room.ParticipantPresence
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+
+@Serializable
+data class ProfileDto(
+    val id: String,
+    @SerialName("display_name") val displayName: String,
+    @SerialName("player_tag") val playerTag: String,
+    @SerialName("equipped_theme_id") val equippedThemeId: String? = null,
+    val leaves: Long = 0,
+    @SerialName("created_at") val createdAt: String? = null,
+    @SerialName("total_minutes_focused") val totalMinutesFocused: Long = 0,
+    @SerialName("is_supporter") val isSupporter: Boolean = false,
+    @SerialName("fcm_token") val fcmToken: String? = null
+) {
+    fun toDomain(): Profile = Profile(
+        id = id,
+        displayName = displayName,
+        playerTag = playerTag,
+        equippedThemeId = equippedThemeId,
+        leaves = leaves,
+        createdAt = createdAt,
+        totalMinutesFocused = totalMinutesFocused,
+        isSupporter = isSupporter,
+        fcmToken = fcmToken
+    )
+}
+
+@Serializable
+data class ParticipantPresenceDto(
+    val id: String,
+    val name: String = "Cozy Doubler",
+    @SerialName("active_task") val activeTaskText: String? = "",
+    @SerialName("completed_tasks") val completedTasks: Int = 0,
+    @SerialName("total_tasks") val totalTasks: Int = 0
+) {
+    fun toDomain(): ParticipantPresence = ParticipantPresence(
+        id = id,
+        name = name,
+        activeTaskText = activeTaskText,
+        completedTasks = completedTasks,
+        totalTasks = totalTasks
+    )
+
+    companion object {
+        fun fromDomain(domain: ParticipantPresence): ParticipantPresenceDto = ParticipantPresenceDto(
+            id = domain.id,
+            name = domain.name,
+            activeTaskText = domain.activeTaskText,
+            completedTasks = domain.completedTasks,
+            totalTasks = domain.totalTasks
+        )
+    }
+}
+
+@Serializable
+data class FocusSessionDto(
+    val id: String,
+    @SerialName("user_id") val userId: String,
+    @SerialName("start_time") val startTime: String,
+    @SerialName("end_time") val endTime: String? = null,
+    @SerialName("tasks_completed") val tasksCompleted: Int = 0,
+    @SerialName("earned_leaves") val earnedLeaves: Long = 0,
+    @SerialName("is_processed") val isProcessed: Boolean = false,
+    @SerialName("duration_minutes") val durationMinutes: Int = 0
+) {
+    fun toDomain(): FocusSession = FocusSession(
+        id = id,
+        userId = userId,
+        startTime = startTime,
+        endTime = endTime,
+        tasksCompleted = tasksCompleted,
+        earnedLeaves = earnedLeaves,
+        isProcessed = isProcessed,
+        durationMinutes = durationMinutes
+    )
+}
 
 fun parseHexColor(hex: String): Color {
     val clean = hex.removePrefix("#").removePrefix("0x").removePrefix("0X")
@@ -173,15 +251,15 @@ data class SyncSubscriptionRequestDto(
 @Serializable
 data class WsRoomMessage(
     val type: String,
-    val participants: List<com.grepho.cozydoubling.features.room.ParticipantPresence>? = null,
-    val presence: com.grepho.cozydoubling.features.room.ParticipantPresence? = null,
+    val participants: List<ParticipantPresenceDto>? = null,
+    val presence: ParticipantPresenceDto? = null,
     @SerialName("presence_id") val presenceId: String? = null
 )
 
 @Serializable
 data class WsPresenceUpdate(
     val type: String = "presence_update",
-    val presence: com.grepho.cozydoubling.features.room.ParticipantPresence
+    val presence: ParticipantPresenceDto
 )
 
 @Serializable

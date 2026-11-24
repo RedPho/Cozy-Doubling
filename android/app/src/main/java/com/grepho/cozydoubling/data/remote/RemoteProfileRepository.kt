@@ -50,7 +50,7 @@ class RemoteProfileRepository(
     override suspend fun refreshProfile() {
         if (apiClient.authToken == null) return
         val result = apiClient.get("/api/profile") { body ->
-            apiClient.json.decodeFromString<Profile>(body)
+            apiClient.json.decodeFromString<ProfileDto>(body).toDomain()
         }
         result.fold(
             onSuccess = { fetchedProfile ->
@@ -67,7 +67,7 @@ class RemoteProfileRepository(
     override suspend fun updateDisplayName(newName: String) {
         val body = apiClient.json.encodeToString(UpdateProfileRequestDto(displayName = newName))
         val result = apiClient.patch("/api/profile", body) { res ->
-            apiClient.json.decodeFromString<Profile>(res)
+            apiClient.json.decodeFromString<ProfileDto>(res).toDomain()
         }
         result.onSuccess {
             refreshProfile()
@@ -81,7 +81,7 @@ class RemoteProfileRepository(
         _syncEvents.emit(Unit)
     }
 
-    override suspend fun triggerBackendRestoreSync() {
+    override suspend fun syncRestoredPurchases() {
         val body = apiClient.json.encodeToString(SyncSubscriptionRequestDto(isSupporter = true))
         apiClient.post("/api/subscriptions/sync", body) { }
         refreshProfile()

@@ -102,7 +102,7 @@ class SettingsViewModel(
         viewModelScope.launch {
             val success = billingRepository.restorePurchases()
             if (success) {
-                profileRepository.triggerBackendRestoreSync()
+                profileRepository.syncRestoredPurchases()
                 repeat(2) {
                     delay(500)
                     profileRepository.refreshProfile()

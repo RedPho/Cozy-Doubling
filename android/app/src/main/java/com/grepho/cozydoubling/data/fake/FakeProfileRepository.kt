@@ -117,7 +117,7 @@ class FakeProfileRepository(
         _syncEvents.emit(Unit)
     }
 
-    override suspend fun triggerBackendRestoreSync() {
+    override suspend fun syncRestoredPurchases() {
         _syncEvents.emit(Unit)
     }
 

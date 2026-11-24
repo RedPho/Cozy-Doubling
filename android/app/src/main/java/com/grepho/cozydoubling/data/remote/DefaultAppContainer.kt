@@ -1,5 +1,6 @@
 package com.grepho.cozydoubling.data.remote
 
+import com.grepho.cozydoubling.BuildConfig
 import com.grepho.cozydoubling.core.auth.AuthRepository
 import com.grepho.cozydoubling.core.billing.BillingRepository
 import com.grepho.cozydoubling.core.di.AppContainer
@@ -11,7 +12,7 @@ import com.grepho.cozydoubling.features.friends.FriendsRepository
 import com.grepho.cozydoubling.features.room.FocusRoomRepository
 
 class DefaultAppContainer(
-    val baseUrl: String = "http://10.0.2.2:8000"
+    val baseUrl: String = BuildConfig.API_BASE_URL
 ) : AppContainer {
     val apiClient: ApiClient by lazy { ApiClient(baseUrl = baseUrl) }
 

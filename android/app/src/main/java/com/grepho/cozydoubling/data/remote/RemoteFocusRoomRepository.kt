@@ -72,12 +72,12 @@ class RemoteFocusRoomRepository(
                     val msg = apiClient.json.decodeFromString<WsRoomMessage>(text)
                     when (msg.type) {
                         "presence_state" -> {
-                            val list = msg.participants ?: emptyList()
+                            val list = msg.participants?.map { it.toDomain() } ?: emptyList()
                             println("DEBUG: RemoteFocusRoomRepository - presence_state: ${list.size} other participants")
                             _participants.value = list
                         }
                         "presence_update" -> {
-                            val p = msg.presence ?: return
+                            val p = msg.presence?.toDomain() ?: return
                             println("DEBUG: RemoteFocusRoomRepository - presence_update: ${p.name} (${p.id})")
                             _participants.update { current ->
                                 current.filter { it.id != p.id } + p
@@ -148,7 +148,7 @@ class RemoteFocusRoomRepository(
     override suspend fun broadcastPresence(presence: ParticipantPresence) {
         _broadcastFlow.tryEmit(presence)
         try {
-            val jsonStr = apiClient.json.encodeToString(WsPresenceUpdate(presence = presence))
+            val jsonStr = apiClient.json.encodeToString(WsPresenceUpdate(presence = ParticipantPresenceDto.fromDomain(presence)))
             activeWebSocket?.send(jsonStr)
         } catch (e: Exception) {
             e.printStackTrace()
@@ -159,7 +159,7 @@ class RemoteFocusRoomRepository(
 
     override suspend fun updatePresence(presence: ParticipantPresence) {
         try {
-            val jsonStr = apiClient.json.encodeToString(WsPresenceUpdate(presence = presence))
+            val jsonStr = apiClient.json.encodeToString(WsPresenceUpdate(presence = ParticipantPresenceDto.fromDomain(presence)))
             activeWebSocket?.send(jsonStr)
         } catch (e: Exception) {
             e.printStackTrace()
@@ -196,7 +196,7 @@ class RemoteFocusRoomRepository(
 
     override suspend fun fetchSession(sessionId: String): FocusSession? {
         val result = apiClient.get("/api/sessions/$sessionId") { body ->
-            apiClient.json.decodeFromString<FocusSession>(body)
+            apiClient.json.decodeFromString<FocusSessionDto>(body).toDomain()
         }
         return result.getOrNull()
     }

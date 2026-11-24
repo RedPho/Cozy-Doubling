@@ -85,9 +85,10 @@ class FocusRoomManager:
     async def update_presence(self, presence_key: str, presence_data: Dict[str, Any]):
         if presence_key in self.active_participants:
             entry = self.active_participants[presence_key]
-            entry.presence_data = presence_data
-            logger.info(f"Updated presence for {presence_key}: {presence_data.get('name')}")
-            await self.broadcast_update(presence_key, presence_data, entry.user_id)
+            canonical_presence = {**presence_data, "id": presence_key}
+            entry.presence_data = canonical_presence
+            logger.info(f"Updated presence for {presence_key}: {canonical_presence.get('name')}")
+            await self.broadcast_update(presence_key, canonical_presence, entry.user_id)
 
     async def broadcast_update(self, sender_key: str, presence_data: Dict[str, Any], sender_user_id: str):
         message = json.dumps({
@@ -111,7 +112,7 @@ class FocusRoomManager:
             try:
                 await entry.websocket.send_text(message)
             except Exception as e:
-                logger.warning(f"Error broadcasting to {key}: {e}")
+                logger.warning(f"Error broadcasting to {key}: {type(e).__name__}: {e}")
                 disconnected_items.append((key, entry.websocket))
 
         for k, ws in disconnected_items:

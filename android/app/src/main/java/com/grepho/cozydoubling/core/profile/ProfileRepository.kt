@@ -17,7 +17,7 @@ interface ProfileRepository {
     suspend fun refreshProfile()
     suspend fun updateDisplayName(newName: String)
     suspend fun signOut()
-    suspend fun triggerBackendRestoreSync()
+    suspend fun syncRestoredPurchases()
     suspend fun deleteAccount()
 
     suspend fun setSupporter(isSupporter: Boolean)

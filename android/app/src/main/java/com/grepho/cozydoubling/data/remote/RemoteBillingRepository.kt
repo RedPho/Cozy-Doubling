@@ -46,7 +46,7 @@ class RemoteBillingRepository(
     }
 
     override suspend fun restorePurchases(): Boolean {
-        profileRepository.triggerBackendRestoreSync()
+        profileRepository.syncRestoredPurchases()
         return true
     }
 }
