@@ -163,6 +163,9 @@ class FocusRoomAndSummaryE2eTest {
         composeRule.onNodeWithTag("room_task_checkbox_Back button task").performClick()
         composeRule.waitUntilNodeExists(hasText("1/1 Done"))
 
+        // Close IME soft keyboard first so pressBack reaches FocusRoomScreen's BackHandler
+        Espresso.closeSoftKeyboard()
+        composeRule.waitForIdle()
         Espresso.pressBack()
         composeRule.waitUntilNodeExists(hasText("Great job showing up today!"))
         composeRule.waitUntilNodeExists(hasText("1 tasks"))

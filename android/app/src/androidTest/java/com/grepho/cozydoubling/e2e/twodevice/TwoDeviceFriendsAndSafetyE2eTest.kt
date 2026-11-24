@@ -278,23 +278,22 @@ class TwoDeviceFriendsAndSafetyE2eTest {
         composeRule.onNodeWithText("1 focusing now").assertExists()
         E2eCoordinator.arrive("safe_p1_room_hidden", 2)
 
-        // Exit Focus Room and verify Bob's post-block friend request stays suppressed
+        // Exit Focus Room from Part 1
         composeRule.onNodeWithContentDescription("Leave").performClick()
         composeRule.waitUntilNodeExists(hasText("Continue"))
         composeRule.onNodeWithText("Continue").performClick()
         composeRule.waitUntilNodeExists(hasText("Start Focus"))
 
-        E2eCoordinator.arrive("safe_p1_bob_sent_post_block_req", 2)
-        composeRule.openOasisSubTab("Friends")
-        composeRule.waitForIdle()
-        composeRule.onNodeWithText("Pending Requests (1)").assertDoesNotExist()
-        E2eCoordinator.arrive("safe_p1_suppressed_verified", 2)
-
-        // Part 2: Fresh accounts enter Focus Room together -> Alice blocks Bob live in Focus Room!
-        composeRule.onNodeWithText("Home").performClick()
+        // Part 2: Fresh non-friend accounts enter Focus Room -> Alice blocks Bob live -> post-block request suppressed!
         composeRule.signOutFromHome()
         composeRule.signInWithEmailUi(E2eTestHarness.uniqueEmail("2d_safe_a2"), "CozyPass123!")
         composeRule.updateDisplayNameFromHome("AliceRoomBlk")
+
+        composeRule.openOasisSubTab("Friends")
+        val alice2Tag = composeRule.readOwnConnectCodeInFriends()
+        E2eCoordinator.publish("alice2_tag", alice2Tag)
+        composeRule.onNodeWithText("Home").performClick()
+        composeRule.waitUntilNodeExists(hasText("Start Focus"))
 
         val bob2Id = E2eCoordinator.awaitValue("bob2_id")
         E2eCoordinator.arrive("safe_p2_ready", 2)
@@ -312,6 +311,20 @@ class TwoDeviceFriendsAndSafetyE2eTest {
         composeRule.waitUntilNodeDoesNotExist(hasText("BobRoomBlk"))
         composeRule.waitUntilNodeExists(hasText("1 focusing now"))
         E2eCoordinator.arrive("safe_p2_room_block_verified", 2)
+
+        // Leave Focus Room -> verify blocked non-friend's incoming request never appears in Friends
+        composeRule.onNodeWithContentDescription("Leave").performClick()
+        composeRule.waitUntilNodeExists(hasText("Continue"))
+        composeRule.onNodeWithText("Continue").performClick()
+        composeRule.waitUntilNodeExists(hasText("Start Focus"))
+
+        E2eCoordinator.arrive("safe_p2_bob_sent_post_block_req", 2)
+        composeRule.openOasisSubTab("Friends")
+        composeRule.refreshFriendsTab()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("Pending Requests (1)").assertDoesNotExist()
+        composeRule.onNodeWithText("BobRoomBlk").assertDoesNotExist()
+        E2eCoordinator.arrive("safe_p2_suppressed_verified", 2)
     }
 
     @Test
@@ -348,25 +361,18 @@ class TwoDeviceFriendsAndSafetyE2eTest {
         composeRule.onNodeWithText("1 focusing now").assertExists()
         E2eCoordinator.arrive("safe_p1_room_hidden", 2)
 
-        // Exit Focus Room and attempt post-block friend request to Alice
+        // Exit Focus Room from Part 1
         composeRule.onNodeWithContentDescription("Leave").performClick()
         composeRule.waitUntilNodeExists(hasText("Continue"))
         composeRule.onNodeWithText("Continue").performClick()
         composeRule.waitUntilNodeExists(hasText("Start Focus"))
 
-        composeRule.openOasisSubTab("Friends")
-        composeRule.sendFriendRequestViaDialog(aliceTag)
-        composeRule.waitUntilNodeExists(hasText("Friend request sent!"))
-        composeRule.waitUntilNodeDoesNotExist(hasText("Friend request sent!"))
-        E2eCoordinator.arrive("safe_p1_bob_sent_post_block_req", 2)
-        E2eCoordinator.arrive("safe_p1_suppressed_verified", 2)
-
         // Part 2: Fresh account enters Focus Room -> Alice blocks Bob inside Focus Room -> Bob sees Alice disappear live!
-        composeRule.onNodeWithText("Home").performClick()
         composeRule.signOutFromHome()
         composeRule.signInWithEmailUi(E2eTestHarness.uniqueEmail("2d_safe_b2"), "CozyPass123!")
         composeRule.updateDisplayNameFromHome("BobRoomBlk")
 
+        val alice2Tag = E2eCoordinator.awaitValue("alice2_tag")
         E2eCoordinator.publish("bob2_id", E2eTestHarness.currentUserId())
         E2eCoordinator.arrive("safe_p2_ready", 2)
 
@@ -380,6 +386,19 @@ class TwoDeviceFriendsAndSafetyE2eTest {
         composeRule.waitUntilNodeDoesNotExist(hasText("AliceRoomBlk"), timeoutMs = 25_000L)
         composeRule.waitUntilNodeExists(hasText("1 focusing now"))
         E2eCoordinator.arrive("safe_p2_room_block_verified", 2)
+
+        // Leave Focus Room -> send friend request to AliceRoomBlk (request succeeds, but Alice never sees it)
+        composeRule.onNodeWithContentDescription("Leave").performClick()
+        composeRule.waitUntilNodeExists(hasText("Continue"))
+        composeRule.onNodeWithText("Continue").performClick()
+        composeRule.waitUntilNodeExists(hasText("Start Focus"))
+
+        composeRule.openOasisSubTab("Friends")
+        composeRule.sendFriendRequestViaDialog(alice2Tag)
+        composeRule.waitUntilNodeExists(hasText("Friend request sent!"))
+        composeRule.waitUntilNodeDoesNotExist(hasText("Friend request sent!"))
+        E2eCoordinator.arrive("safe_p2_bob_sent_post_block_req", 2)
+        E2eCoordinator.arrive("safe_p2_suppressed_verified", 2)
     }
 
     // --- Scenario 4: Deleting account on Device B cascades friendship removal on Device A ---

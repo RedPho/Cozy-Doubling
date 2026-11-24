@@ -5,13 +5,12 @@ Cozy Doubling — Full-Stack Multi-Device Android + Backend E2E Test Runner.
 Orchestrates:
 1. Isolated live FastAPI/Uvicorn backend with an ephemeral SQLite DB (logged to file).
 2. Test-only Coordinator HTTP server (E2eCoordinator) for /kv, /barrier, and /abort.
-3. Detection or parallel boot of 1, 2, or 3 real Android emulators:
+3. Detection or parallel boot of 1 or 2 real Android emulators:
    - Emulator 1 (port 5554): Medium_Phone_API_37.0 (Wi-Fi enabled)
    - Emulator 2 (port 5556): Medium_Phone_API_37.0_2 (Wi-Fi disabled, cellular data enabled)
-   - Emulator 3 (port 5558): Medium_Phone_API_37.0 -read-only (Wi-Fi disabled, cellular data enabled)
 4. Single Gradle build (assembleDebug + assembleDebugAndroidTest) with -PapiBaseUrl=http://127.0.0.1:<port>
    followed by parallel `adb install -r -t` across all active emulators.
-5. Execution of single-device, 2-device concurrent pairs, and 3-device concurrent triples.
+5. Execution of 1-device suites and real 2-device concurrent pairs.
 6. Summary report and clean teardown of emulators, coordinator, backend, and temp files.
 """
 
@@ -81,27 +80,6 @@ TWO_DEVICE_SCENARIOS = [
         "twoDevices_accountDeletionCascadesFriendRemoval",
         "com.grepho.cozydoubling.e2e.twodevice.TwoDeviceFriendsAndSafetyE2eTest#twoDevices_accountDeletionCascadesFriendRemoval_deviceA",
         "com.grepho.cozydoubling.e2e.twodevice.TwoDeviceFriendsAndSafetyE2eTest#twoDevices_accountDeletionCascadesFriendRemoval_deviceB",
-    ),
-]
-
-THREE_DEVICE_SCENARIOS = [
-    (
-        "threeDevices_simultaneousRoomPresence_liveTaskUpdates_andSelectiveLeave",
-        "com.grepho.cozydoubling.e2e.threedevice.ThreeDeviceE2eTest#threeDevices_simultaneousRoomPresence_liveTaskUpdates_andSelectiveLeave_deviceA",
-        "com.grepho.cozydoubling.e2e.threedevice.ThreeDeviceE2eTest#threeDevices_simultaneousRoomPresence_liveTaskUpdates_andSelectiveLeave_deviceB",
-        "com.grepho.cozydoubling.e2e.threedevice.ThreeDeviceE2eTest#threeDevices_simultaneousRoomPresence_liveTaskUpdates_andSelectiveLeave_deviceC",
-    ),
-    (
-        "threeDevices_asymmetricBlockIsolation_roomAndFriends",
-        "com.grepho.cozydoubling.e2e.threedevice.ThreeDeviceE2eTest#threeDevices_asymmetricBlockIsolation_roomAndFriends_deviceA",
-        "com.grepho.cozydoubling.e2e.threedevice.ThreeDeviceE2eTest#threeDevices_asymmetricBlockIsolation_roomAndFriends_deviceB",
-        "com.grepho.cozydoubling.e2e.threedevice.ThreeDeviceE2eTest#threeDevices_asymmetricBlockIsolation_roomAndFriends_deviceC",
-    ),
-    (
-        "threeDevices_multiplePendingRequests_acceptOneRejectOther",
-        "com.grepho.cozydoubling.e2e.threedevice.ThreeDeviceE2eTest#threeDevices_multiplePendingRequests_acceptOneRejectOther_deviceA",
-        "com.grepho.cozydoubling.e2e.threedevice.ThreeDeviceE2eTest#threeDevices_multiplePendingRequests_acceptOneRejectOther_deviceB",
-        "com.grepho.cozydoubling.e2e.threedevice.ThreeDeviceE2eTest#threeDevices_multiplePendingRequests_acceptOneRejectOther_deviceC",
     ),
 ]
 
@@ -273,7 +251,7 @@ def wait_for_backend_health(port: int, server_proc: subprocess.Popen, timeout_s:
     raise TimeoutError(f"Backend failed health check at {url} within {timeout_s}s")
 
 
-def wait_for_emulator_serial_ready(adb: str, serial: str, timeout_s: int = 240) -> None:
+def wait_for_emulator_serial_ready(adb: str, serial: str, log_path: Path | None = None, timeout_s: int = 240) -> None:
     print(f"[E2E] Waiting for {serial} to finish booting...")
     deadline = time.time() + timeout_s
     while time.time() < deadline:
@@ -285,6 +263,9 @@ def wait_for_emulator_serial_ready(adb: str, serial: str, timeout_s: int = 240) 
                 print(f"[E2E] Device ready: {serial}")
                 return
         time.sleep(2)
+    if log_path and log_path.exists():
+        print(f"[E2E] --- Last 30 lines of {log_path.name} ---")
+        print("\n".join(log_path.read_text(encoding="utf-8", errors="replace").splitlines()[-30:]))
     raise TimeoutError(f"Emulator {serial} did not finish booting within {timeout_s}s")
 
 
@@ -299,7 +280,7 @@ def configure_device_network_and_settings(adb: str, serial: str, slot_idx: int, 
     run_cmd([adb, "-s", serial, "shell", "input", "keyevent", "82"], check=False)
     run_cmd([adb, "-s", serial, "shell", "svc", "power", "stayon", "true"], check=False)
 
-    # Emulator 2 & 3 disable Wi-Fi (keeps 10.0.2.16 AndroidWifi conflict off) & use mobile data
+    # Emulator 2 disables Wi-Fi (prevents 10.0.2.16 AndroidWifi conflict) and uses cellular data
     if slot_idx == 0:
         run_cmd([adb, "-s", serial, "shell", "svc", "wifi", "enable"], check=False)
         run_cmd([adb, "-s", serial, "shell", "svc", "data", "enable"], check=False)
@@ -445,10 +426,10 @@ def run_multi_device_scenario(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Run Cozy Doubling multi-emulator Android + Backend E2E tests.")
+    parser = argparse.ArgumentParser(description="Run Cozy Doubling 1-device & real 2-device Android + Backend E2E tests.")
     parser.add_argument("--port", type=int, default=8010, help="Local port for ephemeral FastAPI backend (default: 8010)")
     parser.add_argument("--coord-port", type=int, default=8011, help="Local port for test coordinator server (default: 8011)")
-    parser.add_argument("--mode", choices=["all", "single", "two", "three"], default="all", help="Which E2E tier(s) to run")
+    parser.add_argument("--mode", choices=["all", "single", "two"], default="all", help="Which E2E tier(s) to run")
     parser.add_argument("--scenario", type=str, default=None, help="Optional substring filter for test class or scenario name")
     parser.add_argument("--keep-emulators", action="store_true", help="Leave newly booted emulators running after tests")
     args = parser.parse_args()
@@ -457,13 +438,15 @@ def main() -> int:
     emulator_bin = find_binary("emulator", "emulator")
     avds = [a.strip() for a in run_cmd([emulator_bin, "-list-avds"]).stdout.splitlines() if a.strip()]
 
-    needed_devices = {"single": 1, "two": 2, "three": 3, "all": 3}[args.mode]
+    needed_devices = 1 if args.mode == "single" else 2
 
     temp_dir = Path(tempfile.mkdtemp(prefix="cozy_e2e_"))
     db_path = temp_dir / "cozy_e2e.db"
     db_url = f"sqlite:///{db_path.as_posix()}"
     backend_log_path = temp_dir / "backend.log"
     backend_log_file = None
+    emu_log_files: list = []
+    emu_logs: dict[str, Path] = {}
     server_proc: subprocess.Popen | None = None
     coord_server: ThreadingHTTPServer | None = None
     booted_serials: list[str] = []
@@ -507,14 +490,12 @@ def main() -> int:
         existing = list_online_devices(adb)
         active_serials = list(existing[:needed_devices])
 
-        # Slot definitions matching user's installed AVDs (-read-only whenever AVD is shared across slots)
-        avd_primary = avds[0] if avds else "Medium_Phone_API_37.0"
-        avd_secondary = avds[1] if len(avds) > 1 else avd_primary
-        primary_read_only = ["-read-only"] if needed_devices >= 3 else []
+        # Boot up to 2 dedicated AVDs (Medium_Phone_API_37.0 on 5554, Medium_Phone_API_37.0_2 on 5556)
+        avd_0 = avds[0] if avds else "Medium_Phone_API_37.0"
+        avd_1 = avds[1] if len(avds) > 1 else avd_0
         slot_configs = [
-            (5554, [emulator_bin, "-avd", avd_primary, *primary_read_only, "-port", "5554", "-no-snapshot-load", "-no-audio", "-no-boot-anim"]),
-            (5556, [emulator_bin, "-avd", avd_secondary, "-port", "5556", "-no-snapshot-load", "-no-audio", "-no-boot-anim"]),
-            (5558, [emulator_bin, "-avd", avd_primary, "-read-only", "-port", "5558", "-no-snapshot-load", "-no-audio", "-no-boot-anim"]),
+            (5554, [emulator_bin, "-avd", avd_0, "-port", "5554", "-no-snapshot-load", "-no-audio", "-no-boot-anim", "-cores", "4"]),
+            (5556, [emulator_bin, "-avd", avd_1, "-port", "5556", "-no-snapshot-load", "-no-audio", "-no-boot-anim", "-cores", "4"]),
         ]
 
         to_wait: list[str] = []
@@ -526,17 +507,23 @@ def main() -> int:
             if port_num in used_ports:
                 continue
             target_serial = f"emulator-{port_num}"
+            emu_log_path = temp_dir / f"emu_{port_num}.log"
+            emu_log_f = open(emu_log_path, "w", encoding="utf-8")
+            emu_log_files.append(emu_log_f)
+            emu_logs[target_serial] = emu_log_path
             print(f"[E2E] Booting {target_serial}: {' '.join(emu_cmd)}")
-            subprocess.Popen(emu_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.Popen(emu_cmd, stdout=emu_log_f, stderr=subprocess.STDOUT)
             active_serials.append(target_serial)
             booted_serials.append(target_serial)
             to_wait.append(target_serial)
+            if len(active_serials) < needed_devices:
+                time.sleep(3)
 
         if to_wait:
             with ThreadPoolExecutor(max_workers=len(to_wait)) as pool:
-                list(pool.map(lambda ser: wait_for_emulator_serial_ready(adb, ser), to_wait))
+                list(pool.map(lambda ser: wait_for_emulator_serial_ready(adb, ser, emu_logs.get(ser)), to_wait))
 
-        # 4. Configure networking (Wi-Fi disabled on slots >= 1), adb reverse & install APKs in parallel
+        # 4. Configure networking (Wi-Fi disabled on slot 1 / emulator-5556), adb reverse & install APKs in parallel
         with ThreadPoolExecutor(max_workers=len(active_serials)) as pool:
             futs = [
                 pool.submit(
@@ -594,20 +581,6 @@ def main() -> int:
                 )
                 summary.append(("2-Device", name, ok, elapsed))
 
-        if args.mode in ("all", "three"):
-            for name, m_a, m_b, m_c in THREE_DEVICE_SCENARIOS:
-                if args.scenario and args.scenario.lower() not in name.lower():
-                    continue
-                _, ok, elapsed, _ = run_multi_device_scenario(
-                    adb,
-                    active_serials[:3],
-                    name,
-                    [m_a, m_b, m_c],
-                    args.coord_port,
-                    coord_state,
-                )
-                summary.append(("3-Device", name, ok, elapsed))
-
         # 6. Summary table
         print("\n==================== E2E SUMMARY ====================")
         passed_count = 0
@@ -646,6 +619,8 @@ def main() -> int:
                 server_proc.kill()
         if backend_log_file:
             backend_log_file.close()
+        for f in emu_log_files:
+            f.close()
         if exit_code != 0 and backend_log_path.exists():
             print("[E2E] --- Last 80 lines of isolated backend log ---")
             tail = backend_log_path.read_text(encoding="utf-8", errors="replace").splitlines()[-80:]

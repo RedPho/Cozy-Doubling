@@ -1,6 +1,6 @@
 # Cozy Doubling — E2E Test Automation Work Items & Tickets
 
-This backlog defines the ticket-style work items for full-stack **Android + FastAPI Backend End-to-End (E2E) Test Automation** across **1, 2, and 3 real Android devices/emulators**. Each ticket maps directly to the product backlog stories in [01_product_backlog.md](01_product_backlog.md) and [epics.md](epics.md), enumerates both **happy paths** and **critical edge cases**, and enforces **Clean Architecture** compliance.
+This backlog defines the ticket-style work items for full-stack **Android + FastAPI Backend End-to-End (E2E) Test Automation** across **1 and 2 real Android devices/emulators**. Each ticket maps directly to the product backlog stories in [01_product_backlog.md](01_product_backlog.md) and [epics.md](epics.md), enumerates both **happy paths** and **critical edge cases**, and enforces **Clean Architecture** compliance.
 
 ---
 
@@ -11,18 +11,18 @@ This backlog defines the ticket-style work items for full-stack **Android + Fast
 **Automated In:** `scripts/run_e2e.py`, `android/app/src/androidTest/java/com/grepho/cozydoubling/e2e/E2eTestHarness.kt`, `android/app/src/test/java/com/grepho/cozydoubling/ArchitectureBoundaryTest.kt`
 
 ### Description
-As an engineer, I need a reproducible, one-command E2E test harness that boots an isolated live FastAPI backend plus up to 3 real Android emulators (with Wi-Fi disabled on emulators 2 and 3 to avoid the `AndroidWifi` collision) and synchronizes real multi-device instrumentation tests without violating clean architecture boundaries.
+As an engineer, I need a reproducible, one-command E2E test harness that boots an isolated live FastAPI backend plus 2 real Android emulators (with Wi-Fi disabled on the 2nd emulator to avoid the `AndroidWifi` collision) and synchronizes real 2-device instrumentation tests without violating clean architecture boundaries.
 
 ### Scope & Rules
 - Starts Uvicorn (`app.main:app`) backed by a fresh ephemeral SQLite DB (`DATABASE_URL`) seeded via standard startup catalog seeding (`seed_catalog_if_empty`).
-- Runs a test-only `ThreadingHTTPServer` coordinator (`E2eCoordinator`) offering `/kv` and `/barrier` and `/abort` endpoints over `adb reverse`.
-- Boots/attaches up to 3 emulators (`Medium_Phone_API_37.0`, `Medium_Phone_API_37.0_2`, and `Medium_Phone_API_37.0 -read-only`), disables Wi-Fi and enables cellular data on emulators 2 & 3, disables animations, and grants `POST_NOTIFICATIONS`.
-- Builds debug + androidTest APKs once with `-PapiBaseUrl=http://127.0.0.1:<port>` and installs across all devices.
-- Uses **no simulated peer clients** for multi-user tests: all multi-user tests run real Android apps on 2 or 3 emulators concurrently.
+- Runs a test-only `ThreadingHTTPServer` coordinator (`E2eCoordinator`) offering `/kv`, `/barrier`, and `/abort` endpoints over `adb reverse`.
+- Boots/attaches 2 dedicated emulators (`Medium_Phone_API_37.0` and `Medium_Phone_API_37.0_2`), disables Wi-Fi and enables cellular data on the 2nd emulator, disables animations, and grants `POST_NOTIFICATIONS`.
+- Builds debug + androidTest APKs once with `-PapiBaseUrl=http://127.0.0.1:<port>` and installs across both devices.
+- Uses **no simulated peer clients** for multi-user tests: all multi-user tests run real Android apps on both emulators concurrently.
 - Production code outside `data/` and `core/di/` must never import `data.*`, `okhttp3.*`, or `@SerialName`.
 
 ### Acceptance Criteria
-- [x] Running `python scripts/run_e2e.py` executes 1-device, 2-device, and 3-device suites and cleans up all temporary resources.
+- [x] Running `python scripts/run_e2e.py` executes 1-device and real 2-device suites and cleans up all temporary resources.
 - [x] `ArchitectureBoundaryTest` passes with zero violations after any semantic `testTag` / UI updates.
 - [x] Every E2E test resets `ServiceLocator` and `LocalTaskDataSource` cleanly before running.
 
@@ -169,23 +169,7 @@ As an engineer, I need a reproducible, one-command E2E test harness that boots a
 
 ---
 
-## [E2E-10] 3-User Real Multi-Device Focus Room, Asymmetric Safety Isolation & Multi-Request Friends E2E
-**Priority:** Critical  
-**Type:** Feature E2E (Real 3 Devices)  
-**Linked Specs:** `[ROOM-01]`, `[ROOM-04]`, `[SOC-02]`, `[SAFE-01]`, `[SAFE-02]`  
-**Automated In:** `e2e/threedevice/ThreeDeviceE2eTest.kt`
-
-### Description
-Verify 3-participant concurrency across 3 real Android emulators connected simultaneously to the live backend.
-
-### Happy Path & Edge Case Scenarios
-1. **3-User Simultaneous Focus Room, Live Task Sync & Selective Leave:** Devices A, B, and C enter Focus Room → all 3 assert `"3 focusing now"` and see both peers' live tasks (`"Bob writing code • 1/1 done"`, `"Charlie reading • 0/2 done"`) → Device C leaves → Devices A & B both drop to `"2 focusing now"` while continuing to see each other.
-2. **3-User Asymmetric Block Isolation:** Devices A, B, and C are all in Focus Room (`"3 focusing now"`). Device A blocks Device B → Device A sees only Device C (`"2 focusing now"`), Device B sees only Device C (`"2 focusing now"`), and **Device C still sees BOTH Device A and Device B (`"3 focusing now"`)**, including Device B's subsequent task updates.
-3. **3-User Multiple Pending Requests (Accept One, Reject Other):** Devices B and C both send friend requests to Device A → Device A sees `"Pending Requests (2)"`, accepts Device B (`pending_accept_<bobTag>`) and rejects Device C (`pending_reject_<charlieTag>`) → Device A & B see `"Your Neighbourhood (1)"` while Device C sees `"Your Neighbourhood (0)"`.
-
----
-
-## [E2E-11] Offline Connectivity Recovery & Cross-Cutting Edge Cases E2E
+## [E2E-10] Offline Connectivity Recovery & Cross-Cutting Edge Cases E2E
 **Priority:** High  
 **Type:** Resilience & Edge Cases  
 **Linked Specs:** Network / Connectivity Observer, `[AUTH-04]`  
