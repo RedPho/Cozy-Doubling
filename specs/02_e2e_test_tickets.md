@@ -89,6 +89,8 @@ Verify single-user Focus Room session creation, task CRUD rules, active task sel
 ### Description
 Verify real-time WebSocket (`/ws/room`) body-doubling presence between User A (real Android UI) and User B (live peer connected to the same backend), including live task updates, disconnect cleanup, and rapid re-entry deduplication.
 
+turning off Wi-Fi directly in the second emulator fixes the 2 phones not working problem. so make all the tests with real 2 android devices instead just networking.
+
 ### Happy Path Scenarios
 1. **Peer Joins Live Room:** User A is in Focus Room (`"1 focusing now"`) → Peer B connects to `/ws/room` → User A's UI updates to `"2 focusing now"` and displays Peer B's participant card with Peer B's name and task.
 2. **Peer Broadcasts Live Task Progress:** Peer B sends a `presence_update` with a new task and completed count (`1/2`) → User A's grid updates Peer B's card text live without leaving the room.
