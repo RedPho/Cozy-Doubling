@@ -1,29 +1,32 @@
-package com.grepho.cozydoubling.e2e
+package com.grepho.cozydoubling.e2e.single
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
-import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ActivityScenario
+import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.grepho.cozydoubling.core.MainActivity
+import com.grepho.cozydoubling.e2e.E2eTestHarness
+import com.grepho.cozydoubling.e2e.addTaskInFocusRoom
+import com.grepho.cozydoubling.e2e.openOasisSubTab
+import com.grepho.cozydoubling.e2e.signInWithEmailUi
+import com.grepho.cozydoubling.e2e.waitUntilNodeExists
 import org.junit.After
-import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Covers E2E-03 (Focus Room Task CRUD & Persistence),
- * E2E-04 (Real-Time Multi-User Presence & Sync),
- * and E2E-05 (Session Completion, Leaf Economy & Minimum Floor).
+ * Single-device E2E covering E2E-03 (Focus Room Task CRUD & Local Persistence)
+ * and E2E-05 (Session Completion, Leaf Economy & Cumulative Journey Stats).
  */
 @RunWith(AndroidJUnit4::class)
 class FocusRoomAndSummaryE2eTest {
@@ -32,7 +35,6 @@ class FocusRoomAndSummaryE2eTest {
     val composeRule = createEmptyComposeRule()
 
     private var scenario: ActivityScenario<MainActivity>? = null
-    private val peers = mutableListOf<BackendPeerClient>()
 
     @Before
     fun setUp() {
@@ -41,8 +43,6 @@ class FocusRoomAndSummaryE2eTest {
 
     @After
     fun tearDown() {
-        peers.forEach { it.close() }
-        peers.clear()
         scenario?.close()
         E2eTestHarness.resetAppState()
     }
@@ -126,39 +126,71 @@ class FocusRoomAndSummaryE2eTest {
     }
 
     @Test
-    fun focusRoomMultiUserRealtimePresence_taskUpdates_leave_andRapidReentryDedup() {
-        val email = E2eTestHarness.uniqueEmail("room_multi")
-        val peer = E2eTestHarness.createPeer("peer_osman", displayName = "OsmanPeer")
-        peers.add(peer)
-
+    fun focusRoomEdgeCases_uncheckTask_deleteAllTasks_backHandler_andCumulativeJourney() {
+        val email = E2eTestHarness.uniqueEmail("room_edge")
         composeRule.signInWithEmailUi(email, "CozyPass123!")
+
         composeRule.onNodeWithText("Start Focus").performClick()
         composeRule.waitUntilNodeExists(hasText("Cozy Room"))
-        composeRule.waitUntilNodeExists(hasText("1 focusing now"))
 
-        // Peer joins live room -> appears in User A's grid immediately
-        peer.joinRoom(activeTaskText = "Drafting thesis", completedTasks = 0, totalTasks = 2)
-        composeRule.waitUntilNodeExists(hasText("2 focusing now"))
-        composeRule.waitUntilNodeExists(hasText("OsmanPeer"))
-        composeRule.waitUntilNodeExists(hasText("Drafting thesis • 0/2 done"))
+        // Add 2 tasks and mark both complete (2/2 Done)
+        composeRule.addTaskInFocusRoom("Task Alpha")
+        composeRule.addTaskInFocusRoom("Task Beta")
+        composeRule.waitUntilNodeExists(hasText("0/2 Done"))
 
-        // Peer updates active task & progress -> updates live on User A's screen
-        peer.updateRoomPresence(activeTaskText = "Polishing slides", completedTasks = 1, totalTasks = 2)
-        composeRule.waitUntilNodeExists(hasText("Polishing slides • 1/2 done"))
+        composeRule.onNodeWithTag("room_task_checkbox_Task Alpha").performClick()
+        composeRule.onNodeWithTag("room_task_checkbox_Task Beta").performClick()
+        composeRule.waitUntilNodeExists(hasText("2/2 Done"))
+        composeRule.onNodeWithTag("room_task_delete_Task Alpha").assertDoesNotExist()
 
-        // Edge case: Rapid peer re-entry with new session key produces no duplicate card
-        peer.joinRoom(activeTaskText = "Reconnected task", completedTasks = 2, totalTasks = 2)
-        composeRule.waitUntilNodeExists(hasText("Reconnected task • 2/2 done"))
-        composeRule.waitUntilNodeExists(hasText("2 focusing now"))
-        val peerCardCount = composeRule
-            .onAllNodesWithTag("room_participant_card_${peer.userId}")
-            .fetchSemanticsNodes()
-            .size
-        assertEquals(1, peerCardCount)
+        // Uncheck Task Alpha -> delete icon reappears and becomes usable
+        composeRule.onNodeWithTag("room_task_checkbox_Task Alpha").performClick()
+        composeRule.waitUntilNodeExists(hasText("1/2 Done"))
+        composeRule.waitUntilNodeExists(hasTestTag("room_task_delete_Task Alpha"))
+        composeRule.onNodeWithTag("room_task_delete_Task Alpha").performClick()
+        composeRule.waitUntilNodeExists(hasText("1/1 Done"))
 
-        // Peer leaves room -> card disappears and count returns to 1
-        peer.leaveRoom()
-        composeRule.waitUntilNodeDoesNotExist(hasText("OsmanPeer"))
-        composeRule.waitUntilNodeExists(hasText("1 focusing now"))
+        // Uncheck Task Beta and delete it too -> empty state falls back to "No active task • 0/0 done"
+        composeRule.onNodeWithTag("room_task_checkbox_Task Beta").performClick()
+        composeRule.waitUntilNodeExists(hasTestTag("room_task_delete_Task Beta"))
+        composeRule.onNodeWithTag("room_task_delete_Task Beta").performClick()
+        composeRule.waitUntilNodeExists(hasText("0/0 Done"))
+        composeRule.waitUntilNodeExists(hasText("No active task • 0/0 done"))
+
+        // Add 1 task, complete it, and exit via Android hardware Back button (BackHandler)
+        composeRule.addTaskInFocusRoom("Back button task")
+        composeRule.waitUntilNodeExists(hasText("0/1 Done"))
+        composeRule.onNodeWithTag("room_task_checkbox_Back button task").performClick()
+        composeRule.waitUntilNodeExists(hasText("1/1 Done"))
+
+        Espresso.pressBack()
+        composeRule.waitUntilNodeExists(hasText("Great job showing up today!"))
+        composeRule.waitUntilNodeExists(hasText("1 tasks"))
+        composeRule.waitUntilNodeExists(hasTestTag("summary_leaves_value") and hasText("3"))
+        composeRule.onNodeWithText("Continue").performClick()
+        composeRule.waitUntilNodeExists(hasText("Start Focus"))
+        composeRule.waitUntilNodeExists(hasText("3"))
+
+        // Complete a 2nd session with 2 tasks (+6 leaves -> cumulative 9)
+        composeRule.onNodeWithText("Start Focus").performClick()
+        composeRule.waitUntilNodeExists(hasText("Cozy Room"))
+        composeRule.addTaskInFocusRoom("Session 2 One")
+        composeRule.addTaskInFocusRoom("Session 2 Two")
+        composeRule.waitUntilNodeExists(hasText("0/2 Done"))
+        composeRule.onNodeWithTag("room_task_checkbox_Session 2 One").performClick()
+        composeRule.onNodeWithTag("room_task_checkbox_Session 2 Two").performClick()
+        composeRule.waitUntilNodeExists(hasText("2/2 Done"))
+
+        composeRule.onNodeWithContentDescription("Leave").performClick()
+        composeRule.waitUntilNodeExists(hasText("Great job showing up today!"))
+        composeRule.waitUntilNodeExists(hasTestTag("summary_leaves_value") and hasText("6"))
+        composeRule.onNodeWithText("Continue").performClick()
+        composeRule.waitUntilNodeExists(hasText("Start Focus"))
+        composeRule.waitUntilNodeExists(hasText("9"))
+
+        // Journey dashboard displays cumulative total leaves
+        composeRule.openOasisSubTab("Journey")
+        composeRule.waitUntilNodeExists(hasText("Total Leaves"))
+        composeRule.waitUntilNodeExists(hasText("9"))
     }
 }

@@ -83,6 +83,7 @@ cd android
 #### Running Full Android + Backend E2E Tests:
 See [docs/e2e_testing_guide.md](docs/e2e_testing_guide.md) and [specs/02_e2e_test_tickets.md](specs/02_e2e_test_tickets.md).
 ```bash
+# Run single-device, real 2-device, and real 3-device E2E suites
 python scripts/run_e2e.py
 ```
 

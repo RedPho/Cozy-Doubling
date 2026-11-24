@@ -1,225 +1,195 @@
 # Cozy Doubling — E2E Test Automation Work Items & Tickets
 
-This backlog defines the ticket-style work items for full-stack **Android + FastAPI Backend End-to-End (E2E) Test Automation**. Each ticket maps directly to the product backlog stories in [01_product_backlog.md](01_product_backlog.md) and [epics.md](epics.md), enumerates both **happy paths** and **critical edge cases**, and enforces **Clean Architecture** compliance.
+This backlog defines the ticket-style work items for full-stack **Android + FastAPI Backend End-to-End (E2E) Test Automation** across **1, 2, and 3 real Android devices/emulators**. Each ticket maps directly to the product backlog stories in [01_product_backlog.md](01_product_backlog.md) and [epics.md](epics.md), enumerates both **happy paths** and **critical edge cases**, and enforces **Clean Architecture** compliance.
 
 ---
 
-## [E2E-01] E2E Test Harness, Isolated Live Backend & Clean Architecture Compliance
+## [E2E-01] Multi-Device E2E Harness, Coordinator, Isolated Backend & Clean Architecture Compliance
 **Priority:** Critical  
 **Type:** Infrastructure / Enabler  
 **Linked Specs:** All Epics  
 **Automated In:** `scripts/run_e2e.py`, `android/app/src/androidTest/java/com/grepho/cozydoubling/e2e/E2eTestHarness.kt`, `android/app/src/test/java/com/grepho/cozydoubling/ArchitectureBoundaryTest.kt`
 
 ### Description
-As an engineer, I need a reproducible, one-command E2E test harness that boots an isolated live FastAPI backend and executes Jetpack Compose instrumentation tests against the real Android app without violating clean architecture boundaries.
+As an engineer, I need a reproducible, one-command E2E test harness that boots an isolated live FastAPI backend plus up to 3 real Android emulators (with Wi-Fi disabled on emulators 2 and 3 to avoid the `AndroidWifi` collision) and synchronizes real multi-device instrumentation tests without violating clean architecture boundaries.
 
 ### Scope & Rules
 - Starts Uvicorn (`app.main:app`) backed by a fresh ephemeral SQLite DB (`DATABASE_URL`) seeded via standard startup catalog seeding (`seed_catalog_if_empty`).
-- Configures `adb reverse tcp:<port> tcp:<port>` and passes `-PapiBaseUrl=http://127.0.0.1:<port>` so the Android app reaches the live backend reliably without emulator network conflicts.
-- Resets `ServiceLocator` (`DefaultAppContainer`) and `LocalTaskDataSource` between every test case.
-- Provides a test-only `BackendPeerClient` inside `androidTest` for real-time multi-user scenarios (User B).
+- Runs a test-only `ThreadingHTTPServer` coordinator (`E2eCoordinator`) offering `/kv` and `/barrier` and `/abort` endpoints over `adb reverse`.
+- Boots/attaches up to 3 emulators (`Medium_Phone_API_37.0`, `Medium_Phone_API_37.0_2`, and `Medium_Phone_API_37.0 -read-only`), disables Wi-Fi and enables cellular data on emulators 2 & 3, disables animations, and grants `POST_NOTIFICATIONS`.
+- Builds debug + androidTest APKs once with `-PapiBaseUrl=http://127.0.0.1:<port>` and installs across all devices.
+- Uses **no simulated peer clients** for multi-user tests: all multi-user tests run real Android apps on 2 or 3 emulators concurrently.
 - Production code outside `data/` and `core/di/` must never import `data.*`, `okhttp3.*`, or `@SerialName`.
 
 ### Acceptance Criteria
-- [x] Running `python scripts/run_e2e.py` starts the backend, waits for `/health`, attaches/boots an emulator, executes `connectedDebugAndroidTest`, and cleans up all temporary resources.
+- [x] Running `python scripts/run_e2e.py` executes 1-device, 2-device, and 3-device suites and cleans up all temporary resources.
 - [x] `ArchitectureBoundaryTest` passes with zero violations after any semantic `testTag` / UI updates.
-- [x] Every E2E test is self-contained and does not leak auth tokens or local tasks into subsequent tests.
+- [x] Every E2E test resets `ServiceLocator` and `LocalTaskDataSource` cleanly before running.
 
 ---
 
 ## [E2E-02] Authentication & Account Lifecycle E2E
 **Priority:** Critical  
-**Type:** Feature E2E  
+**Type:** Feature E2E (Single Device)  
 **Linked Specs:** `[AUTH-01]`, `[AUTH-02]`, `[AUTH-03]`, `[AUTH-06]`, `[AUTH-07]`  
-**Automated In:** `AuthAndSettingsE2eTest.kt`
-
-### Description
-Verify complete user authentication flows (email/password auto-registration, returning login, Google sign-in), input normalization and error handling, clean sign-out, and permanent cascade account deletion across Android UI and FastAPI backend.
+**Automated In:** `e2e/single/AuthAndSettingsE2eTest.kt`
 
 ### Happy Path Scenarios
-1. **New Email Auto-Registration & Login:** Open Reviewer Access dialog → enter new email & password → submit → lands on Home screen with `"Start Focus"` visible and backend profile initialized.
+1. **New Email Auto-Registration & Login:** Open Reviewer Access dialog → enter new email & password → submit → lands on Home screen with `"Start Focus"` visible.
 2. **Returning User Login (Case & Whitespace Normalization):** Sign out → re-open Reviewer Access dialog → enter same email with uppercase letters and leading/trailing whitespace → successfully authenticates into the same account.
 3. **Google Sign-In:** Tap `"Sign in with Google"` on Login screen → authenticates via `/api/auth/google` → lands on Home screen.
-4. **Sign Out & Local Task Wiping:** Add an unfinished task in Focus Room → leave room → open Settings → tap `"Sign Out"` → returns to Login screen; signing back in shows an empty task list in Focus Room (local tasks wiped).
-5. **Permanent Account Deletion:** Open Settings → tap `"Delete Account"` → confirm `"Delete"` → returns to Login screen; backend deletes account (`DELETE /api/auth/account`), so authenticating with the same email + a different password creates a brand-new account instead of failing with wrong password.
+4. **Sign Out & Local Task Wiping:** Add an unfinished task in Focus Room → leave room → open Settings → tap `"Sign Out"` → returns to Login screen; signing back in shows `"0/0 Done"` in Focus Room.
+5. **Permanent Account Deletion:** Confirm `"Delete Account"` → returns to Login screen; re-registering the same email with a brand-new password succeeds.
 
 ### Edge Cases
-1. **Empty Credentials Validation:** In Reviewer Access dialog, `"Login"` button remains disabled when email or password is blank.
-2. **Wrong Password Rejection:** Attempt login for an existing email with an incorrect password → Login Error alert displays `"Incorrect password for this account."` and user remains on Login screen.
-3. **Cancel Account Deletion:** Tap `"Delete Account"` → tap `"Cancel"` → stays authenticated on Settings screen and account remains intact.
-
-### Acceptance Criteria
-- [x] All 5 happy paths and 3 edge cases pass end-to-end against live `/api/auth/*` endpoints.
+1. **Blank / Whitespace Credentials Validation:** `"Login"` button remains disabled when email or password is blank or whitespace-only.
+2. **Cancel Reviewer Dialog:** Tapping `"Cancel"` dismisses dialog cleanly with no error dialog.
+3. **Wrong Password Rejection:** Incorrect password displays `"Incorrect password for this account."` and keeps user on Login screen.
+4. **Cancel Account Deletion:** Tapping `"Cancel"` keeps user authenticated on Settings screen.
 
 ---
 
 ## [E2E-03] Live Focus Room — Task Management & Local Persistence E2E
 **Priority:** Critical  
-**Type:** Feature E2E  
+**Type:** Feature E2E (Single Device)  
 **Linked Specs:** `[ROOM-01]`, `[ROOM-02]`, `[ROOM-03]`  
-**Automated In:** `FocusRoomAndSummaryE2eTest.kt`
-
-### Description
-Verify single-user Focus Room session creation, task CRUD rules, active task selection, completed-task immutability, and offline unfinished-task persistence across sessions.
+**Automated In:** `e2e/single/FocusRoomAndSummaryE2eTest.kt`
 
 ### Happy Path Scenarios
-1. **Enter Focus Room:** Tap `"Start Focus"` from Home → enters `"Cozy Room"`, displays `"1 focusing now"`, and renders self participant card.
-2. **Add First & Second Tasks:** Add `"Write E2E docs"` (auto-selected as active task; progress pill shows `"0/1 Done"`) and add `"Run emulator suite"` (`"0/2 Done"`).
-3. **Switch Active Task:** Tap second task row → self participant card updates active task text to `"Run emulator suite"`.
-4. **Toggle Task Completion:** Check first task's checkbox → progress pill updates to `"1/2 Done"`.
-5. **Delete Unfinished Active Task:** Delete `"Run emulator suite"` → task disappears, progress updates to `"1/1 Done"`, and active task falls back cleanly.
-6. **Unfinished Task Persistence Across Re-entry:** Leave room with 1 completed task and 1 unfinished task → finish summary → re-enter Focus Room → unfinished task is restored while completed task is NOT carried over.
+1. **Enter Focus Room:** Tap `"Start Focus"` → `"Cozy Room"`, `"1 focusing now"`.
+2. **Add Tasks & Auto-Active Selection:** First added task becomes active; progress updates (`"0/1 Done"`, `"0/2 Done"`).
+3. **Switch Active Task:** Tap another task row → self card updates active task text.
+4. **Toggle Task Completion & Delete Unfinished Task:** Check checkbox → `"1/2 Done"`; delete unfinished task → active falls back cleanly.
+5. **Unfinished Task Persistence Across Re-entry:** Leave room with unfinished task → re-enter → unfinished task restored, completed tasks cleared.
+6. **Hardware Back Press (`BackHandler`):** Pressing system Back exits Focus Room cleanly via `finishWork()` and opens Summary.
 
 ### Edge Cases
-1. **Blank / Whitespace Task Guard:** Submitting empty or whitespace-only text (`"   "`) via the add button does not create a task (`"0/0 Done"` unchanged).
-2. **Completed Task Cannot Be Deleted:** Once a task is checked complete, its delete button is hidden/removed from the UI so completed tasks remain intact for reward accounting.
-
-### Acceptance Criteria
-- [x] All task state transitions update both the Task Bottom Sheet and self `ParticipantCard` accurately.
-- [x] Unfinished tasks persist across session re-entry and are cleared on sign-out.
+1. **Blank / Whitespace Task Guard:** Submitting `"   "` does not create a task.
+2. **Completed Task Delete Lock & Uncheck Unlock:** Completed task hides its delete button; unchecking it restores the delete button so it can be deleted.
+3. **Delete All Tasks Fallback:** Deleting the last remaining task restores `"No active task • 0/0 done"` and `"0/0 Done"`.
 
 ---
 
-## [E2E-04] Live Focus Room — Real-Time Multi-User Presence & Sync E2E
+## [E2E-04] Live Focus Room — Real 2-Device Presence & Sync E2E
 **Priority:** Critical  
-**Type:** Feature E2E  
+**Type:** Feature E2E (Real 2 Devices)  
 **Linked Specs:** `[ROOM-01]`, `[ROOM-04]`  
-**Automated In:** `FocusRoomAndSummaryE2eTest.kt`
-
-### Description
-Verify real-time WebSocket (`/ws/room`) body-doubling presence between User A (real Android UI) and User B (live peer connected to the same backend), including live task updates, disconnect cleanup, and rapid re-entry deduplication.
-
-turning off Wi-Fi directly in the second emulator fixes the 2 phones not working problem. so make all the tests with real 2 android devices instead one just networking. also make 3 users tests
+**Automated In:** `e2e/twodevice/TwoDeviceFocusRoomE2eTest.kt`
 
 ### Happy Path Scenarios
-1. **Peer Joins Live Room:** User A is in Focus Room (`"1 focusing now"`) → Peer B connects to `/ws/room` → User A's UI updates to `"2 focusing now"` and displays Peer B's participant card with Peer B's name and task.
-2. **Peer Broadcasts Live Task Progress:** Peer B sends a `presence_update` with a new task and completed count (`1/2`) → User A's grid updates Peer B's card text live without leaving the room.
-3. **Peer Leaves Room:** Peer B closes WebSocket → Peer B's card disappears from User A's Focus Room and count returns to `"1 focusing now"`.
+1. **Real 2-Phone Mutual Presence:** Device A and Device B log into separate real Android apps and enter Focus Room → BOTH show `"2 focusing now"` and render each other's card.
+2. **Bidirectional Live Task Sync:** Device B adds/completes/switches tasks via real Compose UI → Device A updates live; Device A adds/completes a task → Device B updates live.
+3. **Leave & Re-Entry:** Device B exits to Summary → Device A drops to `"1 focusing now"`; Device B immediately re-enters → Device A updates back to `"2 focusing now"`.
+4. **Display Name Change Reflected on Re-Entry:** Device B updates display name in Settings UI (`"BobRenamed"`, `"BobRenamedAgain"`) and enters Focus Room → Device A sees the updated name.
 
 ### Edge Cases
-1. **Rapid Peer Re-entry Deduplication:** Peer B disconnects and immediately reconnects with a new session presence key (`userId:newSessionId`) → User A sees exactly **one** card for Peer B (`"2 focusing now"`), never duplicate ghost cards.
-
-### Acceptance Criteria
-- [x] Real WebSocket events (`presence_state`, `presence_update`, `presence_leave`) drive live Compose UI state end-to-end.
+1. **Rapid Re-entry Deduplication:** Device B's card count on Device A remains `1` (`room_participant_card_<bobId>`) with zero duplicate ghost cards.
+2. **Same Account on Two Devices Simultaneously:** Device A and Device B log into the exact same account and enter Focus Room together → both filter out own `userId` (`"1 focusing now"`), zero duplicate self cards, and session leaves accumulate cleanly across both devices.
 
 ---
 
 ## [E2E-05] Session Completion, Leaf Economy & Journey Stats E2E
 **Priority:** High  
-**Type:** Feature E2E  
+**Type:** Feature E2E (Single Device)  
 **Linked Specs:** `[ECON-01]`, `[ECON-02]`, `[ECON-03]`, `[JOURN-01]`  
-**Automated In:** `FocusRoomAndSummaryE2eTest.kt`, `ShopInventoryJourneyE2eTest.kt`
-
-### Description
-Verify server-computed session rewards, post-session Summary screen rendering, atomic leaf balance increments on the top bar, and lifetime Journey dashboard metrics.
+**Automated In:** `e2e/single/FocusRoomAndSummaryE2eTest.kt`, `e2e/single/ShopInventoryJourneyE2eTest.kt`
 
 ### Happy Path Scenarios
-1. **Task-Based Reward Calculation:** Complete 2 tasks in Focus Room → tap Leave → Summary screen displays `"Great job showing up today!"`, `"2 tasks"` finished, and `"6"` leaves earned (`0*1 + 2*3 = 6`).
-2. **Return Home & Top-Bar Balance Sync:** Tap `"Continue"` on Summary → returns to Home with top-bar leaf capsule reflecting the earned leaves.
-3. **Journey Dashboard Reflection:** Navigate to Oasis → `"Journey"` tab → displays `"<displayName>'s Oasis"`, `"Cozy Doubler since YYYY-MM"`, `"Total Leaves"`, and `"Time in Deep Focus"` matching backend profile state.
+1. **Task-Based Reward Calculation:** 2 completed tasks → Summary displays `"6"` leaves and `"2 tasks"`.
+2. **Cumulative Balance & Journey Reflection:** Multiple sessions accumulate leaves (`3 + 6 = 9`) visible on both Home top bar and Oasis `"Journey"` tab (`"Total Leaves"`, `"Time in Deep Focus"`).
+3. **Home Leaf Capsule Shortcut:** Tapping the Home top bar leaf capsule navigates straight to Oasis → `"Shop"`.
 
 ### Edge Cases
-1. **Minimum 1-Leaf Floor (0 Tasks, 0 Minutes):** Enter Focus Room and immediately leave without completing any tasks → backend awards minimum `1` leaf and Summary screen displays `1` under `"LEAVES EARNED"` and `"0 tasks"` under `"Tasks Finished"`.
-
-### Acceptance Criteria
-- [x] Summary stats come from real `/api/sessions/finish` + `/api/sessions/{id}` responses and propagate to Home top bar and Journey screen.
+1. **Minimum 1-Leaf Floor (0 Tasks, 0 Minutes):** Leaving immediately awards `1` leaf (`"0 tasks"`).
 
 ---
 
-## [E2E-06] Friends & Social Activity E2E
+## [E2E-06] Friends & Social Activity E2E (Real 2 Devices)
 **Priority:** High  
-**Type:** Feature E2E  
+**Type:** Feature E2E (Real 2 Devices & Single Edge Cases)  
 **Linked Specs:** `[SOC-01]`, `[SOC-02]`, `[SOC-03]`, `[SOC-04]`  
-**Automated In:** `FriendsAndSafetyE2eTest.kt`
-
-### Description
-Verify player tag discovery, friend request sending/accepting/rejecting, mutual auto-acceptance, error edge cases, and friend activity stories (both with and without completed sessions).
+**Automated In:** `e2e/twodevice/TwoDeviceFriendsAndSafetyE2eTest.kt`, `e2e/single/FriendsSingleDeviceEdgeCasesE2eTest.kt`
 
 ### Happy Path Scenarios
-1. **Display Own 8-Character Connect Code:** Open Oasis → `"Friends"` tab → displays `"YOUR CONNECT CODE"` with user's 8-char uppercase player tag.
-2. **Send Friend Request (Lowercase & `#` Prefix Normalization):** Tap `"Add Friend"` FAB → enter Peer B's tag in lowercase prefixed with `#` (e.g., `#abcd1234`) → tap `"Send Request"` → snackbar confirms `"Friend request sent!"`.
-3. **Incoming Request — Accept Flow & No-Session Story:** Peer C sends a request to User A → User A sees `"Pending Requests (1)"` → taps `"Accept"` → Peer C moves to `"Your Neighbourhood (1)"` displaying `"Just joined! No sessions yet."` when Peer C has not completed a session.
-4. **Friend Completed Session Story:** Peer C completes a backend focus session with last task `"Study algorithms"` → User A refreshes Friends → Peer C's card displays the last focus story containing `"Study algorithms"`.
-5. **Incoming Request — Reject Flow:** Peer D sends a request to User A → User A taps `"Reject"` → request disappears and Peer D is NOT added to `"Your Neighbourhood"`.
-6. **Mutual Request Auto-Acceptance:** Peer E sends a request to User A → instead of clicking Accept, User A sends a friend request to Peer E's tag via `"Add Friend"` → backend auto-accepts and Peer E appears directly in `"Your Neighbourhood"`.
+1. **Display Own 8-Char Connect Code:** `"YOUR CONNECT CODE"` renders 8-character uppercase tag.
+2. **Send Friend Request (Lowercase & `#` Normalization):** Device A sends `#<bobTag.lowercase()>` → `"Friend request sent!"`.
+3. **Reject & Accept Flows on Real 2nd Phone:** Device B sees `"Pending Requests (1)"`, rejects → `"Your Neighbourhood (0)"`; Device A re-sends → Device B accepts → both see `"Your Neighbourhood (1)"` and `"Just joined! No sessions yet."`.
+4. **Friend Completed Session Story:** Device B completes a real Focus Room session on Device B with `"Study algorithms"` → Device A refreshes Friends and sees `"Study algorithms"` on Device B's card.
+5. **Mutual Request Auto-Acceptance:** Device A sends request to Device B; Device B sends request back to Device A without clicking Accept → both see `"Your Neighbourhood (1)"`.
 
 ### Edge Cases
-1. **Self-Add Rejection:** Entering User A's own connect code displays error snackbar (`"You can't add yourself!"`) and does not create a self-friendship.
-2. **Non-Existent Tag Rejection:** Entering `"ZZZZ9999"` displays error snackbar (`"User not found"`).
-3. **Duplicate Pending Request Rejection:** Re-sending a request to a user with an already pending outgoing request displays error snackbar (`"Request already sent!"`).
-
-### Acceptance Criteria
-- [x] All friend request happy paths, mutual auto-accept, activity stories, and backend error messages surface cleanly in Android UI.
+1. **Self-Add, Non-Existent Tag, Duplicate Outgoing & `"Already friends!"` Rejections:** Verified end-to-end against live backend responses.
+2. **Blank Code Ignored & Cancel Resets Input:** Submitting whitespace does not emit a snackbar; canceling clears the draft text.
+3. **Cascade Account Deletion Removes Friend:** When Device B deletes its account in Settings UI, Device A refreshes Friends and sees `"Your Neighbourhood (0)"`.
 
 ---
 
 ## [E2E-07] Shop & Supporter Subscriptions E2E
 **Priority:** High  
-**Type:** Feature E2E  
+**Type:** Feature E2E (Single Device)  
 **Linked Specs:** `[SHOP-01]`, `[SHOP-02]`, `[SHOP-03]`, `[SHOP-04]`  
-**Automated In:** `ShopInventoryJourneyE2eTest.kt`
-
-### Description
-Verify browsing the seeded backend shop catalog, leaf balance validation, basic theme purchase, Supporter Pass subscription activation, and Restore Purchases in Settings.
+**Automated In:** `e2e/single/ShopInventoryJourneyE2eTest.kt`
 
 ### Happy Path Scenarios
-1. **Browse Seeded Catalog:** Open Oasis → `"Shop"` tab → renders `"Cozy Supporter"` card (`"Monthly"`, `"Yearly"`, `"Lifetime"`), `"Peach Blossom"` (`"100 Leaves"`), and `"Midnight Velvet"` (`"Get Pass"`).
-2. **Purchase Basic Theme with Leaves:** With ≥ 100 leaves earned through real sessions, tap `"100 Leaves"` on `"Peach Blossom"` → confirmation dialog `"Unlock Theme"` appears → tap `"Unlock"` → leaf balance decreases by 100, `"Peach Blossom"` shows owned state in Shop and appears in Inventory.
-3. **Purchase Supporter Pass:** Tap `"Monthly"` on `"Cozy Supporter"` → syncs supporter status with `/api/subscriptions/sync` → banner transitions to active supporter message (`"Thank you for being a supporter!"`), `"Midnight Velvet"` unlocks, and `"Manage Subscription"` appears in Settings.
-4. **Restore Purchases in Settings:** Open Settings → tap `"Restore Purchases"` → calls `/api/subscriptions/sync` and keeps Supporter status active.
+1. **Browse Seeded Catalog:** `"Cozy Supporter"` (`"Monthly"`, `"Yearly"`, `"Lifetime"`), `"Peach Blossom"`, `"Midnight Velvet"`.
+2. **Purchase Basic Theme with Leaves:** Purchase `"Peach Blossom"` for `100` leaves → balance deducted, unlocks in Shop & Inventory.
+3. **Purchase Monthly & Yearly Supporter Passes:** Syncs with `/api/subscriptions/sync`, unlocks `"Midnight Velvet"`, enables `"Manage Subscription"`.
+4. **Restore Purchases in Settings:** Calls `/api/subscriptions/sync` and maintains supporter perks.
 
 ### Edge Cases
-1. **Insufficient Leaves Purchase Attempt:** New user with 0 leaves taps `"100 Leaves"` on `"Peach Blossom"` and confirms `"Unlock"` → backend rejects with 400 (`"Not enough leaves."`), balance stays `0`, `"Peach Blossom"` remains locked (`"100 Leaves"` still shown) and is absent from Inventory.
-2. **Cancel Theme Unlock Dialog:** Tap `"100 Leaves"` → tap `"Cancel"` → dialog closes without deducting leaves or purchasing.
-
-### Acceptance Criteria
-- [x] Real backend `/api/shop/items`, `/api/shop/buy`, and `/api/subscriptions/sync` enforce prices, ownership, and supporter perks end-to-end.
+1. **Insufficient Leaves Purchase Attempt & Cancel Dialog:** 0 leaves rejects purchase cleanly; Cancel aborts without purchase.
+2. **`"Get Pass"` Scroll-to-Top Shortcut:** Tapping `"Get Pass"` on a premium theme scrolls Shop back to `"Cozy Supporter"`.
+3. **Supporter Pass Expiration Webhook Auto-Revert:** `POST /api/subscriptions/webhook` (`EXPIRATION`) removes `"Midnight Velvet"`, auto-reverts equipped theme to `"System Default"`, preserves leaf-purchased `"Peach Blossom"`, and hides `"Manage Subscription"`.
 
 ---
 
 ## [E2E-08] Inventory & Theme Customization E2E
 **Priority:** High  
-**Type:** Feature E2E  
+**Type:** Feature E2E (Single Device)  
 **Linked Specs:** `[THEME-01]`, `[THEME-02]`, `[THEME-03]`, `[THEME-04]`  
-**Automated In:** `ShopInventoryJourneyE2eTest.kt`
+**Automated In:** `e2e/single/ShopInventoryJourneyE2eTest.kt`
 
-### Description
-Verify owned theme listing, equipping purchased and supporter-unlocked themes, reverting to System Default, and verifying equipped state persists across screen navigation and backend profile reloads.
-
-### Happy Path Scenarios
-1. **Default Inventory State:** New user opens Oasis → `"Inventory"` tab → displays `"Owned Themes"`, `"1 Themes"`, `"System Default"` with `"Equipped"` badge.
-2. **Equip Purchased Basic Theme:** After purchasing `"Peach Blossom"`, Inventory displays `"2 Themes"` → tap `"Apply"` on `"Peach Blossom"` → `"Equipped"` badge moves to `"Peach Blossom"` and persists after navigating to Home and returning to Inventory.
-3. **Unequip & Revert to System Default:** Tap `"Apply"` on `"System Default"` → calls `/api/inventory/unequip` → `"Equipped"` badge returns to `"System Default"`.
-4. **Supporter Unlocks & Equips Premium Theme:** After activating Supporter Pass, Inventory displays `"Midnight Velvet"` → tap `"Apply"` on `"Midnight Velvet"` → `"Equipped"` badge moves to `"Midnight Velvet"`.
-
-### Edge Cases
-1. **Persisted Theme After Profile Refresh:** Navigating away to Settings/Home and back to Inventory preserves the equipped custom theme without reverting to `"System Default"`.
-
-### Acceptance Criteria
-- [x] Equipping and unequipping themes calls real `/api/inventory/equip` and `/api/inventory/unequip` endpoints and updates UI state deterministically.
+### Happy Path & Edge Case Scenarios
+1. **Default Inventory State:** `"System Default"` equipped by default (`"1 Themes"`).
+2. **Equip Purchased & Premium Themes + Revert:** Equip `"Peach Blossom"` → `"System Default"` → `"Midnight Velvet"`.
+3. **Persistence Across Navigation, Sign-Out & Sign-In:** Equipped `"Peach Blossom"` remains equipped after switching tabs, signing out cleanly, and signing back in.
 
 ---
 
-## [E2E-09] User Safety, Moderation & Settings Profile E2E
+## [E2E-09] User Safety, Moderation & Real-Time Block Filtering E2E (Real 2 Devices)
 **Priority:** High  
-**Type:** Feature E2E  
+**Type:** Feature E2E (Real 2 Devices)  
 **Linked Specs:** `[AUTH-05]`, `[SAFE-01]`, `[SAFE-02]`, `[SAFE-03]`  
-**Automated In:** `AuthAndSettingsE2eTest.kt`, `FriendsAndSafetyE2eTest.kt`
+**Automated In:** `e2e/single/AuthAndSettingsE2eTest.kt`, `e2e/twodevice/TwoDeviceFriendsAndSafetyE2eTest.kt`
+
+### Happy Path & Edge Case Scenarios
+1. **Display Name Update, Blank Rejection & Cancel Discard:** Verified in Settings + Home + Journey.
+2. **Report User & Cancel Report Dialog:** Verified from Friends options menu (`"Report submitted. Thank you."`).
+3. **Bidirectional Real-Time Block from Friends & Focus Room:** When Device A blocks Device B in Friends UI, **both Device A and Device B** update immediately to `"Your Neighbourhood (0)"` via `/ws/safety`, neither sees the other in Focus Room, and Device B's new friend requests to Device A remain suppressed. When Device A blocks Device B inside a live Focus Room, **both Device A and Device B** immediately drop to `"1 focusing now"`.
+
+---
+
+## [E2E-10] 3-User Real Multi-Device Focus Room, Asymmetric Safety Isolation & Multi-Request Friends E2E
+**Priority:** Critical  
+**Type:** Feature E2E (Real 3 Devices)  
+**Linked Specs:** `[ROOM-01]`, `[ROOM-04]`, `[SOC-02]`, `[SAFE-01]`, `[SAFE-02]`  
+**Automated In:** `e2e/threedevice/ThreeDeviceE2eTest.kt`
 
 ### Description
-Verify display name editing (and blank rejection), conduct violation reporting, and real-time user blocking across both Focus Room and Friends screens.
+Verify 3-participant concurrency across 3 real Android emulators connected simultaneously to the live backend.
 
-### Happy Path Scenarios
-1. **Update Display Name:** Open Settings → tap `"Display Name"` → edit to `"SageFocus"` → tap `"Save"` → Settings, Journey (`"SageFocus's Oasis"`), and Focus Room self card all reflect `"SageFocus"`.
-2. **Report User from Friends:** Open friend card `"More options"` menu → tap `"Report User"` → select `"Inappropriate Name"` → backend records report (`POST /api/safety/report`) and snackbar displays `"Report submitted. Thank you."`.
-3. **Block User from Focus Room (Real-Time Removal):** User A and Peer B are in Focus Room (`"2 focusing now"`) → User A opens Peer B's `"Options"` menu → taps `"Block User"` → Peer B's card immediately disappears and count drops to `"1 focusing now"`.
-4. **Block User from Friends (Immediate Filtering + Room Suppression):** User A opens accepted friend Peer C's `"More options"` menu → taps `"Block User"` → Peer C disappears immediately from `"Your Neighbourhood"`; if Peer C enters the Focus Room afterward, User A does not see Peer C.
+### Happy Path & Edge Case Scenarios
+1. **3-User Simultaneous Focus Room, Live Task Sync & Selective Leave:** Devices A, B, and C enter Focus Room → all 3 assert `"3 focusing now"` and see both peers' live tasks (`"Bob writing code • 1/1 done"`, `"Charlie reading • 0/2 done"`) → Device C leaves → Devices A & B both drop to `"2 focusing now"` while continuing to see each other.
+2. **3-User Asymmetric Block Isolation:** Devices A, B, and C are all in Focus Room (`"3 focusing now"`). Device A blocks Device B → Device A sees only Device C (`"2 focusing now"`), Device B sees only Device C (`"2 focusing now"`), and **Device C still sees BOTH Device A and Device B (`"3 focusing now"`)**, including Device B's subsequent task updates.
+3. **3-User Multiple Pending Requests (Accept One, Reject Other):** Devices B and C both send friend requests to Device A → Device A sees `"Pending Requests (2)"`, accepts Device B (`pending_accept_<bobTag>`) and rejects Device C (`pending_reject_<charlieTag>`) → Device A & B see `"Your Neighbourhood (1)"` while Device C sees `"Your Neighbourhood (0)"`.
 
-### Edge Cases
-1. **Blank Display Name Guard:** Editing Display Name to whitespace (`"   "`) and tapping `"Save"` does NOT overwrite the existing display name.
-2. **Cancel Report Dialog:** Opening `"Report User"` and tapping `"Cancel"` dismisses the dialog without submitting a report.
-3. **Real-Time Reciprocal Block via Safety WebSocket:** When Peer D blocks User A on the backend while both are in the same Focus Room, `/ws/safety` notifies User A and Peer D disappears from User A's Focus Room in real time without restarting the app.
+---
 
-### Acceptance Criteria
-- [x] Display name changes persist in `/api/profile`.
-- [x] Blocking immediately filters users from both Focus Room and Friends lists in real time via `/api/safety/block` and `/ws/safety`.
+## [E2E-11] Offline Connectivity Recovery & Cross-Cutting Edge Cases E2E
+**Priority:** High  
+**Type:** Resilience & Edge Cases  
+**Linked Specs:** Network / Connectivity Observer, `[AUTH-04]`  
+**Automated In:** `e2e/single/FriendsSingleDeviceEdgeCasesE2eTest.kt`
+
+### Happy Path & Edge Case Scenarios
+1. **Device Offline & Automatic Recovery (`ConnectionErrorDialog`):** While authenticated on Home, disable Wi-Fi and mobile data via ADB shell (`svc wifi disable`, `svc data disable`) → `"No Internet"` blocking dialog with `"Retry Connection"` appears automatically → re-enable data and Wi-Fi → `"No Internet"` dialog disappears automatically and `"Start Focus"` returns to interactive state.

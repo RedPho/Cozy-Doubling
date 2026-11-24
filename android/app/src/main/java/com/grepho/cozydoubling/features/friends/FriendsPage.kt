@@ -260,11 +260,18 @@ fun PendingRequestCard(
                 Text(text = name, style = MaterialTheme.typography.titleSmall)
                 Text(text = "#$tag", style = MaterialTheme.typography.labelSmall)
             }
-            TextButton(onClick = onReject) {
+            TextButton(
+                onClick = onReject,
+                modifier = Modifier.testTag("pending_reject_$tag")
+            ) {
                 Text(stringResource(R.string.action_reject), color = MaterialTheme.colorScheme.error)
             }
             Spacer(modifier = Modifier.width(8.dp))
-            Button(onClick = onAccept, shape = CircleShape) {
+            Button(
+                onClick = onAccept,
+                shape = CircleShape,
+                modifier = Modifier.testTag("pending_accept_$tag")
+            ) {
                 Text(stringResource(R.string.action_accept))
             }
         }

@@ -1,4 +1,4 @@
-package com.grepho.cozydoubling.e2e
+package com.grepho.cozydoubling.e2e.single
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
@@ -16,6 +16,13 @@ import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.grepho.cozydoubling.core.MainActivity
+import com.grepho.cozydoubling.e2e.E2eTestHarness
+import com.grepho.cozydoubling.e2e.addTaskInFocusRoom
+import com.grepho.cozydoubling.e2e.openOasisSubTab
+import com.grepho.cozydoubling.e2e.openSettingsFromTopBar
+import com.grepho.cozydoubling.e2e.signInWithEmailUi
+import com.grepho.cozydoubling.e2e.waitUntilNodeDoesNotExist
+import com.grepho.cozydoubling.e2e.waitUntilNodeExists
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
@@ -23,7 +30,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Covers E2E-02 (Authentication & Account Lifecycle) and E2E-09 (Settings Display Name).
+ * Single-device E2E covering E2E-02 (Authentication & Account Lifecycle),
+ * E2E-09 (Settings Display Name), and E2E-11 (Login/Settings UI edge cases).
  */
 @RunWith(AndroidJUnit4::class)
 class AuthAndSettingsE2eTest {
@@ -45,20 +53,30 @@ class AuthAndSettingsE2eTest {
     }
 
     @Test
-    fun emailAuthHappyPath_validation_wrongPassword_andCaseNormalization() {
+    fun emailAuthHappyPath_validation_cancel_wrongPassword_andCaseNormalization() {
         val email = E2eTestHarness.uniqueEmail("auth_flow")
         val password = "StrongPassword1!"
 
-        // Edge case: Login button is disabled while credentials are blank
+        // Edge case: Cancel Reviewer Access dialog cleanly
         composeRule.waitUntilNodeExists(hasText("Reviewer Access"))
         composeRule.onNodeWithText("Reviewer Access").performClick()
         composeRule.waitUntilNodeExists(hasTestTag("login_submit_button"))
         composeRule.onNodeWithTag("login_submit_button").assertIsNotEnabled()
+        composeRule.onNodeWithText("Cancel").performClick()
+        composeRule.waitUntilNodeDoesNotExist(hasTestTag("login_submit_button"))
+        composeRule.onNodeWithText("Login Error").assertDoesNotExist()
 
-        composeRule.onNodeWithTag("login_email_input").performTextInput(email)
+        // Edge case: Whitespace-only email/password keeps Login button disabled
+        composeRule.onNodeWithText("Reviewer Access").performClick()
+        composeRule.waitUntilNodeExists(hasTestTag("login_email_input"))
+        composeRule.onNodeWithTag("login_email_input").performTextInput("   ")
+        composeRule.onNodeWithTag("login_password_input").performTextInput("   ")
         composeRule.onNodeWithTag("login_submit_button").assertIsNotEnabled()
 
         // Happy path: Auto-register & login
+        composeRule.onNodeWithTag("login_email_input").performTextClearance()
+        composeRule.onNodeWithTag("login_email_input").performTextInput(email)
+        composeRule.onNodeWithTag("login_password_input").performTextClearance()
         composeRule.onNodeWithTag("login_password_input").performTextInput(password)
         composeRule.onNodeWithTag("login_submit_button").assertIsEnabled().performClick()
         composeRule.waitUntilNodeExists(hasText("Start Focus"))
@@ -94,19 +112,38 @@ class AuthAndSettingsE2eTest {
     }
 
     @Test
-    fun settingsDisplayNameUpdate_blankRejected_andPropagatesToJourneyAndRoom() {
+    fun settingsDisplayNameUpdate_cancelAndBlankRejected_versionAndTopBarShortcut() {
         val email = E2eTestHarness.uniqueEmail("profile_name")
         composeRule.signInWithEmailUi(email, "CozyPass123!")
 
+        // Edge case: Top-bar leaf capsule shortcut navigates directly from Home to Oasis Shop
+        composeRule.waitUntilNodeExists(hasTestTag("top_bar_leaves"))
+        composeRule.onNodeWithTag("top_bar_leaves").performClick()
+        composeRule.waitUntilNodeExists(hasText("Cozy Supporter"))
+        composeRule.onNodeWithText("Home").performClick()
+        composeRule.waitUntilNodeExists(hasText("Start Focus"))
+
         composeRule.openSettingsFromTopBar()
 
+        // Verify version info renders accurately
+        composeRule.onNodeWithText("1.1.0 (9)").performScrollTo().assertIsDisplayed()
+
         // Happy path: Update display name to SageFocus
-        composeRule.onNodeWithText("Display Name").performClick()
+        composeRule.onNodeWithText("Display Name").performScrollTo().performClick()
         composeRule.waitUntilNodeExists(hasTestTag("settings_username_input"))
         composeRule.onNodeWithTag("settings_username_input").performTextClearance()
         composeRule.onNodeWithTag("settings_username_input").performTextInput("SageFocus")
         composeRule.onNodeWithText("Save").performClick()
         composeRule.waitUntilNodeExists(hasText("SageFocus"))
+
+        // Edge case: Editing then tapping Cancel discards unsaved edits
+        composeRule.onNodeWithText("Display Name").performClick()
+        composeRule.waitUntilNodeExists(hasTestTag("settings_username_input"))
+        composeRule.onNodeWithTag("settings_username_input").performTextClearance()
+        composeRule.onNodeWithTag("settings_username_input").performTextInput("DiscardedName")
+        composeRule.onNodeWithText("Cancel").performClick()
+        composeRule.waitUntilNodeDoesNotExist(hasText("Edit Username"))
+        composeRule.onNodeWithText("SageFocus").assertIsDisplayed()
 
         // Edge case: Blank / whitespace display name is ignored and keeps "SageFocus"
         composeRule.onNodeWithText("Display Name").performClick()
@@ -162,8 +199,8 @@ class AuthAndSettingsE2eTest {
         composeRule.onNodeWithText("Delete Account").performScrollTo().performClick()
         composeRule.waitUntilNodeExists(hasText("Cancel"))
         composeRule.onNodeWithText("Cancel").performClick()
-        composeRule.waitUntilNodeDoesNotExist(hasText("Are you sure? All your leaves, owned themes, and focus history will be permanently wiped."))
-        composeRule.onNodeWithText("Display Name").assertIsDisplayed()
+        composeRule.waitUntilNodeDoesNotExist(hasText("Are you sure? This will permanently delete your stats, leaves, and friends list. This cannot be undone."))
+        composeRule.onNodeWithText("Display Name").performScrollTo().assertIsDisplayed()
 
         // Happy path: Confirm Delete Account permanently deletes backend record
         composeRule.onNodeWithText("Delete Account").performScrollTo().performClick()
