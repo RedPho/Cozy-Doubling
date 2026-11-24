@@ -80,6 +80,12 @@ cd android
 ./gradlew testDebugUnitTest
 ```
 
+#### Running Full Android + Backend E2E Tests:
+See [docs/e2e_testing_guide.md](docs/e2e_testing_guide.md) and [specs/02_e2e_test_tickets.md](specs/02_e2e_test_tickets.md).
+```bash
+python scripts/run_e2e.py
+```
+
 ---
 
 ## ✨ Features
