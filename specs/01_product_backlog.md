@@ -1,6 +1,7 @@
 # Cozy Doubling — Product Backlog & Specification
 
-> **Source of Truth:** Clean, product-level backlog describing existing system behavior, constraints, and business rules without migration framing or vendor-specific terminology.
+> **Source of Truth:** Clean, product-level backlog describing implemented system behavior, client/backend readiness, and prioritized upcoming Product Backlog Items (PBIs).  
+> **Status Legend:** `Implemented` | `Backend Ready — Client UI Needed` | `Planned`
 
 ---
 
@@ -219,6 +220,28 @@ As a user, I want to permanently delete my account and data from Settings so tha
 - When a user is deleted, should their submitted violation reports be retained anonymously for moderation audit? (The system currently unlinks the reporter identity on delete, preserving the report reason).
 
 ---
+
+## [AUTH-09] Persistent Encrypted Token Storage & Cold-Start Auto-Login
+**Priority:** High  
+**Status:** `Planned`
+
+### Description
+As a returning user, I want my authentication session token to be securely persisted on my device so that closing or force-stopping the app does not log me out on the next launch.
+
+### Business Rules & Constraints
+- Store the JWT/session token in Android encrypted local storage (Jetpack Security `EncryptedSharedPreferences` or encrypted DataStore) inside `data/local/` (never exposed outside `data/`).
+- On app cold start, `RemoteAuthRepository` reads the stored token, validates it against `GET /api/auth/me`, and transitions directly to `AuthStatus.Authenticated` if valid.
+- If `GET /api/auth/me` returns `401 Unauthorized`, clear the stored token and transition cleanly to `AuthStatus.NotAuthenticated` (Login screen).
+- If the device is offline on cold start with a stored token, retain the token and display the offline recovery dialog rather than logging the user out ([AUTH-04]).
+- Signing out or deleting the account immediately wipes the persisted token ([AUTH-06], [AUTH-07]).
+
+### Acceptance Criteria
+- [ ] Given a logged-in user force-closes and relaunches the app while online, then they land directly on Home without seeing the Login screen.
+- [ ] Given an expired or revoked stored token on cold start, then the stored token is cleared and the user is routed to Login.
+- [ ] Given a user signs out or deletes their account, then the persisted token is completely removed from device storage.
+- [ ] Clean architecture check (`ArchitectureBoundaryTest`) continues to pass with token storage encapsulated inside `data/`.
+
+---
 ---
 
 # Epic: Live Focus Room & Body Doubling
@@ -376,6 +399,99 @@ As a focusing user, I want my friends to be notified when I enter a focus room s
 - None.
 
 ---
+
+## [ROOM-06] Robust Background Focus Continuity (Foreground Service, Persistent Notification & Floating Mini-Widget)
+**Priority:** High  
+**Status:** `Planned`
+
+### Description
+As a user who switches to another app (e.g., notes, PDF reader, Anki, browser) or locks my screen during a focus session, I want my focus session and live Focus Room connection to stay reliably active in the background with a persistent notification and optional floating mini-widget so that Android does not drop my session and I can glance at or control my focus progress from anywhere.
+
+### Business Rules & Constraints
+- **Foreground Service & Persistent Notification (Core Reliability):**
+  - Entering the Focus Room starts a dedicated Android Foreground Service (`FocusSessionService`, `foregroundServiceType="specialUse"` / `dataSync` compliant with Android 14+ / API 34–37) that binds to the active session lifecycle.
+  - Displays a low-noise, ongoing (non-swipeable) notification while a session is active showing:
+    - Elapsed session duration (live chronometer)
+    - Current active task title (or `"Focusing in Cozy Room"`)
+    - Current participant count (`"X focusing now"`)
+  - Notification quick actions:
+    - **Return to Room** (tap notification body → brings Focus Room to foreground without creating a duplicate session)
+    - **Complete Active Task** (marks active task done and syncs progress without leaving the current app)
+    - **Finish Session** (cleanly stops service, calls `finishSession`, and opens Summary)
+  - Keeps the `/ws/room` WebSocket connection alive with heartbeat pings and automatic exponential-backoff reconnection if the OS briefly throttles network access.
+- **Optional Floating Mini-Widget / Picture-in-Picture (PiP) Overlay:**
+  - Users can opt in (via a toggle in Settings or a Focus Room top-bar button) to show a compact floating focus pill when backgrounding the app.
+  - Preferred implementation: Android **Picture-in-Picture (PiP)** mode (requires zero special overlay permissions and works cleanly across Android 12–17), displaying elapsed time, active task title, and co-worker count, with tap-to-expand back into the room.
+  - Optional enhancement: Home-screen Glance widget showing active session status or quick `"Start Focus"` launcher.
+- **Process-Death & Crash Recovery:**
+  - Persist `active_session_id` and `session_start_epoch_ms` locally while a session is active, and clear them upon `finishSession()` or sign-out.
+  - If the OS kills the process mid-session, reopening the app detects the unfinished `active_session_id` and automatically resumes the Focus Room instead of stranding the session.
+- **Clean Architecture & Privacy Constraints:**
+  - `FocusRoomViewModel` interacts only with a domain interface (`FocusSessionLifecycleController`) in `core/` — never importing Android `Service` or `NotificationManager` classes directly.
+  - Stopping or finishing a session, signing out, or deleting the account immediately stops the foreground service and dismisses the persistent notification.
+
+### Acceptance Criteria
+- [ ] Given a user enters the Focus Room and switches to another app for 5+ minutes, then the session stays connected in `/ws/room`, other participants still see the user, and no duplicate session is created upon returning.
+- [ ] Given an active Focus Room session, then a persistent ongoing notification displays the live elapsed timer, active task, and quick actions (`Return`, `Complete Task`, `Finish`).
+- [ ] Given the user taps `"Complete Task"` on the persistent notification while in another app, then the active task is marked completed and peers in the Focus Room see the updated completion count.
+- [ ] Given PiP / floating mini-widget mode is enabled, when the user navigates home from Focus Room, then a compact floating pill displays elapsed time and active task and expands back to Focus Room when tapped.
+- [ ] Given the user finishes the session or signs out, then the foreground service stops immediately and the persistent notification is dismissed.
+- [ ] Given the app process is killed mid-session by the OS, when relaunched, then the app cleanly resumes the active Focus Room session ID.
+
+---
+
+## [ROOM-07] Structured Focus Timer & Pomodoro Interval Modes
+**Priority:** High  
+**Status:** `Planned`
+
+### Description
+As a user in the Focus Room, I want to choose between open-ended focus or structured timer presets (e.g., 25/5 Pomodoro, 50/10 Deep Work, or custom duration) with gentle completion chimes so that I can pace my work and breaks effectively.
+
+### Business Rules & Constraints
+- Users can pick **Open Focus** (default count-up) or a **Timed Interval** (25m, 50m, custom 5–120m) before or inside the Focus Room.
+- When a countdown finishes, play a gentle optional chime/vibration and prompt to either **Take a Break**, **Extend +10m**, or **Finish Session**.
+- Server-side leaf calculation remains strictly based on verified server timestamps ([ECON-01]), unaffected by local countdown presets.
+
+### Acceptance Criteria
+- [ ] Given a user selects a 25-minute preset, then the Focus Room displays a live countdown ring/timer alongside the participant grid.
+- [ ] Given the countdown reaches 0, then a gentle notification/prompt offers Extend, Break, or Finish without abruptly discarding active tasks.
+
+---
+
+## [ROOM-08] Private / Friend-Only Focus Rooms with Invite Codes
+**Priority:** Medium  
+**Status:** `Planned`
+
+### Description
+As a user studying with specific friends, I want to create or join a private focus room with a short room code and optional topic so that we can focus together in a quiet, invite-only space.
+
+### Business Rules & Constraints
+- Users can join the default **Global Cozy Room** or create a **Private Room** with a 6-character invite code and optional room title (e.g., `"Finals Prep"`).
+- Backend WebSocket `/ws/room` scopes presence state, updates, and capacity limits by `room_id` (default `"global"`).
+- Empty private rooms are cleaned up automatically once the last participant disconnects.
+
+### Acceptance Criteria
+- [ ] Given user A creates a private room, then only users who join with that room's invite code appear in its participant grid.
+- [ ] Given user B is in the global room and user A is in a private room, then neither sees the other's presence.
+
+---
+
+## [ROOM-09] Task Editing, Reordering & Ambient Cozy Soundscapes
+**Priority:** Low  
+**Status:** `Planned`
+
+### Description
+As a focusing user, I want to edit typos in unfinished tasks, reorder my task list, and optionally toggle subtle ambient sounds (rain, fireplace, cafe) so that my workspace feels calm and frictionless.
+
+### Business Rules & Constraints
+- Unfinished tasks support inline text editing and drag-to-reorder; completed tasks remain immutable.
+- Ambient soundscapes play locally with independent volume control and pause cleanly on audio focus loss.
+
+### Acceptance Criteria
+- [ ] Given an unfinished task, when the user edits its text, then the updated text persists locally and broadcasts to room peers if active.
+- [ ] Given ambient sound is enabled, when the user exits the Focus Room, then playback fades out and stops cleanly.
+
+---
 ---
 
 # Epic: Session Completion & Leaf Economy
@@ -461,6 +577,24 @@ As a user who just finished a session, I want to see a celebration summary of my
 
 ### Open Questions
 - None.
+
+---
+
+## [ECON-04] Session Duration Cap & Abandoned Session Auto-Finalize
+**Priority:** Medium  
+**Status:** `Planned`
+
+### Description
+As a product owner protecting the fairness of the Leaf economy, I want focus sessions to have a reasonable maximum duration cap and automatic server-side expiration for abandoned sessions so that users who forget to end a session do not earn runaway Leaves.
+
+### Business Rules & Constraints
+- Enforce a server-side maximum rewardable session duration cap (e.g., 480 minutes / 8 hours) in `POST /api/sessions/{session_id}/finish`.
+- Sessions left unprocessed beyond a grace threshold (e.g., 12 hours without active `/ws/room` presence) are automatically finalized or marked expired so stale open sessions never accumulate.
+- Clearly communicate to the user on the Summary screen if a session was capped at the maximum duration.
+
+### Acceptance Criteria
+- [ ] Given a focus session started 14 hours ago, when finalized, then rewarded duration is capped at 480 minutes.
+- [ ] Given an abandoned open session with no active WebSocket presence past the expiry window, then the backend finalizes/closes it cleanly and prevents duplicate processing.
 
 ---
 ---
@@ -582,26 +716,63 @@ As a user, I want to view my list of friends along with their most recent focus 
 ---
 
 ## [SOC-05] Remove / Unfriend an Existing Friend
-**Priority:** Medium
+**Priority:** High  
+**Status:** `Backend Ready — Client UI Needed`
 
 ### Description
-As a user, I want to remove an existing friend from my Friends list so that we no longer share focus activity or receive each other's focus notifications.
+As a user, I want to remove an existing friend from my Friends list so that we no longer share focus activity or receive each other's focus notifications, without having to block them.
 
 ### Business Rules & Constraints
-- An accepted friend can be removed directly from the Friends list options.
-- Unfriending terminates the friendship between both users.
-- Upon removal:
-  - Both users are immediately removed from each other's Friends lists.
+- Backend endpoint `DELETE /api/friends/{friend_id}` is already implemented and tested; Android client needs:
+  - `FriendsRepository.removeFriend(friendId: String)` + `RemoteFriendsRepository` calling `DELETE /api/friends/$friendId` and refreshing friends list.
+  - `FriendsViewModel.onRemoveFriend(friendId: String)` emitting a snackbar confirmation (`"Friend removed"`).
+  - `FriendCard` `"More options"` dropdown menu item `"Remove Friend"` (distinct from `"Report User"` and `"Block User"`) opening a confirmation `AlertDialog` (`"Remove [Name]?"` with `"Remove"` / `"Cancel"`).
+- Upon confirmation:
+  - Both users are removed from each other's Friends lists (no block is created).
   - Room entry push notifications are no longer dispatched between the two users ([ROOM-05]).
-  - Either user may send a new friend request in the future using the standard player tag flow.
+  - Either user may send a new friend request in the future using the standard player tag flow ([SOC-01]).
 
 ### Acceptance Criteria
-- [ ] Given user A and user B are accepted friends, when user A taps "Unfriend" on user B's card, then the friendship is terminated.
-- [ ] Given user A unfriends user B, then user B immediately disappears from user A's Friends list, and user A immediately disappears from user B's Friends list.
-- [ ] Given user A unfriends user B, when user A enters a focus room, then user B receives no push notification.
+- [ ] Given user A and user B are accepted friends, when user A opens `"More options"` → `"Remove Friend"` and confirms, then `DELETE /api/friends/{friend_id}` succeeds and user B disappears immediately from user A's Friends list.
+- [ ] Given user A taps `"Remove Friend"` and taps `"Cancel"` in the confirmation dialog, then user B remains in user A's Friends list.
+- [ ] Given user A unfriends user B, when user B refreshes Friends, then user A no longer appears in user B's Friends list.
+- [ ] Given user A unfriends user B, then either user can later send a new friend request to the other without being blocked.
+- [ ] Covered by real 2-device E2E test in `TwoDeviceFriendsAndSafetyE2eTest`.
 
-### Open Questions
-- None.
+---
+
+## [SOC-06] View & Cancel Outgoing Pending Friend Requests
+**Priority:** Medium  
+**Status:** `Planned`
+
+### Description
+As a user who sent a friend request by mistake or to someone who hasn't responded, I want to view and cancel my outgoing pending requests so that my pending connections stay tidy.
+
+### Business Rules & Constraints
+- Backend adds `GET /api/friends/requests/outgoing` and `DELETE /api/friends/requests/{target_id}` (restricted to rows where `requester_id == my_id` and `status == 'pending'`).
+- Friends screen displays an optional `"Sent Requests (N)"` section with a `"Cancel"` button per pending outgoing request.
+
+### Acceptance Criteria
+- [ ] Given user A sent a pending request to user B, then user A sees user B under `"Sent Requests (1)"` with a `"Cancel"` action.
+- [ ] Given user A cancels the outgoing request, then the pending row is deleted and user B no longer sees an incoming request from user A.
+
+---
+
+## [SOC-07] Friend Notification Mute Toggle & Targeted Room Invites
+**Priority:** Medium  
+**Status:** `Planned`
+
+### Description
+As a user with many friends, I want to mute automatic friend room-entry notifications in Settings and optionally nudge/invite a specific friend to join my active Focus Room.
+
+### Business Rules & Constraints
+- Profile adds a `mute_friend_notifications: Boolean` preference (default `false`), editable from Settings.
+- Backend skips push dispatch in `/api/sessions/start` for friends with `mute_friend_notifications == true`.
+- Optional `"Invite to Focus"` action on `FriendCard` sends a rate-limited targeted push notification to that friend.
+
+### Acceptance Criteria
+- [ ] Given user B enables `"Mute Friend Notifications"` in Settings, when user A starts a focus session, then user B receives no push notification.
+- [ ] Given user A taps `"Invite to Focus"` on friend B, then friend B receives a targeted invite notification (unless muted or blocked).
 
 ---
 ---
@@ -932,6 +1103,25 @@ As a user, I want to report a player who has an offensive display name or inappr
 - None.
 
 ---
+
+## [SAFE-04] Manage & Unblock Blocked Users in Settings
+**Priority:** High  
+**Status:** `Backend Ready — Client UI Needed`
+
+### Description
+As a user who previously blocked someone (accidentally or after resolving a misunderstanding), I want to view my list of blocked users in Settings and unblock them so that I can manage my safety list without needing support intervention.
+
+### Business Rules & Constraints
+- Backend endpoint `POST /api/safety/unblock` and real-time `/ws/safety` `block_removed` broadcast are already implemented; backend adds `GET /api/safety/blocked-profiles` (returning `id`, `display_name`, `player_tag` for users blocked by the current user, never revealing users who blocked them).
+- Settings adds a `"Blocked Users"` row opening a sheet/screen listing blocked accounts with an `"Unblock"` action and confirmation dialog.
+- Unblocking immediately updates the active blocked set in `SafetyRepository` via `/ws/safety` (`block_removed`) so the user can appear in Focus Rooms and receive friend requests again.
+
+### Acceptance Criteria
+- [ ] Given user A blocked user B, when user A opens Settings → `"Blocked Users"`, then user B appears in the list with an `"Unblock"` button.
+- [ ] Given user A unblocks user B, then user B disappears from `"Blocked Users"` and both users can see each other in the Focus Room again without restarting the app.
+- [ ] Given user B blocked user A, then user B does NOT appear in user A's `"Blocked Users"` list.
+
+---
 ---
 
 # Epic: Journey & Personal Progress
@@ -964,4 +1154,21 @@ As a user navigating to the Oasis Journey tab, I want to see my lifetime stats a
 - [ ] Given the user completes a 30-minute focus session, when they return to Journey, then total focus minutes reflects the 30-minute increase.
 
 ### Open Questions
-- Are there planned milestones, levels, or achievement badges tied to lifetime focus minutes in the future? (Currently simple metric displays).
+- Restore `"Cozy Doubler since YYYY-MM"` bio line in `JourneyPage.kt` (currently commented out in UI).
+
+---
+
+## [JOURN-02] Focus Session History, Daily Streaks & Milestones
+**Priority:** Medium  
+**Status:** `Planned`
+
+### Description
+As a regular user, I want to see my recent completed focus sessions, my daily focus streak, and gentle milestone badges in the Journey tab so that I stay motivated over weeks and months.
+
+### Business Rules & Constraints
+- Backend adds `GET /api/sessions/history?limit=20` returning the authenticated user's processed sessions (date, duration, tasks completed, leaves earned, last task text) and computed current/longest daily streak.
+- Journey tab renders a calm streak indicator, weekly focus summary, and scrollable recent session list without harsh "streak-broken" shame messaging (staying true to Cozy Doubling's calm brand).
+
+### Acceptance Criteria
+- [ ] Given a user completes 3 focus sessions across 3 consecutive days, then Journey displays a 3-day focus streak and lists all 3 recent sessions.
+- [ ] Given a new user with 0 completed sessions, then Journey displays a warm empty state encouraging their first session.
