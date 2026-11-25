@@ -120,9 +120,14 @@ class RemoteSafetyRepository(
     }
 
     override suspend fun blockUser(targetId: String) {
+        val previous = _blockedUserIds.value
         val body = apiClient.json.encodeToString(BlockUserRequestDto(targetId = targetId))
         _blockedUserIds.update { it + targetId }
-        apiClient.post("/api/safety/block", body) { }
+        val res = apiClient.post("/api/safety/block", body) { }
+        if (res.isFailure) {
+            _blockedUserIds.value = previous
+            res.getOrThrow()
+        }
         refreshBlockedUsers()
     }
 
@@ -135,6 +140,6 @@ class RemoteSafetyRepository(
 
     override suspend fun reportUser(targetId: String, reason: String) {
         val body = apiClient.json.encodeToString(ReportUserRequestDto(targetId = targetId, reason = reason))
-        apiClient.post("/api/safety/report", body) { }
+        apiClient.post("/api/safety/report", body) { }.getOrThrow()
     }
 }

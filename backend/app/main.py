@@ -20,6 +20,7 @@ from app.services.session_lifecycle import (
 from app.models.safety import UserBlock
 from app.websockets.room_manager import focus_room_manager
 from app.websockets.safety_manager import safety_manager
+from app.websockets.friends_manager import friends_manager
 
 from app.routers.auth import router as auth_router
 from app.routers.profile import router as profile_router
@@ -265,3 +266,28 @@ async def safety_websocket(
         safety_manager.disconnect(user_id, websocket)
     except Exception:
         safety_manager.disconnect(user_id, websocket)
+
+
+@app.websocket("/ws/friends")
+async def friends_websocket(
+    websocket: WebSocket,
+    token: str = Query(...)
+):
+    payload = decode_access_token(token)
+    if not payload or "sub" not in payload:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+
+    user_id = payload["sub"]
+    await friends_manager.connect(user_id, websocket)
+
+    try:
+        while True:
+            data = await websocket.receive_text()
+            msg = json.loads(data)
+            if msg.get("type") == "ping":
+                await websocket.send_text(json.dumps({"type": "pong"}))
+    except WebSocketDisconnect:
+        friends_manager.disconnect(user_id, websocket)
+    except Exception:
+        friends_manager.disconnect(user_id, websocket)

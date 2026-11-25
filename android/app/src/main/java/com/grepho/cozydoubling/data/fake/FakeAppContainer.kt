@@ -16,8 +16,8 @@ class FakeAppContainer : AppContainer {
     override val profileRepository: ProfileRepository by lazy { FakeProfileRepository(authRepository) }
     override val focusRoomRepository: FocusRoomRepository by lazy { FakeFocusRoomRepository(profileRepository) }
     override val economyRepository: EconomyRepository by lazy { FakeEconomyRepository(profileRepository) }
-    override val friendsRepository: FriendsRepository by lazy { FakeFriendsRepository(profileRepository) }
     override val safetyRepository: SafetyRepository by lazy { FakeSafetyRepository() }
+    override val friendsRepository: FriendsRepository by lazy { FakeFriendsRepository(profileRepository, safetyRepository) }
     override val notificationRepository: NotificationRepository by lazy { FakeNotificationRepository() }
     override val billingRepository: BillingRepository by lazy { FakeBillingRepository(profileRepository) }
     override val focusSessionController: FocusSessionLifecycleController by lazy { NoOpFocusSessionLifecycleController() }

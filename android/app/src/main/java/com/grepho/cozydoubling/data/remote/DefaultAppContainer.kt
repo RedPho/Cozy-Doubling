@@ -33,7 +33,7 @@ class DefaultAppContainer(
     override val profileRepository: ProfileRepository by lazy { RemoteProfileRepository(apiClient, authRepository) }
     override val focusRoomRepository: FocusRoomRepository by lazy { RemoteFocusRoomRepository(apiClient, profileRepository) }
     override val economyRepository: EconomyRepository by lazy { RemoteEconomyRepository(apiClient, profileRepository) }
-    override val friendsRepository: FriendsRepository by lazy { RemoteFriendsRepository(apiClient, profileRepository) }
+    override val friendsRepository: FriendsRepository by lazy { RemoteFriendsRepository(apiClient, profileRepository, authRepository) }
     override val safetyRepository: SafetyRepository by lazy { RemoteSafetyRepository(apiClient, authRepository) }
     override val notificationRepository: NotificationRepository by lazy { RemoteNotificationRepository(apiClient) }
     override val billingRepository: BillingRepository by lazy { RemoteBillingRepository(apiClient, profileRepository) }

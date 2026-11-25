@@ -9,9 +9,9 @@ interface FocusRoomRepository {
     suspend fun broadcastPresence(presence: ParticipantPresence)
     fun listenForBroadcasts(): Flow<ParticipantPresence>
     suspend fun updatePresence(presence: ParticipantPresence)
-    suspend fun leaveRoom()
+    suspend fun leaveRoom(presenceKey: String? = null)
     suspend fun startSession(): String?
-    suspend fun finishSession(sessionId: String, tasksCompleted: Int, taskText: String)
+    suspend fun finishSession(sessionId: String, tasksCompleted: Int, taskText: String, endReason: String? = null)
     suspend fun fetchSession(sessionId: String): FocusSession?
     fun observeSessionEvents(): Flow<RoomSessionEvent>
 }

@@ -220,12 +220,22 @@ class MainActivity : ComponentActivity() {
 
     private fun handleIntentExtras(intent: Intent?) {
         if (intent == null) return
-        if (intent.getBooleanExtra(FocusSessionIntentExtras.EXTRA_RETURN_TO_FOCUS_ROOM, false)) {
+        val shouldReturn = intent.getBooleanExtra(FocusSessionIntentExtras.EXTRA_RETURN_TO_FOCUS_ROOM, false)
+        val shouldFinish = intent.getBooleanExtra(FocusSessionIntentExtras.EXTRA_FINISH_SESSION, false)
+        val targetSessionId = intent.getStringExtra(FocusSessionIntentExtras.EXTRA_SESSION_ID).orEmpty()
+        intent.removeExtra(FocusSessionIntentExtras.EXTRA_RETURN_TO_FOCUS_ROOM)
+        intent.removeExtra(FocusSessionIntentExtras.EXTRA_FINISH_SESSION)
+        intent.removeExtra(FocusSessionIntentExtras.EXTRA_SESSION_ID)
+
+        val activeSessionId = ServiceLocator.focusSessionController.activeSession.value?.sessionId ?: return
+        if (targetSessionId.isNotBlank() && targetSessionId != activeSessionId) return
+
+        if (shouldReturn) {
             returnToFocusRoomTrigger += 1
         }
-        if (intent.getBooleanExtra(FocusSessionIntentExtras.EXTRA_FINISH_SESSION, false)) {
+        if (shouldFinish) {
             ServiceLocator.focusSessionController.emitNotificationAction(
-                FocusNotificationAction.FINISH_SESSION
+                FocusNotificationAction.FinishSession(activeSessionId)
             )
         }
     }

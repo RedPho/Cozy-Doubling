@@ -140,7 +140,8 @@ data class StartSessionResponseDto(
 @Serializable
 data class FinishSessionRequestDto(
     @SerialName("tasks_completed") val tasksCompleted: Int,
-    @SerialName("last_task_text") val lastTaskText: String
+    @SerialName("last_task_text") val lastTaskText: String,
+    @SerialName("end_reason") val endReason: String? = null
 )
 
 @Serializable
@@ -164,6 +165,18 @@ data class FriendProfileDto(
     val id: String,
     @SerialName("display_name") val displayName: String,
     @SerialName("player_tag") val playerTag: String
+)
+
+@Serializable
+data class ActionMessageDto(
+    val ok: Boolean = true,
+    val message: String? = null
+)
+
+@Serializable
+data class WsFriendsMessage(
+    val type: String,
+    @SerialName("from_user_id") val fromUserId: String? = null
 )
 
 @Serializable

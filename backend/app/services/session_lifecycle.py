@@ -49,6 +49,27 @@ def finalize_session(
     if forced_end_reason == "abandoned_disconnect":
         was_capped = True
         end_time = session.last_disconnected_at or session.last_seen_at or session.start_time
+    elif forced_end_reason == "app_closed":
+        if session.ever_connected:
+            if session.last_connected_at is not None:
+                ref_seen = session.last_seen_at or session.last_connected_at
+                stale_gap = max(0.0, (current_time - ref_seen).total_seconds())
+                accrual_end = current_time if stale_gap <= grace_seconds else ref_seen
+                added = _accrue_connected_stretch(session, accrual_end)
+                session.active_seconds = (session.active_seconds or 0) + added
+                session.last_connected_at = None
+                end_time = accrual_end
+            else:
+                # Already disconnected when app closed: keep verified active_seconds without paying offline gap
+                end_time = session.last_disconnected_at or session.last_seen_at or session.start_time
+        else:
+            elapsed = max(0.0, (current_time - session.start_time).total_seconds())
+            if elapsed <= grace_seconds:
+                session.active_seconds = int(elapsed)
+                end_time = current_time
+            else:
+                session.active_seconds = 0
+                end_time = session.start_time
     elif session.ever_connected:
         if session.last_connected_at is not None:
             added = _accrue_connected_stretch(session, current_time)
@@ -76,7 +97,7 @@ def finalize_session(
             was_capped = True
             end_time = session.start_time
 
-    allow_zero_floor = (end_reason == "abandoned_disconnect")
+    allow_zero_floor = end_reason in ("abandoned_disconnect", "app_closed")
     duration_mins, earned, hit_max_cap = calculate_verified_rewards(
         verified_seconds=session.active_seconds or 0,
         tasks_completed=tasks_completed,

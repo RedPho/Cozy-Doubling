@@ -57,7 +57,7 @@ fun FocusRoomScreen(
     val profile by viewModel.profile.collectAsState()
     val myName = profile?.displayName ?: "You"
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(viewModel) {
         viewModel.autoFinishEvents.collect { finishedSessionId ->
             onNavigateToSummary(finishedSessionId)
         }

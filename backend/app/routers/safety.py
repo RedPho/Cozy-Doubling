@@ -15,6 +15,7 @@ from app.schemas.safety import (
 from app.services.auth import get_current_user_and_profile
 from app.websockets.safety_manager import safety_manager
 from app.websockets.room_manager import focus_room_manager
+from app.websockets.friends_manager import friends_manager
 
 router = APIRouter(prefix="/api/safety", tags=["safety"])
 
@@ -50,6 +51,8 @@ async def block_user(
         "blocked_id": my_id
     })
     await focus_room_manager.handle_user_blocked(my_id, target_id)
+    await friends_manager.notify_friends_update(my_id, {"type": "friends_updated"})
+    await friends_manager.notify_friends_update(target_id, {"type": "friends_updated"})
 
     return {"ok": True, "message": "User blocked"}
 
@@ -82,6 +85,8 @@ async def unblock_user(
             "blocked_id": my_id
         })
         await focus_room_manager.handle_user_unblocked(my_id, target_id)
+    await friends_manager.notify_friends_update(my_id, {"type": "friends_updated"})
+    await friends_manager.notify_friends_update(target_id, {"type": "friends_updated"})
 
     return {"ok": True, "message": "User unblocked"}
 

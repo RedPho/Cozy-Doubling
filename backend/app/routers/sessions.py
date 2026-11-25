@@ -100,6 +100,8 @@ def finish_session(
         (FocusSession.user_id == profile.id)
     ).first()
 
+    forced_reason = "app_closed" if req.end_reason == "app_closed" else None
+
     if not session:
         session = FocusSession(
             id=session_id,
@@ -109,6 +111,8 @@ def finish_session(
         )
         db.add(session)
     elif session.is_processed:
+        if forced_reason == "app_closed":
+            return FocusSessionResponse.from_orm_model(session)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Session already processed."
@@ -121,6 +125,7 @@ def finish_session(
         tasks_completed=req.tasks_completed,
         last_task_text=req.last_task_text,
         now=end_time,
+        forced_end_reason=forced_reason,
     )
 
     return FocusSessionResponse.from_orm_model(session)

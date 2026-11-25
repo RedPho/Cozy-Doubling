@@ -19,6 +19,7 @@ import com.grepho.cozydoubling.core.di.ServiceLocator
 import com.grepho.cozydoubling.core.room.ActiveFocusSessionSnapshot
 import com.grepho.cozydoubling.core.room.FocusNotificationAction
 import com.grepho.cozydoubling.core.room.FocusSessionIntentExtras
+import com.grepho.cozydoubling.core.room.InterruptedFocusSession
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -40,9 +41,13 @@ class FocusSessionService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_COMPLETE_TASK -> {
-                ServiceLocator.focusSessionController.emitNotificationAction(
-                    FocusNotificationAction.COMPLETE_ACTIVE_TASK
-                )
+                val targetSessionId = intent.getStringExtra(FocusSessionIntentExtras.EXTRA_SESSION_ID).orEmpty()
+                val activeId = ServiceLocator.focusSessionController.activeSession.value?.sessionId
+                if (activeId != null && (targetSessionId.isBlank() || targetSessionId == activeId)) {
+                    ServiceLocator.focusSessionController.emitNotificationAction(
+                        FocusNotificationAction.CompleteActiveTask(activeId)
+                    )
+                }
             }
             ACTION_STOP -> {
                 stopForegroundAndSelf()
@@ -113,6 +118,7 @@ class FocusSessionService : Service() {
         val returnIntent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
             putExtra(FocusSessionIntentExtras.EXTRA_RETURN_TO_FOCUS_ROOM, true)
+            putExtra(FocusSessionIntentExtras.EXTRA_SESSION_ID, snapshot.sessionId)
         }
         val returnPendingIntent = PendingIntent.getActivity(
             this,
@@ -123,6 +129,7 @@ class FocusSessionService : Service() {
 
         val completeIntent = Intent(this, FocusSessionService::class.java).apply {
             action = ACTION_COMPLETE_TASK
+            putExtra(FocusSessionIntentExtras.EXTRA_SESSION_ID, snapshot.sessionId)
         }
         val completePendingIntent = PendingIntent.getService(
             this,
@@ -136,6 +143,7 @@ class FocusSessionService : Service() {
             flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
             putExtra(FocusSessionIntentExtras.EXTRA_RETURN_TO_FOCUS_ROOM, true)
             putExtra(FocusSessionIntentExtras.EXTRA_FINISH_SESSION, true)
+            putExtra(FocusSessionIntentExtras.EXTRA_SESSION_ID, snapshot.sessionId)
         }
         val finishPendingIntent = PendingIntent.getActivity(
             this,
@@ -187,6 +195,28 @@ class FocusSessionService : Service() {
         participantCount = 1
     )
 
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        val snapshot = ServiceLocator.focusSessionController.activeSession.value
+        if (snapshot != null && snapshot.sessionId.isNotBlank()) {
+            ServiceLocator.focusSessionController.markSessionInterrupted(
+                InterruptedFocusSession(
+                    sessionId = snapshot.sessionId,
+                    startTimeEpochMs = snapshot.startTimeEpochMs,
+                    tasksCompleted = snapshot.completedTasks,
+                    lastTaskText = snapshot.activeTaskText
+                )
+            )
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    ServiceLocator.focusRoomRepository.leaveRoom()
+                } catch (_: Exception) {
+                }
+            }
+        }
+        stopForegroundAndSelf()
+        super.onTaskRemoved(rootIntent)
+    }
+
     override fun onDestroy() {
         collectorJob?.cancel()
         serviceScope.cancel()
@@ -199,8 +229,6 @@ class FocusSessionService : Service() {
         const val ACTION_START = "com.grepho.cozydoubling.action.FOCUS_START"
         const val ACTION_COMPLETE_TASK = "com.grepho.cozydoubling.action.COMPLETE_TASK"
         const val ACTION_STOP = "com.grepho.cozydoubling.action.FOCUS_STOP"
-        const val EXTRA_RETURN_TO_FOCUS_ROOM = "return_to_focus_room"
-        const val EXTRA_FINISH_SESSION = "finish_focus_session"
 
         private const val REQ_RETURN = 1001
         private const val REQ_COMPLETE = 1002

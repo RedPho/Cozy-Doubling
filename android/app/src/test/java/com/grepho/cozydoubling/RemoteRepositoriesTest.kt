@@ -46,10 +46,15 @@ class RemoteRepositoriesTest {
         val startDto = apiClient.json.decodeFromString<StartSessionResponseDto>(startSessionJson)
         assertEquals("sess_abc", startDto.sessionId)
 
-        val finishReq = FinishSessionRequestDto(tasksCompleted = 4, lastTaskText = "Reviewing code")
+        val finishReq = FinishSessionRequestDto(
+            tasksCompleted = 4,
+            lastTaskText = "Reviewing code",
+            endReason = "app_closed"
+        )
         val finishReqJson = apiClient.json.encodeToString(finishReq)
         assertTrue(finishReqJson.contains("tasks_completed"))
         assertTrue(finishReqJson.contains("4"))
+        assertTrue(finishReqJson.contains(""""end_reason":"app_closed""""))
 
         // 3. FocusSessionDto -> FocusSession mapping (including ECON-04 fields)
         val sessionJson = """
@@ -140,6 +145,13 @@ class RemoteRepositoriesTest {
         assertEquals("session_expired", expiredWsMsg.type)
         assertEquals("sess_exp_1", expiredWsMsg.sessionId)
         assertEquals("abandoned_disconnect", expiredWsMsg.reason)
+
+        // Verify WsFriendsMessage deserialization (BUG-2)
+        val friendsWsMsg = apiClient.json.decodeFromString<WsFriendsMessage>(
+            """{"type":"request_received","from_user_id":"user_alice_1"}"""
+        )
+        assertEquals("request_received", friendsWsMsg.type)
+        assertEquals("user_alice_1", friendsWsMsg.fromUserId)
     }
 
     @Test
@@ -435,6 +447,91 @@ class RemoteRepositoriesTest {
         assertEquals(AuthStatus.NotAuthenticated, offlineRepo.authStatus.value)
         assertNull(offlineStore.loadToken())
         assertNull(offlineClient.authToken)
+    }
+
+    @Test
+    fun testRemoteFriendsAndSafety_errorPropagationAndRollback() = runBlocking {
+        val interceptor = Interceptor { chain ->
+            val request = chain.request()
+            val path = request.url.encodedPath
+            when (path) {
+                "/api/friends/request" -> {
+                    val buf = okio.Buffer()
+                    request.body?.writeTo(buf)
+                    val dto = ApiClient().json.decodeFromString<FriendRequestDto>(buf.readUtf8())
+                    when (dto.playerTag) {
+                        "BLOK1111" -> Response.Builder()
+                            .request(request).protocol(Protocol.HTTP_1_1).code(403).message("Forbidden")
+                            .body("""{"detail":"You have blocked this user. Unblock them in Settings to add them."}""".toResponseBody("application/json".toMediaType()))
+                            .build()
+                        "MISS9999" -> Response.Builder()
+                            .request(request).protocol(Protocol.HTTP_1_1).code(404).message("Not Found")
+                            .body("""{"detail":"User not found. Please check the friend code."}""".toResponseBody("application/json".toMediaType()))
+                            .build()
+                        "MUTU2222" -> Response.Builder()
+                            .request(request).protocol(Protocol.HTTP_1_1).code(200).message("OK")
+                            .body("""{"ok":true,"message":"Friend request accepted!"}""".toResponseBody("application/json".toMediaType()))
+                            .build()
+                        else -> Response.Builder()
+                            .request(request).protocol(Protocol.HTTP_1_1).code(200).message("OK")
+                            .body("""{"ok":true,"message":"Friend request sent!"}""".toResponseBody("application/json".toMediaType()))
+                            .build()
+                    }
+                }
+                "/api/safety/block" -> Response.Builder()
+                    .request(request).protocol(Protocol.HTTP_1_1).code(500).message("Server Error")
+                    .body("""{"detail":"Block failed on server"}""".toResponseBody("application/json".toMediaType()))
+                    .build()
+                "/api/friends", "/api/friends/requests" -> Response.Builder()
+                    .request(request).protocol(Protocol.HTTP_1_1).code(200).message("OK")
+                    .body("[]".toResponseBody("application/json".toMediaType()))
+                    .build()
+                else -> Response.Builder()
+                    .request(request).protocol(Protocol.HTTP_1_1).code(200).message("OK")
+                    .body("""{"ok":true}""".toResponseBody("application/json".toMediaType()))
+                    .build()
+            }
+        }
+
+        val apiClient = ApiClient(
+            baseUrl = "http://mockserver:8000",
+            customOkHttpClient = OkHttpClient.Builder().addInterceptor(interceptor).build()
+        )
+        val authRepo = RemoteAuthRepository(apiClient)
+        val profileRepo = RemoteProfileRepository(apiClient, authRepo)
+        val friendsRepo = RemoteFriendsRepository(apiClient, profileRepo, authRepository = null)
+
+        assertEquals("Friend request sent!", friendsRepo.sendFriendRequest("GOOD1111"))
+        assertEquals("Friend request accepted!", friendsRepo.sendFriendRequest("MUTU2222"))
+
+        var blockedError: Exception? = null
+        try {
+            friendsRepo.sendFriendRequest("BLOK1111")
+        } catch (e: Exception) {
+            blockedError = e
+        }
+        assertTrue(blockedError is ApiException)
+        assertTrue(blockedError!!.message!!.contains("Unblock them in Settings"))
+
+        var missingError: Exception? = null
+        try {
+            friendsRepo.sendFriendRequest("MISS9999")
+        } catch (e: Exception) {
+            missingError = e
+        }
+        assertTrue(missingError is ApiException)
+        assertTrue(missingError!!.message!!.contains("User not found"))
+
+        // Safety block failure rolls back optimistic blockedUserIds and throws
+        val safetyRepo = RemoteSafetyRepository(apiClient, authRepo)
+        var blockError: Exception? = null
+        try {
+            safetyRepo.blockUser("user_fail")
+        } catch (e: Exception) {
+            blockError = e
+        }
+        assertTrue(blockError is ApiException)
+        assertFalse(safetyRepo.blockedUserIds.value.contains("user_fail"))
     }
 
     @Test

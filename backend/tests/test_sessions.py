@@ -308,3 +308,73 @@ def test_starting_new_session_auto_finalizes_previous(client: TestClient):
     s1_resp = client.get(f"/api/sessions/{sid1}", headers=user["headers"]).json()
     assert s1_resp["is_processed"] is True
     assert s1_resp["duration_minutes"] >= 15
+
+
+def test_session_finish_with_app_closed_reason_saves_verified_time_without_offline_gap(client: TestClient):
+    user = create_user_helper(client, "appclosed@cozy.com")
+    headers = user["headers"]
+    uid = user["profile"]["id"]
+    sid = client.post("/api/sessions/start", headers=headers).json()["session_id"]
+
+    gen, db = _get_test_db()
+    try:
+        s = db.query(FocusSession).filter(FocusSession.id == sid).first()
+        t0 = s.start_time
+        assert record_ws_connect(db, uid, sid, now=t0) == "ok"
+        # Connect for 15 minutes, then disconnect for 8 minutes before user re-opens app
+        record_ws_disconnect(db, uid, sid, now=t0 + datetime.timedelta(minutes=15))
+        s = db.query(FocusSession).filter(FocusSession.id == sid).first()
+        s.start_time -= datetime.timedelta(minutes=23)
+        s.last_disconnected_at -= datetime.timedelta(minutes=8)
+        s.last_seen_at -= datetime.timedelta(minutes=8)
+        db.commit()
+    finally:
+        gen.close()
+
+    finish_resp = client.post(
+        f"/api/sessions/{sid}/finish",
+        headers=headers,
+        json={
+            "tasks_completed": 1,
+            "last_task_text": "Read chapter 2",
+            "end_reason": "app_closed",
+        },
+    )
+    assert finish_resp.status_code == 200
+    data = finish_resp.json()
+    assert data["is_processed"] is True
+    assert data["duration_minutes"] == 15
+    assert data["earned_leaves"] == 18
+    assert data["end_reason"] == "app_closed"
+    assert data["was_capped"] is False
+
+    # Re-sending app_closed recovery finish must be idempotent without double-crediting leaves
+    dup_resp = client.post(
+        f"/api/sessions/{sid}/finish",
+        headers=headers,
+        json={
+            "tasks_completed": 1,
+            "last_task_text": "Read chapter 2",
+            "end_reason": "app_closed",
+        },
+    )
+    assert dup_resp.status_code == 200
+    assert dup_resp.json()["earned_leaves"] == 18
+    profile_resp = client.get("/api/profile", headers=headers).json()
+    assert profile_resp["leaves"] == 18
+
+    # Immediate 0-minute / 0-task closed session yields 0 leaves instead of 1-leaf floor
+    sid_empty = client.post("/api/sessions/start", headers=headers).json()["session_id"]
+    empty_resp = client.post(
+        f"/api/sessions/{sid_empty}/finish",
+        headers=headers,
+        json={
+            "tasks_completed": 0,
+            "last_task_text": "Focusing",
+            "end_reason": "app_closed",
+        },
+    )
+    assert empty_resp.status_code == 200
+    assert empty_resp.json()["duration_minutes"] == 0
+    assert empty_resp.json()["earned_leaves"] == 0
+    assert empty_resp.json()["end_reason"] == "app_closed"

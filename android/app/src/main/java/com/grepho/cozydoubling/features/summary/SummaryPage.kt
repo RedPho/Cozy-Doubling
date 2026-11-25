@@ -38,13 +38,14 @@ import kotlinx.coroutines.launch
 @Composable
 fun SummaryScreen(
     sessionId: String,
+    wasInterrupted: Boolean = false,
     onContinueClick: () -> Unit,
     viewModel: SummaryViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    LaunchedEffect(sessionId) {
-        viewModel.loadSessionStats(sessionId)
+    LaunchedEffect(sessionId, wasInterrupted) {
+        viewModel.loadSessionStats(sessionId, wasInterrupted = wasInterrupted)
     }
 
     SummaryPage(
@@ -115,21 +116,50 @@ fun SummaryPage(
                 .padding(horizontal = 24.dp, vertical = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            val (headerRes, subheaderRes) = when {
+                uiState.endReason == "abandoned_disconnect" ->
+                    R.string.summary_header_abandoned to R.string.summary_subheader_abandoned
+                uiState.endReason == "app_closed" || uiState.wasInterrupted ->
+                    R.string.summary_header_app_closed to R.string.summary_subheader_app_closed
+                else ->
+                    R.string.summary_header to R.string.summary_subheader
+            }
+
+            val noticeRes = when {
+                uiState.loadError -> R.string.summary_notice_load_error
+                uiState.endReason == "app_closed" -> R.string.summary_notice_app_closed
+                uiState.endReason == "abandoned_disconnect" -> R.string.summary_notice_abandoned_disconnect
+                uiState.endReason == "capped_max_duration" || uiState.wasCapped -> R.string.summary_notice_capped_max
+                uiState.wasInterrupted -> R.string.summary_notice_app_closed
+                else -> null
+            }
+
+            val showTopNotice = uiState.endReason == "app_closed" ||
+                uiState.endReason == "abandoned_disconnect" ||
+                uiState.wasInterrupted ||
+                uiState.loadError
+
             // --- Header ---
             Text(
-                text = stringResource(R.string.summary_header),
+                text = stringResource(headerRes),
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.primary,
                 textAlign = TextAlign.Center
             )
             Text(
-                text = stringResource(R.string.summary_subheader),
+                text = stringResource(subheaderRes),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                 textAlign = TextAlign.Center
             )
 
-            Spacer(modifier = Modifier.height(40.dp))
+            if (noticeRes != null && showTopNotice) {
+                Spacer(modifier = Modifier.height(20.dp))
+                SummaryNoticeBanner(noticeRes = noticeRes)
+                Spacer(modifier = Modifier.height(24.dp))
+            } else {
+                Spacer(modifier = Modifier.height(40.dp))
+            }
 
             // --- Leaves Earned Card ---
             Surface(
@@ -216,36 +246,9 @@ fun SummaryPage(
                 }
             }
 
-            val noticeRes = when (uiState.endReason) {
-                "abandoned_disconnect" -> R.string.summary_notice_abandoned_disconnect
-                "capped_max_duration" -> R.string.summary_notice_capped_max
-                else -> if (uiState.wasCapped) R.string.summary_notice_capped_max else null
-            }
-            if (noticeRes != null) {
+            if (!showTopNotice && noticeRes != null) {
                 Spacer(modifier = Modifier.height(16.dp))
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp),
-                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.45f)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Info,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(
-                            text = stringResource(noticeRes),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
-                    }
-                }
+                SummaryNoticeBanner(noticeRes = noticeRes)
             }
         }
 
@@ -263,6 +266,33 @@ fun SummaryPage(
                     Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null)
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun SummaryNoticeBanner(noticeRes: Int) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.45f)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.Info,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = stringResource(noticeRes),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSecondaryContainer
+            )
         }
     }
 }

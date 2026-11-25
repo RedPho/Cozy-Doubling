@@ -7,9 +7,14 @@ import com.grepho.cozydoubling.core.profile.Profile
 import com.grepho.cozydoubling.core.profile.ProfileRepository
 import com.grepho.cozydoubling.core.safety.SafetyRepository
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class FriendsViewModel(
@@ -18,24 +23,73 @@ class FriendsViewModel(
     private val profileRepository: ProfileRepository = ServiceLocator.profileRepository
 ) : ViewModel() {
 
-    // 1. We keep two lists now: real friends and pending requests
-    val friends: StateFlow<List<FriendUiState>> = friendsRepository.friends
-    val pendingRequests: StateFlow<List<Profile>> = friendsRepository.pendingRequests
+    constructor() : this(
+        friendsRepository = ServiceLocator.friendsRepository,
+        safetyRepository = ServiceLocator.safetyRepository,
+        profileRepository = ServiceLocator.profileRepository
+    )
+
+    // Filter out blocked users in real time across friends and incoming requests
+    val friends: StateFlow<List<FriendUiState>> = combine(
+        friendsRepository.friends,
+        safetyRepository.blockedUserIds
+    ) { list, blockedIds ->
+        list.filter { it.id !in blockedIds }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = friendsRepository.friends.value
+    )
+
+    val pendingRequests: StateFlow<List<Profile>> = combine(
+        friendsRepository.pendingRequests,
+        safetyRepository.blockedUserIds
+    ) { list, blockedIds ->
+        list.filter { it.id !in blockedIds }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = friendsRepository.pendingRequests.value
+    )
+
     val profile: StateFlow<Profile?> = profileRepository.profile
 
-    private val _uiEvents = MutableSharedFlow<String>()
+    private val _isRefreshing = MutableStateFlow(false)
+    val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
+
+    private val _uiEvents = MutableSharedFlow<String>(extraBufferCapacity = 4)
     val uiEvents: SharedFlow<String> = _uiEvents.asSharedFlow()
 
+    fun onRefresh(showErrorOnFailure: Boolean = false) {
+        viewModelScope.launch {
+            _isRefreshing.value = true
+            try {
+                friendsRepository.refresh()
+                profileRepository.refreshProfile()
+            } catch (e: Exception) {
+                e.printStackTrace()
+                if (showErrorOnFailure) {
+                    _uiEvents.emit(e.message ?: "Could not refresh friends. Check your connection.")
+                }
+            } finally {
+                _isRefreshing.value = false
+            }
+        }
+    }
+
     fun onSendRequest(tag: String) {
-        if (tag.isBlank()) return
+        if (tag.isBlank()) {
+            _uiEvents.tryEmit("Please enter a friend code.")
+            return
+        }
         viewModelScope.launch {
             try {
-                friendsRepository.sendFriendRequest(tag)
+                val message = friendsRepository.sendFriendRequest(tag)
                 profileRepository.refreshProfile()
-                _uiEvents.emit("Friend request sent!")
-            } catch (e: Exception) { 
-                e.printStackTrace() 
-                _uiEvents.emit(e.message ?: "Could not send request")
+                _uiEvents.emit(message)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                _uiEvents.emit(e.message ?: "Could not send friend request")
             }
         }
     }
@@ -45,7 +99,11 @@ class FriendsViewModel(
             try {
                 friendsRepository.acceptFriendRequest(senderId)
                 profileRepository.refreshProfile()
-            } catch (e: Exception) { e.printStackTrace() }
+                _uiEvents.emit("Friend request accepted!")
+            } catch (e: Exception) {
+                e.printStackTrace()
+                _uiEvents.emit(e.message ?: "Could not accept friend request")
+            }
         }
     }
 
@@ -54,7 +112,11 @@ class FriendsViewModel(
             try {
                 friendsRepository.rejectFriendRequest(senderId)
                 profileRepository.refreshProfile()
-            } catch (e: Exception) { e.printStackTrace() }
+                _uiEvents.emit("Friend request declined")
+            } catch (e: Exception) {
+                e.printStackTrace()
+                _uiEvents.emit(e.message ?: "Could not decline friend request")
+            }
         }
     }
 
@@ -73,14 +135,27 @@ class FriendsViewModel(
 
     fun onBlockUser(userId: String) {
         viewModelScope.launch {
-            safetyRepository.blockUser(userId)
+            try {
+                safetyRepository.blockUser(userId)
+                friendsRepository.fetchFriendsWithStories()
+                friendsRepository.fetchIncomingRequests()
+                _uiEvents.emit("User blocked")
+            } catch (e: Exception) {
+                e.printStackTrace()
+                _uiEvents.emit(e.message ?: "Could not block user")
+            }
         }
     }
 
     fun onReportUser(userId: String, reason: String) {
         viewModelScope.launch {
-            safetyRepository.reportUser(userId, reason)
-            _uiEvents.emit("Report submitted. Thank you.")
+            try {
+                safetyRepository.reportUser(userId, reason)
+                _uiEvents.emit("Report submitted. Thank you.")
+            } catch (e: Exception) {
+                e.printStackTrace()
+                _uiEvents.emit(e.message ?: "Could not submit report")
+            }
         }
     }
 }

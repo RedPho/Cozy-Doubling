@@ -29,9 +29,11 @@ class RemoteFocusRoomRepository(
     private val _broadcastFlow = MutableSharedFlow<ParticipantPresence>(replay = 1, extraBufferCapacity = 64)
     private val _sessionEvents = MutableSharedFlow<RoomSessionEvent>(extraBufferCapacity = 4)
 
-    private var activeWebSocket: WebSocket? = null
-    private var currentPresenceKey: String? = null
-    private var isRoomActive = false
+    @Volatile private var activeWebSocket: WebSocket? = null
+    @Volatile private var currentPresenceKey: String? = null
+    @Volatile private var subscribedPresenceKey: String? = null
+    @Volatile private var isRoomActive = false
+    @Volatile private var connectionGeneration = 0L
     private var reconnectJob: Job? = null
     private var heartbeatJob: Job? = null
     private var reconnectAttempt = 0
@@ -44,16 +46,24 @@ class RemoteFocusRoomRepository(
 
     override suspend fun subscribe() {
         if (!isRoomActive) return
-        if (_channelStatus.value == RoomConnectionStatus.CONNECTED && activeWebSocket != null) {
-            println("DEBUG: RemoteFocusRoomRepository - Already connected, skipping subscribe.")
+        val pKey = currentPresenceKey ?: "default"
+        if (_channelStatus.value == RoomConnectionStatus.CONNECTED &&
+            activeWebSocket != null &&
+            subscribedPresenceKey == pKey
+        ) {
+            println("DEBUG: RemoteFocusRoomRepository - Already connected for $pKey, skipping subscribe.")
             return
         }
 
         val token = apiClient.authToken ?: ""
-        val pKey = currentPresenceKey ?: "default"
         val profile = profileRepository.profile.value
         val name = profile?.displayName ?: "Cozy Doubler"
         val encodedName = java.net.URLEncoder.encode(name, "UTF-8")
+
+        heartbeatJob?.cancel()
+        reconnectJob?.cancel()
+        val myGeneration = ++connectionGeneration
+        subscribedPresenceKey = pKey
 
         _channelStatus.value = RoomConnectionStatus.CONNECTING
         val oldWs = activeWebSocket
@@ -64,14 +74,16 @@ class RemoteFocusRoomRepository(
         println("DEBUG: RemoteFocusRoomRepository - Opening room WebSocket at: $path")
         val ws = apiClient.openWebSocket(path, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
+                if (myGeneration != connectionGeneration || !isRoomActive) return
                 activeWebSocket = webSocket
                 reconnectAttempt = 0
                 println("DEBUG: RemoteFocusRoomRepository - WebSocket CONNECTED successfully.")
                 _channelStatus.value = RoomConnectionStatus.CONNECTED
-                startHeartbeat(webSocket)
+                startHeartbeat(webSocket, myGeneration)
             }
 
             override fun onMessage(webSocket: WebSocket, text: String) {
+                if (myGeneration != connectionGeneration || !isRoomActive) return
                 if (activeWebSocket != null && webSocket !== activeWebSocket) return
                 println("DEBUG: RemoteFocusRoomRepository - onMessage received: $text")
                 try {
@@ -98,7 +110,14 @@ class RemoteFocusRoomRepository(
                             }
                         }
                         "session_expired" -> {
-                            val expiredId = msg.sessionId ?: currentPresenceKey?.substringAfter(":", "") ?: ""
+                            val expectedSessionId = pKey.substringAfter(":", "")
+                            val expiredId = msg.sessionId ?: expectedSessionId
+                            if (expiredId.isNotBlank() &&
+                                expectedSessionId.isNotBlank() &&
+                                expiredId != expectedSessionId
+                            ) {
+                                return
+                            }
                             val reason = msg.reason ?: "abandoned_disconnect"
                             println("DEBUG: RemoteFocusRoomRepository - session_expired ($reason) for $expiredId")
                             isRoomActive = false
@@ -114,14 +133,14 @@ class RemoteFocusRoomRepository(
             }
 
             override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
-                if (activeWebSocket != null && webSocket !== activeWebSocket) return
+                if (myGeneration != connectionGeneration) return
                 println("DEBUG: RemoteFocusRoomRepository - WebSocket CLOSING ($code: $reason)")
                 webSocket.close(code, reason)
                 _channelStatus.value = RoomConnectionStatus.DISCONNECTED
             }
 
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-                if (activeWebSocket != null && webSocket !== activeWebSocket) return
+                if (myGeneration != connectionGeneration) return
                 println("DEBUG: RemoteFocusRoomRepository - WebSocket CLOSED ($code: $reason)")
                 heartbeatJob?.cancel()
                 if (activeWebSocket === webSocket) {
@@ -134,7 +153,7 @@ class RemoteFocusRoomRepository(
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                if (activeWebSocket != null && webSocket !== activeWebSocket) return
+                if (myGeneration != connectionGeneration) return
                 println("DEBUG: RemoteFocusRoomRepository - WebSocket FAILURE: ${t.message}")
                 t.printStackTrace()
                 heartbeatJob?.cancel()
@@ -145,15 +164,23 @@ class RemoteFocusRoomRepository(
                 scheduleReconnect()
             }
         })
-        activeWebSocket = ws
+        if (connectionGeneration == myGeneration && isRoomActive) {
+            activeWebSocket = ws
+        } else {
+            ws.close(1000, "Stale socket")
+        }
     }
 
-    private fun startHeartbeat(webSocket: WebSocket) {
+    private fun startHeartbeat(webSocket: WebSocket, myGeneration: Long) {
         heartbeatJob?.cancel()
         heartbeatJob = scope.launch {
-            while (isActive && isRoomActive && activeWebSocket === webSocket) {
+            while (isActive &&
+                isRoomActive &&
+                myGeneration == connectionGeneration &&
+                activeWebSocket === webSocket
+            ) {
                 delay(60_000L)
-                if (!isRoomActive || activeWebSocket !== webSocket) break
+                if (!isRoomActive || myGeneration != connectionGeneration || activeWebSocket !== webSocket) break
                 try {
                     webSocket.send("""{"type":"ping"}""")
                 } catch (_: Exception) {
@@ -199,8 +226,14 @@ class RemoteFocusRoomRepository(
         }
     }
 
-    override suspend fun leaveRoom() {
+    override suspend fun leaveRoom(presenceKey: String?) {
+        if (presenceKey != null && currentPresenceKey != null && currentPresenceKey != presenceKey) {
+            return
+        }
+        connectionGeneration += 1
         isRoomActive = false
+        currentPresenceKey = null
+        subscribedPresenceKey = null
         reconnectAttempt = 0
         heartbeatJob?.cancel()
         reconnectJob?.cancel()
@@ -225,8 +258,14 @@ class RemoteFocusRoomRepository(
         return id
     }
 
-    override suspend fun finishSession(sessionId: String, tasksCompleted: Int, taskText: String) {
-        val body = apiClient.json.encodeToString(FinishSessionRequestDto(tasksCompleted = tasksCompleted, lastTaskText = taskText))
+    override suspend fun finishSession(sessionId: String, tasksCompleted: Int, taskText: String, endReason: String?) {
+        val body = apiClient.json.encodeToString(
+            FinishSessionRequestDto(
+                tasksCompleted = tasksCompleted,
+                lastTaskText = taskText,
+                endReason = endReason
+            )
+        )
         apiClient.post("/api/sessions/$sessionId/finish", body) { }
         profileRepository.refreshProfile()
     }

@@ -90,6 +90,7 @@ from tests.test_sessions import (
     test_five_hour_uninterrupted_background_session_earns_full_credits,
     test_never_connected_late_finish_grants_zero_minutes,
     test_starting_new_session_auto_finalizes_previous,
+    test_session_finish_with_app_closed_reason_saves_verified_time_without_offline_gap,
 )
 reset_db()
 test_session_lifecycle_and_leaf_rewards(client)
@@ -131,9 +132,14 @@ reset_db()
 test_starting_new_session_auto_finalizes_previous(client)
 print("[PASS] test_starting_new_session_auto_finalizes_previous", flush=True)
 
+reset_db()
+test_session_finish_with_app_closed_reason_saves_verified_time_without_offline_gap(client)
+print("[PASS] test_session_finish_with_app_closed_reason_saves_verified_time_without_offline_gap", flush=True)
+
 from tests.test_friends import (
     test_friend_request_flow,
     test_mutual_auto_acceptance,
+    test_cannot_add_friend_when_blocked_either_direction,
 )
 reset_db()
 test_friend_request_flow(client)
@@ -142,6 +148,10 @@ print("[PASS] test_friend_request_flow", flush=True)
 reset_db()
 test_mutual_auto_acceptance(client)
 print("[PASS] test_mutual_auto_acceptance", flush=True)
+
+reset_db()
+test_cannot_add_friend_when_blocked_either_direction(client)
+print("[PASS] test_cannot_add_friend_when_blocked_either_direction", flush=True)
 
 from tests.test_shop_inventory import test_shop_items_listing_and_leaf_purchase
 reset_db()
@@ -176,6 +186,7 @@ from tests.test_websockets import (
     test_safety_websocket_realtime_events,
     test_two_clients_same_account_distinct_sessions,
     test_abandoned_session_reconnect_receives_session_expired,
+    test_friends_websocket_realtime_events,
 )
 reset_db()
 test_two_clients_full_presence_lifecycle(client)
@@ -217,6 +228,10 @@ reset_db()
 test_abandoned_session_reconnect_receives_session_expired(client)
 print("[PASS] test_abandoned_session_reconnect_receives_session_expired", flush=True)
 
+reset_db()
+test_friends_websocket_realtime_events(client)
+print("[PASS] test_friends_websocket_realtime_events", flush=True)
+
 from tests.test_websockets_live import (
     test_live_uvicorn_two_clients_bidirectional_presence_and_keepalive,
     test_live_uvicorn_many_websockets_do_not_exhaust_db_pool,
@@ -229,4 +244,4 @@ reset_db()
 test_live_uvicorn_many_websockets_do_not_exhaust_db_pool(client)
 print("[PASS] test_live_uvicorn_many_websockets_do_not_exhaust_db_pool", flush=True)
 
-print("=== ALL 35 BACKEND TESTS PASSED SUCCESSFULLY! ===", flush=True)
+print("=== ALL 38 BACKEND TESTS PASSED SUCCESSFULLY! ===", flush=True)

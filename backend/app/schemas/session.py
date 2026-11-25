@@ -8,6 +8,7 @@ class StartSessionResponse(BaseModel):
 class FinishSessionRequest(BaseModel):
     tasks_completed: int
     last_task_text: str = ""
+    end_reason: Optional[str] = None
 
 class FocusSessionResponse(BaseModel):
     id: str

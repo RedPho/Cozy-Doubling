@@ -12,14 +12,23 @@ data class ActiveFocusSessionSnapshot(
     val participantCount: Int
 )
 
-enum class FocusNotificationAction {
-    COMPLETE_ACTIVE_TASK,
-    FINISH_SESSION
+data class InterruptedFocusSession(
+    val sessionId: String,
+    val startTimeEpochMs: Long,
+    val tasksCompleted: Int = 0,
+    val lastTaskText: String = ""
+)
+
+sealed interface FocusNotificationAction {
+    val sessionId: String
+    data class CompleteActiveTask(override val sessionId: String) : FocusNotificationAction
+    data class FinishSession(override val sessionId: String) : FocusNotificationAction
 }
 
 object FocusSessionIntentExtras {
     const val EXTRA_RETURN_TO_FOCUS_ROOM = "return_to_focus_room"
     const val EXTRA_FINISH_SESSION = "finish_focus_session"
+    const val EXTRA_SESSION_ID = "focus_session_id"
 }
 
 /**
@@ -35,6 +44,9 @@ interface FocusSessionLifecycleController {
     fun updateSession(snapshot: ActiveFocusSessionSnapshot)
     fun stopSession()
     fun loadPersistedSession(): Pair<String, Long>?
+    fun markSessionInterrupted(session: InterruptedFocusSession)
+    fun loadInterruptedSession(): InterruptedFocusSession?
+    fun clearInterruptedSession()
     fun setPipEnabled(enabled: Boolean)
     fun emitNotificationAction(action: FocusNotificationAction)
 }

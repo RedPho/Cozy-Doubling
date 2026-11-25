@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.MailOutline
 import androidx.compose.material.icons.filled.PersonRemove
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,8 +47,13 @@ fun FriendsScreen(
     // 1. Collect both flows from the ViewModel
     val friendsList by viewModel.friends.collectAsState()
     val pendingRequests by viewModel.pendingRequests.collectAsState()
+    val isRefreshing by viewModel.isRefreshing.collectAsState()
 
     val profile by viewModel.profile.collectAsState()
+
+    LaunchedEffect(Unit) {
+        viewModel.onRefresh(showErrorOnFailure = false)
+    }
 
     LaunchedEffect(Unit) {
         viewModel.uiEvents.collect { message ->
@@ -60,6 +66,8 @@ fun FriendsScreen(
         myTag = profile?.playerTag ?: "", // Pass your tag
         friendsList = friendsList,
         pendingRequests = pendingRequests,
+        isRefreshing = isRefreshing,
+        onRefresh = { viewModel.onRefresh(showErrorOnFailure = true) },
         onAddFriend = { tag -> viewModel.onSendRequest(tag) },
         onAcceptRequest = { id -> viewModel.onAcceptRequest(id) },
         onRejectRequest = { id -> viewModel.onRejectRequest(id) },
@@ -70,11 +78,14 @@ fun FriendsScreen(
 }
 
 // --- THE UI COMPONENT ---
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FriendsPage(
     myTag: String,
     friendsList: List<FriendUiState>,
     pendingRequests: List<Profile>,
+    isRefreshing: Boolean = false,
+    onRefresh: () -> Unit = {},
     onAddFriend: (String) -> Unit,
     onAcceptRequest: (String) -> Unit,
     onRejectRequest: (String) -> Unit,
@@ -89,7 +100,11 @@ fun FriendsPage(
     val scope = rememberCoroutineScope()
     val clipboardLabel = stringResource(R.string.friends_friend_code_clipboard)
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    PullToRefreshBox(
+        isRefreshing = isRefreshing,
+        onRefresh = onRefresh,
+        modifier = Modifier.fillMaxSize()
+    ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
             contentPadding = PaddingValues(top = 24.dp, bottom = 100.dp) // Extra padding for the FAB
@@ -210,6 +225,7 @@ fun FriendsPage(
                         newFriendTag = ""
                         showAddDialog = false
                     },
+                    enabled = newFriendTag.isNotBlank(),
                     shape = CircleShape
                 ) {
                     Text(stringResource(R.string.friends_send_request))

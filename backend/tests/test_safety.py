@@ -16,10 +16,11 @@ def test_blocking_and_reporting_flow(client: TestClient):
     assert blocks_resp.status_code == 200
     assert bob["profile"]["id"] in blocks_resp.json()["blocked_user_ids"]
 
-    # Bob tries to add Alice
-    client.post("/api/friends/request", headers=bob["headers"], json={
+    # Bob tries to add Alice while blocked -> 403 rejected and never appears in requests
+    blocked_req_resp = client.post("/api/friends/request", headers=bob["headers"], json={
         "player_tag": alice["profile"]["player_tag"]
     })
+    assert blocked_req_resp.status_code == 403
     # Alice checks incoming requests -> Bob must not appear
     alice_reqs = client.get("/api/friends/requests", headers=alice["headers"])
     assert len(alice_reqs.json()) == 0

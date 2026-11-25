@@ -78,3 +78,59 @@ def test_mutual_auto_acceptance(client: TestClient):
     assert len(c_friends.json()) == 1
     d_friends = client.get("/api/friends", headers=daisy["headers"])
     assert len(d_friends.json()) == 1
+
+
+def test_cannot_add_friend_when_blocked_either_direction(client: TestClient):
+    alice = create_user_helper(client, "block_alice@cozy.com", name="Alice")
+    bob = create_user_helper(client, "block_bob@cozy.com", name="Bob")
+    charlie = create_user_helper(client, "block_charlie@cozy.com", name="Charlie")
+
+    # 1. Alice blocks Bob -> Alice cannot send a friend request to Bob (403 with clear UX hint)
+    assert client.post("/api/safety/block", headers=alice["headers"], json={
+        "target_id": bob["profile"]["id"]
+    }).status_code == 200
+
+    a_to_b = client.post("/api/friends/request", headers=alice["headers"], json={
+        "player_tag": bob["profile"]["player_tag"]
+    })
+    assert a_to_b.status_code == 403
+    assert "blocked" in a_to_b.json()["detail"].lower()
+    assert "settings" in a_to_b.json()["detail"].lower()
+
+    # 2. Bob also cannot send a friend request to Alice (403 without leaking blocker identity)
+    b_to_a = client.post("/api/friends/request", headers=bob["headers"], json={
+        "player_tag": alice["profile"]["player_tag"]
+    })
+    assert b_to_a.status_code == 403
+    assert "unable to send friend request" in b_to_a.json()["detail"].lower()
+
+    alice_reqs = client.get("/api/friends/requests", headers=alice["headers"]).json()
+    assert alice_reqs == []
+
+    # 3. Charlie sends pending request to Alice, then Alice blocks Charlie -> cannot accept
+    assert client.post("/api/friends/request", headers=charlie["headers"], json={
+        "player_tag": alice["profile"]["player_tag"]
+    }).status_code == 200
+    assert client.post("/api/safety/block", headers=alice["headers"], json={
+        "target_id": charlie["profile"]["id"]
+    }).status_code == 200
+
+    accept_blocked = client.post(
+        f"/api/friends/{charlie['profile']['id']}/accept",
+        headers=alice["headers"]
+    )
+    assert accept_blocked.status_code == 403
+    assert "blocked" in accept_blocked.json()["detail"].lower()
+
+    # 4. Alice unblocks Bob -> now Alice can send a friend request to Bob cleanly
+    assert client.post("/api/safety/unblock", headers=alice["headers"], json={
+        "target_id": bob["profile"]["id"]
+    }).status_code == 200
+
+    a_to_b_after = client.post("/api/friends/request", headers=alice["headers"], json={
+        "player_tag": bob["profile"]["player_tag"]
+    })
+    assert a_to_b_after.status_code == 200
+    bob_reqs = client.get("/api/friends/requests", headers=bob["headers"]).json()
+    assert len(bob_reqs) == 1
+    assert bob_reqs[0]["id"] == alice["profile"]["id"]

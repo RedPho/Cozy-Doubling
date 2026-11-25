@@ -71,7 +71,7 @@ class FakeFocusRoomRepository(
         _participants.value = _participants.value.filter { it.id != presence.id } + presence
     }
 
-    override suspend fun leaveRoom() {
+    override suspend fun leaveRoom(presenceKey: String?) {
         // In-memory room clean up
     }
 
@@ -96,13 +96,22 @@ class FakeFocusRoomRepository(
     override suspend fun finishSession(
         sessionId: String,
         tasksCompleted: Int,
-        taskText: String
+        taskText: String,
+        endReason: String?
     ) {
         val startTime = sessionStartTimes[sessionId] ?: System.currentTimeMillis()
         val elapsedMs = System.currentTimeMillis() - startTime
-        // Simulated duration: default 25 minutes if quickly clicked, or elapsed minutes
-        val durationMinutes = maxOf(25, (elapsedMs / 60000).toInt())
-        val earnedLeaves = maxOf(1L, (durationMinutes * 1L) + (tasksCompleted * 3L))
+        val resolvedReason = endReason ?: "completed"
+        val (durationMinutes, earnedLeaves) = if (resolvedReason == "app_closed") {
+            val mins = maxOf(0, (elapsedMs / 60000).toInt())
+            val leaves = (mins * 1L) + (maxOf(0, tasksCompleted) * 3L)
+            mins to leaves
+        } else {
+            // Simulated duration: default 25 minutes if quickly clicked, or elapsed minutes
+            val mins = maxOf(25, (elapsedMs / 60000).toInt())
+            val leaves = maxOf(1L, (mins * 1L) + (tasksCompleted * 3L))
+            mins to leaves
+        }
 
         val finishedSession = FocusSession(
             id = sessionId,
@@ -112,7 +121,9 @@ class FakeFocusRoomRepository(
             tasksCompleted = tasksCompleted,
             earnedLeaves = earnedLeaves,
             isProcessed = true,
-            durationMinutes = durationMinutes
+            durationMinutes = durationMinutes,
+            endReason = resolvedReason,
+            wasCapped = false
         )
         sessions[sessionId] = finishedSession
 

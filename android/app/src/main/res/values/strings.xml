@@ -167,4 +167,12 @@
     <!-- ECON-04 Session Verification Notices -->
     <string name="summary_notice_abandoned_disconnect">Session auto-ended after being away from the Focus Room for more than 30 minutes. Your verified active focus time was saved.</string>
     <string name="summary_notice_capped_max">Sessions are capped at 12 hours of verified focus per sitting to keep the Leaf garden fair.</string>
+
+    <!-- Interrupted Session Summary -->
+    <string name="summary_header_app_closed">Last Session Closed Unexpectedly</string>
+    <string name="summary_subheader_app_closed">We saved the focus progress we could verify before the app closed.</string>
+    <string name="summary_header_abandoned">Previous Session Auto-Ended</string>
+    <string name="summary_subheader_abandoned">You were away for a while, so we wrapped up your last session.</string>
+    <string name="summary_notice_app_closed">Your previous focus session ended because the app was closed during the session. Your verified focus time and completed tasks were saved.</string>
+    <string name="summary_notice_load_error">We couldn\'t reach the server for full session stats right now, but your last session has been closed cleanly.</string>
 </resources>

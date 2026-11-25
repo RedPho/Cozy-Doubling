@@ -1,12 +1,16 @@
 package com.grepho.cozydoubling
 
 import com.grepho.cozydoubling.core.auth.AuthStatus
+import com.grepho.cozydoubling.core.room.FocusNotificationAction
 import com.grepho.cozydoubling.data.fake.FakeAppContainer
 import com.grepho.cozydoubling.features.shop.ShopItemUiState
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -108,6 +112,27 @@ class FakeRepositoriesTest {
     }
 
     @Test
+    fun testFriendsRepository_blockedUserCannotBeAddedAndErrorsClearly() = runBlocking {
+        val friendsRepo = container.friendsRepository
+        val safetyRepo = container.safetyRepository
+
+        safetyRepo.blockUser("BADU8888")
+        var thrownMessage: String? = null
+        try {
+            friendsRepo.sendFriendRequest("BADU8888")
+        } catch (e: Exception) {
+            thrownMessage = e.message
+        }
+        assertNotNull(thrownMessage)
+        assertTrue(thrownMessage!!.contains("blocked", ignoreCase = true))
+
+        // Unblocking allows adding again
+        safetyRepo.unblockUser("BADU8888")
+        val msg = friendsRepo.sendFriendRequest("BADU8888")
+        assertEquals("Friend request sent!", msg)
+    }
+
+    @Test
     fun testSafetyRepository_blockUser() = runBlocking {
         val safetyRepo = container.safetyRepository
         assertTrue(safetyRepo.blockedUserIds.value.isEmpty())
@@ -144,8 +169,29 @@ class FakeRepositoriesTest {
         assertFalse(controller.isPipEnabled.value)
 
         controller.stopSession()
-        assertEquals(null, controller.loadPersistedSession())
-        assertEquals(null, controller.activeSession.value)
+        assertNull(controller.loadPersistedSession())
+        assertNull(controller.activeSession.value)
+
+        // Updating after stopSession or with a mismatched session ID must never re-persist
+        controller.updateSession(snapshot)
+        assertNull(controller.loadPersistedSession())
+        assertNull(controller.activeSession.value)
+
+        val secondSnapshot = snapshot.copy(sessionId = "sess_200", activeTaskText = "New session")
+        controller.startOrResumeSession(secondSnapshot)
+        controller.updateSession(snapshot) // stale ID sess_100 ignored
+        assertEquals("sess_200", controller.activeSession.value?.sessionId)
+
+        val receivedActions = mutableListOf<FocusNotificationAction>()
+        val collectJob = launch(start = kotlinx.coroutines.CoroutineStart.UNDISPATCHED) {
+            controller.notificationActions.collect { receivedActions.add(it) }
+        }
+        controller.emitNotificationAction(FocusNotificationAction.FinishSession("sess_100")) // mismatched -> ignored
+        controller.emitNotificationAction(FocusNotificationAction.FinishSession("sess_200")) // matched -> delivered
+        kotlinx.coroutines.yield()
+        assertEquals(listOf(FocusNotificationAction.FinishSession("sess_200")), receivedActions)
+        collectJob.cancel()
+        controller.stopSession()
     }
 
     @Test

@@ -8,6 +8,7 @@ from app.models.session import FocusSession
 from app.services.auth import create_access_token
 from app.websockets.room_manager import focus_room_manager
 from app.websockets.safety_manager import safety_manager
+from app.websockets.friends_manager import friends_manager
 from app.config import settings
 
 def test_two_clients_full_presence_lifecycle(client: TestClient):
@@ -377,3 +378,58 @@ def test_abandoned_session_reconnect_receives_session_expired(client: TestClient
         assert expired_msg["type"] == "session_expired"
         assert expired_msg["session_id"] == sid
         assert expired_msg["reason"] == "abandoned_disconnect"
+
+
+def test_friends_websocket_realtime_events(client: TestClient):
+    """
+    Verify /ws/friends pushes request_received, request_accepted, and friend_removed
+    in real time without restarting the app.
+    """
+    friends_manager.clear()
+
+    reg_a = client.post("/api/auth/register", json={"email": "fr_ws_a@test.com", "password": "Password123!"})
+    token_a = reg_a.json()["access_token"]
+    me_a = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token_a}"}).json()
+
+    reg_b = client.post("/api/auth/register", json={"email": "fr_ws_b@test.com", "password": "Password123!"})
+    token_b = reg_b.json()["access_token"]
+    me_b = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token_b}"}).json()
+
+    with client.websocket_connect(f"/ws/friends?token={token_a}") as ws_a:
+        with client.websocket_connect(f"/ws/friends?token={token_b}") as ws_b:
+            # Ping/pong works cleanly
+            ws_a.send_text(json.dumps({"type": "ping"}))
+            assert json.loads(ws_a.receive_text())["type"] == "pong"
+
+            # Alice sends request to Bob -> Bob immediately gets request_received
+            req_resp = client.post(
+                "/api/friends/request",
+                json={"player_tag": me_b["player_tag"]},
+                headers={"Authorization": f"Bearer {token_a}"}
+            )
+            assert req_resp.status_code == 200
+            time.sleep(0.05)
+            msg_b = json.loads(ws_b.receive_text())
+            assert msg_b["type"] == "request_received"
+            assert msg_b["from_user_id"] == me_a["id"]
+
+            # Bob accepts Alice's request -> Alice immediately gets request_accepted
+            acc_resp = client.post(
+                f"/api/friends/{me_a['id']}/accept",
+                headers={"Authorization": f"Bearer {token_b}"}
+            )
+            assert acc_resp.status_code == 200
+            time.sleep(0.05)
+            acc_msg_a = json.loads(ws_a.receive_text())
+            assert acc_msg_a["type"] == "request_accepted"
+            _ = json.loads(ws_b.receive_text())  # self sync event
+
+            # Alice removes Bob -> Bob immediately gets friend_removed
+            del_resp = client.delete(
+                f"/api/friends/{me_b['id']}",
+                headers={"Authorization": f"Bearer {token_a}"}
+            )
+            assert del_resp.status_code == 200
+            time.sleep(0.05)
+            rem_msg_b = json.loads(ws_b.receive_text())
+            assert rem_msg_b["type"] == "friend_removed"

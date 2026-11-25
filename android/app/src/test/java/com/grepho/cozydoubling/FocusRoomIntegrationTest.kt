@@ -451,4 +451,62 @@ class FocusRoomIntegrationTest {
             eminRoomRepo.leaveRoom()
         }
     }
+
+    @Test
+    fun rapidSessionSwitchIgnoresStaleLeaveRoomAndKeepsNewSessionConnected() = runBlocking {
+        InJvmRoomWebSocketServer().use { server ->
+            val eminId = "user_emin_01"
+            val osmanId = "user_osman_02"
+
+            val eminProfileRepo = FakeProfileRepository(
+                authRepository = null,
+                initialProfile = Profile(id = eminId, displayName = "emin", playerTag = "EMIN1111")
+            )
+            val osmanProfileRepo = FakeProfileRepository(
+                authRepository = null,
+                initialProfile = Profile(id = osmanId, displayName = "osman", playerTag = "OSMN2222")
+            )
+
+            val eminClient = ApiClient(baseUrl = server.baseUrl).apply { authToken = "token_emin" }
+            val osmanClient = ApiClient(baseUrl = server.baseUrl).apply { authToken = "token_osman" }
+
+            val eminRoomRepo = RemoteFocusRoomRepository(eminClient, eminProfileRepo)
+            val osmanRoomRepo = RemoteFocusRoomRepository(osmanClient, osmanProfileRepo)
+
+            // Osman stays in room so Emin can verify live connection state across quick switches
+            val osmanKey = "$osmanId:osman_sess"
+            osmanRoomRepo.joinRoom(osmanKey)
+            osmanRoomRepo.subscribe()
+            withTimeout(5000) {
+                osmanRoomRepo.getChannelStatus().first { it == RoomConnectionStatus.CONNECTED }
+            }
+
+            // Session A connect -> leave
+            val keyA = "$eminId:session_A"
+            eminRoomRepo.joinRoom(keyA)
+            eminRoomRepo.subscribe()
+            withTimeout(5000) {
+                eminRoomRepo.getChannelStatus().first { it == RoomConnectionStatus.CONNECTED }
+            }
+            eminRoomRepo.leaveRoom(keyA)
+
+            // Rapidly join Session B and invoke a late stale leaveRoom(keyA)
+            val keyB = "$eminId:session_B"
+            val flowB = eminRoomRepo.joinRoom(keyB)
+            eminRoomRepo.leaveRoom(keyA) // must be a no-op because active key is now keyB
+            eminRoomRepo.subscribe()
+
+            withTimeout(5000) {
+                eminRoomRepo.getChannelStatus().first { it == RoomConnectionStatus.CONNECTED }
+            }
+            val seesOsman = withTimeout(5000) {
+                flowB.map { projectOtherParticipants(it, eminId) }
+                    .first { list -> list.any { it.id == osmanId } }
+            }
+            assertEquals(1, seesOsman.size)
+
+            eminRoomRepo.leaveRoom(keyB)
+            osmanRoomRepo.leaveRoom(osmanKey)
+        }
+    }
 }
