@@ -1,9 +1,14 @@
+import datetime
 import json
 import time
 from starlette.testclient import TestClient
+from app.database import get_db
+from app.main import app
+from app.models.session import FocusSession
 from app.services.auth import create_access_token
 from app.websockets.room_manager import focus_room_manager
 from app.websockets.safety_manager import safety_manager
+from app.websockets.friends_manager import friends_manager
 from app.config import settings
 
 def test_two_clients_full_presence_lifecycle(client: TestClient):
@@ -200,6 +205,18 @@ def test_realtime_block_separates_room_participants(client: TestClient):
             assert leave_for_b["type"] == "presence_leave"
             assert leave_for_b["presence_id"] == f"{user_a_id}:sA"
 
+            # User A unblocks User B -> both immediately receive presence_update for each other
+            client.post("/api/safety/unblock", json={"target_id": user_b_id}, headers={"Authorization": f"Bearer {token_a}"})
+            time.sleep(0.05)
+
+            restore_for_a = json.loads(ws_a.receive_text())
+            assert restore_for_a["type"] == "presence_update"
+            assert restore_for_a["presence"]["id"] == f"{user_b_id}:sB"
+
+            restore_for_b = json.loads(ws_b.receive_text())
+            assert restore_for_b["type"] == "presence_update"
+            assert restore_for_b["presence"]["id"] == f"{user_a_id}:sA"
+
 def test_reconnect_replaces_old_socket_cleanly(client: TestClient):
     """
     If a client reconnects with the same presence_key, the new socket replaces
@@ -326,3 +343,144 @@ def test_two_clients_same_account_distinct_sessions(client: TestClient):
             assert up1["type"] == "presence_update"
             assert up1["presence"]["id"] == "shared_user_01:device_2_sess"
             assert up1["presence"]["name"] == "Device2"
+
+
+def test_abandoned_session_reconnect_receives_session_expired(client: TestClient):
+    """
+    If a user starts a session, connects briefly, disconnects for > ABANDON_TIMEOUT_MINUTES,
+    and later reconnects to /ws/room, they receive session_expired and socket closes cleanly.
+    """
+    focus_room_manager.clear()
+
+    reg = client.post("/api/auth/register", json={"email": "expired_ws@test.com", "password": "Password123!"})
+    token = reg.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+    uid = client.get("/api/auth/me", headers=headers).json()["id"]
+    sid = client.post("/api/sessions/start", headers=headers).json()["session_id"]
+
+    with client.websocket_connect(f"/ws/room?token={token}&presence_key={uid}:{sid}&name=Leaver") as ws1:
+        _ = ws1.receive_text()
+
+    # Backdate last_disconnected_at past ABANDON_TIMEOUT_MINUTES
+    dep = app.dependency_overrides[get_db]
+    gen = dep()
+    db = next(gen)
+    try:
+        sess = db.query(FocusSession).filter(FocusSession.id == sid).first()
+        sess.last_disconnected_at -= datetime.timedelta(minutes=45)
+        sess.start_time -= datetime.timedelta(minutes=50)
+        db.commit()
+    finally:
+        gen.close()
+
+    with client.websocket_connect(f"/ws/room?token={token}&presence_key={uid}:{sid}&name=Leaver") as ws2:
+        expired_msg = json.loads(ws2.receive_text())
+        assert expired_msg["type"] == "session_expired"
+        assert expired_msg["session_id"] == sid
+        assert expired_msg["reason"] == "abandoned_disconnect"
+
+
+def test_friends_websocket_realtime_events(client: TestClient):
+    """
+    Verify /ws/friends pushes request_received, request_accepted, and friend_removed
+    in real time without restarting the app.
+    """
+    friends_manager.clear()
+
+    reg_a = client.post("/api/auth/register", json={"email": "fr_ws_a@test.com", "password": "Password123!"})
+    token_a = reg_a.json()["access_token"]
+    me_a = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token_a}"}).json()
+
+    reg_b = client.post("/api/auth/register", json={"email": "fr_ws_b@test.com", "password": "Password123!"})
+    token_b = reg_b.json()["access_token"]
+    me_b = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token_b}"}).json()
+
+    with client.websocket_connect(f"/ws/friends?token={token_a}") as ws_a:
+        with client.websocket_connect(f"/ws/friends?token={token_b}") as ws_b:
+            # Ping/pong works cleanly
+            ws_a.send_text(json.dumps({"type": "ping"}))
+            assert json.loads(ws_a.receive_text())["type"] == "pong"
+
+            # Alice sends request to Bob -> Bob immediately gets request_received
+            req_resp = client.post(
+                "/api/friends/request",
+                json={"player_tag": me_b["player_tag"]},
+                headers={"Authorization": f"Bearer {token_a}"}
+            )
+            assert req_resp.status_code == 200
+            time.sleep(0.05)
+            msg_b = json.loads(ws_b.receive_text())
+            assert msg_b["type"] == "request_received"
+            assert msg_b["from_user_id"] == me_a["id"]
+
+            # Bob accepts Alice's request -> Alice immediately gets request_accepted
+            acc_resp = client.post(
+                f"/api/friends/{me_a['id']}/accept",
+                headers={"Authorization": f"Bearer {token_b}"}
+            )
+            assert acc_resp.status_code == 200
+            time.sleep(0.05)
+            acc_msg_a = json.loads(ws_a.receive_text())
+            assert acc_msg_a["type"] == "request_accepted"
+            _ = json.loads(ws_b.receive_text())  # self sync event
+
+            # Alice removes Bob -> Bob immediately gets friend_removed
+            del_resp = client.delete(
+                f"/api/friends/{me_b['id']}",
+                headers={"Authorization": f"Bearer {token_a}"}
+            )
+            assert del_resp.status_code == 200
+            time.sleep(0.05)
+            rem_msg_b = json.loads(ws_b.receive_text())
+            assert rem_msg_b["type"] == "friend_removed"
+
+
+def test_room_websocket_sends_session_sync_and_pong_active_seconds(client: TestClient):
+    """
+    Verify /ws/room pushes session_sync with server-verified active_seconds on connect/reconnect
+    and returns active_seconds in pong frames so client timer stays synced after offline gaps.
+    """
+    focus_room_manager.clear()
+
+    reg = client.post("/api/auth/register", json={"email": "sync_ws@test.com", "password": "Password123!"})
+    token = reg.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+    uid = client.get("/api/auth/me", headers=headers).json()["id"]
+    sid = client.post("/api/sessions/start", headers=headers).json()["session_id"]
+
+    with client.websocket_connect(f"/ws/room?token={token}&presence_key={uid}:{sid}&name=Syncer") as ws1:
+        msg1 = json.loads(ws1.receive_text())
+        assert msg1["type"] == "presence_state"
+        sync_msg = json.loads(ws1.receive_text())
+        assert sync_msg["type"] == "session_sync"
+        assert sync_msg["session_id"] == sid
+        assert sync_msg["active_seconds"] >= 0
+
+        ws1.send_text(json.dumps({"type": "ping"}))
+        pong_msg = json.loads(ws1.receive_text())
+        assert pong_msg["type"] == "pong"
+        assert pong_msg["session_id"] == sid
+        assert pong_msg["active_seconds"] >= 0
+
+    # Simulate 20 minutes offline gap (>10m grace, <=30m abandon) after accruing 1200 verified seconds
+    dep = app.dependency_overrides[get_db]
+    gen = dep()
+    db = next(gen)
+    try:
+        sess = db.query(FocusSession).filter(FocusSession.id == sid).first()
+        sess.active_seconds = 1200
+        sess.last_disconnected_at -= datetime.timedelta(minutes=20)
+        sess.last_seen_at -= datetime.timedelta(minutes=20)
+        sess.start_time -= datetime.timedelta(minutes=40)
+        db.commit()
+    finally:
+        gen.close()
+
+    with client.websocket_connect(f"/ws/room?token={token}&presence_key={uid}:{sid}&name=Syncer") as ws2:
+        msg1 = json.loads(ws2.receive_text())
+        assert msg1["type"] == "presence_state"
+        sync_msg2 = json.loads(ws2.receive_text())
+        assert sync_msg2["type"] == "session_sync"
+        assert sync_msg2["session_id"] == sid
+        # Reconnect after 20m offline gap must report 1200s verified (excluding the 20m offline gap)
+        assert 1200 <= sync_msg2["active_seconds"] <= 1205

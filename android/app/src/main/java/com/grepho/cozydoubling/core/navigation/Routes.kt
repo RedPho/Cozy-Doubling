@@ -15,9 +15,13 @@ sealed class Screen(val route: String) {
     object Home : Screen("home")
     object Oasis : Screen("oasis")
     object Settings : Screen("settings")
-    object FocusRoom : Screen("focus_room")
-    object Summary : Screen("summary/{sessionId}") {
-        fun createRoute(sessionId: String) = "summary/$sessionId"
+    object FocusRoom : Screen("focus_room?recovery={recovery}") {
+        const val BASE_ROUTE = "focus_room"
+        fun createRoute(isRecovery: Boolean = false) = "focus_room?recovery=$isRecovery"
+    }
+    object Summary : Screen("summary/{sessionId}?interrupted={interrupted}") {
+        fun createRoute(sessionId: String, wasInterrupted: Boolean = false) =
+            "summary/$sessionId?interrupted=$wasInterrupted"
     }
     object Login : Screen("login")
 }

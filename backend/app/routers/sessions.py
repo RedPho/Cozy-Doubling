@@ -15,8 +15,12 @@ from app.schemas.session import (
     FocusSessionResponse,
 )
 from app.services.auth import get_current_user_and_profile
-from app.services.leaf_calc import calculate_session_rewards
 from app.services.notification import send_friend_focus_notification
+from app.services.session_lifecycle import (
+    auto_finalize_stale_sessions,
+    finalize_open_sessions_on_new_start,
+    finalize_session,
+)
 
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
 
@@ -26,11 +30,18 @@ def start_session(
     db: Session = Depends(get_db)
 ):
     user, profile = user_and_profile
+    now = datetime.datetime.utcnow()
+
+    # Enforce single active session: finalize any prior open/stale sessions for this user
+    finalize_open_sessions_on_new_start(db, profile.id, now=now)
+
     session_id = str(uuid.uuid4())
     session = FocusSession(
         id=session_id,
         user_id=profile.id,
-        start_time=datetime.datetime.utcnow(),
+        start_time=now,
+        last_seen_at=now,
+        last_activity_at=now,
         is_processed=False
     )
     db.add(session)
@@ -89,6 +100,8 @@ def finish_session(
         (FocusSession.user_id == profile.id)
     ).first()
 
+    forced_reason = "app_closed" if req.end_reason == "app_closed" else None
+
     if not session:
         session = FocusSession(
             id=session_id,
@@ -98,27 +111,22 @@ def finish_session(
         )
         db.add(session)
     elif session.is_processed:
+        if forced_reason == "app_closed":
+            return FocusSessionResponse.from_orm_model(session)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Session already processed."
         )
 
     end_time = datetime.datetime.utcnow()
-    duration_mins, earned = calculate_session_rewards(session.start_time, end_time, req.tasks_completed)
-
-    session.end_time = end_time
-    session.tasks_completed = req.tasks_completed
-    session.last_task_text = req.last_task_text
-    session.duration_minutes = duration_mins
-    session.earned_leaves = earned
-    session.is_processed = True
-
-    # Atomically update profile
-    profile.leaves += earned
-    profile.total_minutes_focused += duration_mins
-
-    db.commit()
-    db.refresh(session)
+    session = finalize_session(
+        db=db,
+        session=session,
+        tasks_completed=req.tasks_completed,
+        last_task_text=req.last_task_text,
+        now=end_time,
+        forced_end_reason=forced_reason,
+    )
 
     return FocusSessionResponse.from_orm_model(session)
 
@@ -129,6 +137,8 @@ def get_session(
     db: Session = Depends(get_db)
 ):
     _, profile = user_and_profile
+    auto_finalize_stale_sessions(db, user_id=profile.id)
+
     session = db.query(FocusSession).filter(
         (FocusSession.id == session_id) &
         (FocusSession.user_id == profile.id)

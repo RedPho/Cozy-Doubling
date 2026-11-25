@@ -10,12 +10,12 @@ An executive overview of product domains, goals, current implementation status, 
 - `[AUTH-01]` Sign In with Google *(Implemented)*
 - `[AUTH-02]` Sign In with Email & Password *(Implemented)*
 - `[AUTH-03]` Automatic Profile & Player Tag Initialization *(Implemented)*
-- `[AUTH-04]` Session Persistence & Automatic Re-authentication *(Partially Implemented — see `[AUTH-09]`)*
+- `[AUTH-04]` Session Persistence & Automatic Re-authentication *(Implemented via `[AUTH-09]`)*
 - `[AUTH-05]` Update Display Name *(Implemented)*
 - `[AUTH-06]` Sign Out & Device Data Sanitization *(Implemented)*
 - `[AUTH-07]` Permanent Account Deletion *(Implemented)*
 - `[AUTH-08]` Guest Access & Self-Serve Email Registration *(Planned)*
-- `[AUTH-09]` Persistent Encrypted Token Storage & Seamless Cold-Start Auto-Login *(Planned — High)*
+- `[AUTH-09]` Persistent Encrypted Token Storage & Seamless Cold-Start Auto-Login *(Implemented)*
 
 ---
 
@@ -27,10 +27,11 @@ An executive overview of product domains, goals, current implementation status, 
 - `[ROOM-03]` Local Task Persistence & Cache Recovery *(Implemented)*
 - `[ROOM-04]` Real-Time Participant Presence & Status Broadcasting *(Implemented)*
 - `[ROOM-05]` Notify Friends Upon Entering Room *(Implemented)*
-- `[ROOM-06]` Robust Background Focus Continuity (Foreground Service, Persistent Notification & Floating Mini-Widget) *(Planned — High)*
+- `[ROOM-06]` Robust Background Focus Continuity (Foreground Service, Persistent Notification, PiP Mini-Widget & Interrupted Recovery) *(Implemented)*
 - `[ROOM-07]` Structured Focus Timer & Pomodoro Interval Modes *(Planned — High)*
 - `[ROOM-08]` Private / Friend-Only Focus Rooms with Invite Codes *(Planned — Medium)*
 - `[ROOM-09]` Task Editing, Reordering & Ambient Cozy Soundscapes *(Planned — Low)*
+- `[ROOM-10]` Home-Screen Focus Glance Widget *(Planned — Low)*
 
 ---
 
@@ -40,7 +41,7 @@ An executive overview of product domains, goals, current implementation status, 
 - `[ECON-01]` End Focus Session & Server-Side Verification *(Implemented)*
 - `[ECON-02]` Leaf & Minutes Calculation Formula *(Implemented)*
 - `[ECON-03]` Post-Session Summary Screen *(Implemented)*
-- `[ECON-04]` Session Duration Cap & Abandoned Session Auto-Finalize *(Planned — Medium)*
+- `[ECON-04]` Session Duration Cap & Abandoned Session Auto-Finalize *(Implemented)*
 
 ---
 
@@ -51,7 +52,7 @@ An executive overview of product domains, goals, current implementation status, 
 - `[SOC-02]` Automatic Mutual Request Acceptance *(Implemented)*
 - `[SOC-03]` Accept or Decline Pending Friend Requests *(Implemented)*
 - `[SOC-04]` View Friends List with Recent Session Stories *(Implemented)*
-- `[SOC-05]` Remove / Unfriend an Existing Friend *(Backend Ready — Client UI Needed — High)*
+- `[SOC-05]` Remove / Unfriend an Existing Friend *(Implemented)*
 - `[SOC-06]` View & Cancel Outgoing Pending Friend Requests *(Planned — Medium)*
 - `[SOC-07]` Friend Notification Mute Toggle & Targeted Room Invites *(Planned — Medium)*
 
@@ -84,7 +85,7 @@ An executive overview of product domains, goals, current implementation status, 
 - `[SAFE-01]` Block User from Focus Room or Friends List *(Implemented)*
 - `[SAFE-02]` Real-Time Filtering of Blocked Users *(Implemented)*
 - `[SAFE-03]` Report Inappropriate User Conduct *(Implemented)*
-- `[SAFE-04]` Manage & Unblock Blocked Users in Settings *(Backend Ready — Client UI Needed — High)*
+- `[SAFE-04]` Manage & Unblock Blocked Users in Settings *(Implemented)*
 
 ---
 
@@ -93,3 +94,11 @@ An executive overview of product domains, goals, current implementation status, 
 **Stories:**
 - `[JOURN-01]` View Personal Journey Dashboard *(Implemented — "Member Since" bio pending UI restore)*
 - `[JOURN-02]` Focus Session History, Daily Streaks & Milestones *(Planned — Medium)*
+
+---
+
+## Epic 9: UX Polish, Accessibility & Localization
+**Goal:** Keep layouts crisp and legible across accessibility font settings, enforce clean input limits, and support complete multilingual translations.  
+**Stories:**
+- `[UI-01]` Typography Font-Scale Cap & Input Length Guardrails *(Implemented)*
+- `[UI-02]` Multi-Language Localization Parity (`tr`, `de`, `es`, `fr`, `it`) *(Planned — Medium)*

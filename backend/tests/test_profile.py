@@ -12,6 +12,13 @@ def test_profile_read_and_update_name(client: TestClient):
     blank_resp = client.patch("/api/profile", headers=headers, json={"display_name": "   "})
     assert blank_resp.status_code == 422
 
+    exact_30_resp = client.patch("/api/profile", headers=headers, json={"display_name": "A" * 30})
+    assert exact_30_resp.status_code == 200
+    assert exact_30_resp.json()["display_name"] == "A" * 30
+
+    too_long_resp = client.patch("/api/profile", headers=headers, json={"display_name": "A" * 31})
+    assert too_long_resp.status_code == 422
+
 def test_profile_fcm_token_update(client: TestClient):
     user = create_user_helper(client, "fcm_user@cozy.com")
     headers = user["headers"]

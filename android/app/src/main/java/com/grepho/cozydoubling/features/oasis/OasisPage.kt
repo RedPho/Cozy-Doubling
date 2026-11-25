@@ -24,6 +24,7 @@ import com.grepho.cozydoubling.R
 
 // Import the Screens instead of the individual UiStates!
 import com.grepho.cozydoubling.features.friends.FriendsScreen
+import com.grepho.cozydoubling.features.friends.FriendsViewModel
 import com.grepho.cozydoubling.features.home.HomeViewModel
 import com.grepho.cozydoubling.features.inventory.InventoryScreen
 import com.grepho.cozydoubling.features.journey.JourneyScreen
@@ -40,9 +41,11 @@ enum class OasisSubTab(@StringRes val titleRes: Int) {
 @Composable
 fun OasisScreen(
     onNavigateToSettings: () -> Unit,
-    viewModel: HomeViewModel = viewModel() // Reusing HomeViewModel for profile data
+    viewModel: HomeViewModel = viewModel(), // Reusing HomeViewModel for profile data
+    friendsViewModel: FriendsViewModel = viewModel()
 ) {
     val profile by viewModel.profile.collectAsState()
+    val pendingRequests by friendsViewModel.pendingRequests.collectAsState()
     var selectedTab by remember { mutableStateOf(OasisSubTab.SHOP) }
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -56,6 +59,7 @@ fun OasisScreen(
             )
         },
         selectedTab = selectedTab,
+        pendingRequestsCount = pendingRequests.size,
         onTabSelected = { selectedTab = it },
         snackbarHostState = snackbarHostState
     )
@@ -65,6 +69,7 @@ fun OasisScreen(
 fun OasisPage(
     topBar: @Composable () -> Unit,
     selectedTab: OasisSubTab,
+    pendingRequestsCount: Int = 0,
     onTabSelected: (OasisSubTab) -> Unit,
     snackbarHostState: SnackbarHostState
 ) {
@@ -105,14 +110,33 @@ fun OasisPage(
                                 .fillMaxWidth(),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(
-                                text = stringResource(tab.titleRes),
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                softWrap = false
-                            )
+                            if (tab == OasisSubTab.FRIENDS && pendingRequestsCount > 0) {
+                                BadgedBox(
+                                    badge = {
+                                        Badge {
+                                            Text(text = pendingRequestsCount.toString())
+                                        }
+                                    }
+                                ) {
+                                    Text(
+                                        text = stringResource(tab.titleRes),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                                        color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        softWrap = false
+                                    )
+                                }
+                            } else {
+                                Text(
+                                    text = stringResource(tab.titleRes),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                            }
                         }
                     }
                 }

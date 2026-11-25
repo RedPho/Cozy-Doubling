@@ -118,13 +118,13 @@ class FocusRoomManager:
         for k, ws in disconnected_items:
             await self.disconnect(k, websocket=ws)
 
-    async def disconnect(self, presence_key: str, websocket: Optional[WebSocket] = None):
+    async def disconnect(self, presence_key: str, websocket: Optional[WebSocket] = None) -> bool:
         if presence_key in self.active_participants:
             current_entry = self.active_participants[presence_key]
             # Ignore disconnect if this is from a replaced/stale socket
             if websocket is not None and current_entry.websocket != websocket:
                 logger.info(f"Ignoring stale disconnect event for {presence_key}")
-                return
+                return False
 
             entry = self.active_participants.pop(presence_key)
             logger.info(f"Disconnected {presence_key}. Remaining active: {list(self.active_participants.keys())}")
@@ -140,6 +140,8 @@ class FocusRoomManager:
                     await other.websocket.send_text(leave_msg)
                 except Exception:
                     pass
+            return True
+        return False
 
     async def handle_user_blocked(self, blocker_id: str, blocked_id: str):
         """Immediately separates two users in the room if a block occurs."""
@@ -166,5 +168,34 @@ class FocusRoomManager:
                             }))
                         except Exception:
                             pass
+
+    async def handle_user_unblocked(self, user_a: str, user_b: str):
+        """Immediately restores live room presence between two users when no block remains."""
+        entries_a = []
+        entries_b = []
+        for entry in list(self.active_participants.values()):
+            if entry.user_id == user_a:
+                entry.blocked_ids.discard(user_b)
+                entries_a.append(entry)
+            elif entry.user_id == user_b:
+                entry.blocked_ids.discard(user_a)
+                entries_b.append(entry)
+
+        for entry_a in entries_a:
+            for entry_b in entries_b:
+                try:
+                    await entry_a.websocket.send_text(json.dumps({
+                        "type": "presence_update",
+                        "presence": entry_b.presence_data
+                    }))
+                except Exception:
+                    pass
+                try:
+                    await entry_b.websocket.send_text(json.dumps({
+                        "type": "presence_update",
+                        "presence": entry_a.presence_data
+                    }))
+                except Exception:
+                    pass
 
 focus_room_manager = FocusRoomManager()

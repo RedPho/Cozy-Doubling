@@ -8,7 +8,11 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
@@ -23,6 +27,7 @@ import com.grepho.cozydoubling.features.auth.LoginViewModel
 import com.grepho.cozydoubling.features.home.HomeScreen
 import com.grepho.cozydoubling.features.oasis.OasisScreen
 import com.grepho.cozydoubling.features.room.FocusRoomScreen
+import com.grepho.cozydoubling.features.room.InterruptedSessionRecoveryCoordinator
 import com.grepho.cozydoubling.features.settings.SettingsScreen
 import com.grepho.cozydoubling.features.summary.SummaryScreen
 import kotlinx.coroutines.delay
@@ -32,6 +37,8 @@ import kotlinx.coroutines.flow.collectLatest
 fun AppNavHost(
     navController: NavHostController,
     authStatus: AuthStatus,
+    returnToFocusRoomTrigger: Int = 0,
+    onEnterPipClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     authViewModel: LoginViewModel = viewModel()
 ) {
@@ -59,6 +66,44 @@ fun AppNavHost(
                     }
                 }
                 else -> { /* Loading... we can just wait or show a splash */ }
+            }
+        }
+    }
+
+    var hasAttemptedSessionRecovery by rememberSaveable { mutableStateOf(false) }
+
+    // Detect and finalize a session interrupted by app closure once on cold start after auth
+    LaunchedEffect(authStatus) {
+        if (!hasAttemptedSessionRecovery && authStatus is AuthStatus.Authenticated) {
+            hasAttemptedSessionRecovery = true
+            val isOnFocusRoom = navController.currentDestination?.route?.startsWith(Screen.FocusRoom.BASE_ROUTE) == true
+            if (!isOnFocusRoom) {
+                val recovered = InterruptedSessionRecoveryCoordinator(
+                    sessionController = ServiceLocator.focusSessionController,
+                    roomRepository = ServiceLocator.focusRoomRepository,
+                    profileRepository = ServiceLocator.profileRepository
+                ).recoverIfNeeded()
+                if (recovered != null) {
+                    navController.navigate(
+                        Screen.Summary.createRoute(recovered.sessionId, wasInterrupted = true)
+                    ) {
+                        launchSingleTop = true
+                    }
+                }
+            }
+        }
+    }
+
+    // Bring Focus Room to front when tapped from the persistent notification
+    LaunchedEffect(returnToFocusRoomTrigger, authStatus) {
+        val isOnFocusRoom = navController.currentDestination?.route?.startsWith(Screen.FocusRoom.BASE_ROUTE) == true
+        if (returnToFocusRoomTrigger > 0 &&
+            authStatus is AuthStatus.Authenticated &&
+            ServiceLocator.focusSessionController.activeSession.value != null &&
+            !isOnFocusRoom
+        ) {
+            navController.navigate(Screen.FocusRoom.createRoute(isRecovery = true)) {
+                launchSingleTop = true
             }
         }
     }
@@ -158,7 +203,10 @@ fun AppNavHost(
         composable(Screen.Home.route) {
             // All routing logic is passed in here, but the TopBar is drawn inside HomeScreen!
             HomeScreen(
-                onNavigateToFocus = { navController.navigate(Screen.FocusRoom.route) },
+                onNavigateToFocus = {
+                    val hasLiveSession = ServiceLocator.focusSessionController.activeSession.value != null
+                    navController.navigate(Screen.FocusRoom.createRoute(isRecovery = hasLiveSession))
+                },
                 onNavigateToShop = { navController.navigateToBottomTab(Screen.Oasis.route) },
                 onNavigateToSettings = { navController.navigate(Screen.Settings.route) }
             )
@@ -174,23 +222,38 @@ fun AppNavHost(
             SettingsScreen(onBackClick = {navController.popBackStack()})
         }
 
-        composable(Screen.FocusRoom.route) {
+        composable(
+            route = Screen.FocusRoom.route,
+            arguments = listOf(navArgument("recovery") {
+                type = NavType.BoolType
+                defaultValue = false
+            })
+        ) {
             FocusRoomScreen(
                 onNavigateToSummary = { sessionId ->
                     navController.navigate(Screen.Summary.createRoute(sessionId)) {
                         popUpTo(Screen.FocusRoom.route) { inclusive = true }
                     }
-                }
+                },
+                onEnterPipClick = onEnterPipClick
             )
         }
 
         composable(
             route = Screen.Summary.route,
-            arguments = listOf(navArgument("sessionId") {type = NavType.StringType})
+            arguments = listOf(
+                navArgument("sessionId") { type = NavType.StringType },
+                navArgument("interrupted") {
+                    type = NavType.BoolType
+                    defaultValue = false
+                }
+            )
         ) { backStackEntry ->
             val sessionId = backStackEntry.arguments?.getString("sessionId") ?: ""
+            val wasInterrupted = backStackEntry.arguments?.getBoolean("interrupted") ?: false
             SummaryScreen(
-                sessionId,
+                sessionId = sessionId,
+                wasInterrupted = wasInterrupted,
                 onContinueClick = {
                     navController.popBackStack(Screen.Home.route, inclusive = false)
                 }

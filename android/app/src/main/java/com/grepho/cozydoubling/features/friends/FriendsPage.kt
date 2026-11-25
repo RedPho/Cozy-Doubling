@@ -17,7 +17,9 @@ import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.MailOutline
+import androidx.compose.material.icons.filled.PersonRemove
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.grepho.cozydoubling.R
 import com.grepho.cozydoubling.core.profile.Profile
+import com.grepho.cozydoubling.core.validation.TextLimits
 import kotlinx.coroutines.launch
 
 // --- THE SCREEN ENTRY POINT ---
@@ -46,11 +49,15 @@ fun FriendsScreen(
     // 1. Collect both flows from the ViewModel
     val friendsList by viewModel.friends.collectAsState()
     val pendingRequests by viewModel.pendingRequests.collectAsState()
+    val isRefreshing by viewModel.isRefreshing.collectAsState()
 
     val profile by viewModel.profile.collectAsState()
 
     LaunchedEffect(Unit) {
-        viewModel.refresh()
+        viewModel.onRefresh(showErrorOnFailure = false)
+    }
+
+    LaunchedEffect(Unit) {
         viewModel.uiEvents.collect { message ->
             snackbarHostState.showSnackbar(message)
         }
@@ -61,23 +68,30 @@ fun FriendsScreen(
         myTag = profile?.playerTag ?: "", // Pass your tag
         friendsList = friendsList,
         pendingRequests = pendingRequests,
+        isRefreshing = isRefreshing,
+        onRefresh = { viewModel.onRefresh(showErrorOnFailure = true) },
         onAddFriend = { tag -> viewModel.onSendRequest(tag) },
         onAcceptRequest = { id -> viewModel.onAcceptRequest(id) },
         onRejectRequest = { id -> viewModel.onRejectRequest(id) },
+        onRemoveFriend = { id -> viewModel.onRemoveFriend(id) },
         onBlockUser = { id -> viewModel.onBlockUser(id) },
         onReportUser = { id, reason -> viewModel.onReportUser(id, reason) }
     )
 }
 
 // --- THE UI COMPONENT ---
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FriendsPage(
     myTag: String,
     friendsList: List<FriendUiState>,
     pendingRequests: List<Profile>,
+    isRefreshing: Boolean = false,
+    onRefresh: () -> Unit = {},
     onAddFriend: (String) -> Unit,
     onAcceptRequest: (String) -> Unit,
     onRejectRequest: (String) -> Unit,
+    onRemoveFriend: (String) -> Unit,
     onBlockUser: (String) -> Unit,
     onReportUser: (String, String) -> Unit
 ) {
@@ -88,7 +102,11 @@ fun FriendsPage(
     val scope = rememberCoroutineScope()
     val clipboardLabel = stringResource(R.string.friends_friend_code_clipboard)
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    PullToRefreshBox(
+        isRefreshing = isRefreshing,
+        onRefresh = onRefresh,
+        modifier = Modifier.fillMaxSize()
+    ) {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -174,6 +192,7 @@ fun FriendsPage(
             items(friendsList) { friend ->
                 FriendCard(
                     friend = friend,
+                    onRemove = { onRemoveFriend(friend.id) },
                     onBlock = { onBlockUser(friend.id) },
                     onReport = { reason -> onReportUser(friend.id, reason) }
                 )
@@ -203,7 +222,7 @@ fun FriendsPage(
             text = {
                 OutlinedTextField(
                     value = newFriendTag,
-                    onValueChange = { newFriendTag = it },
+                    onValueChange = { newFriendTag = TextLimits.limitInput(it, TextLimits.MAX_FRIEND_CODE_LENGTH) },
                     placeholder = { Text(stringResource(R.string.friends_enter_code_hint)) },
                     singleLine = true,
                     modifier = Modifier
@@ -219,6 +238,7 @@ fun FriendsPage(
                         newFriendTag = ""
                         showAddDialog = false
                     },
+                    enabled = newFriendTag.isNotBlank(),
                     shape = CircleShape
                 ) {
                     Text(stringResource(R.string.friends_send_request))
@@ -282,11 +302,13 @@ fun PendingRequestCard(
 @Composable
 fun FriendCard(
     friend: FriendUiState,
+    onRemove: () -> Unit,
     onBlock: () -> Unit,
     onReport: (String) -> Unit
 ) {
     var showMenu by remember { mutableStateOf(false) }
     var showReportDialog by remember { mutableStateOf(false) }
+    var showRemoveDialog by remember { mutableStateOf(false) }
 
     Card(
         modifier = Modifier
@@ -364,6 +386,14 @@ fun FriendCard(
                     onDismissRequest = { showMenu = false }
                 ) {
                     DropdownMenuItem(
+                        text = { Text(stringResource(R.string.friends_remove_friend)) },
+                        onClick = {
+                            showMenu = false
+                            showRemoveDialog = true
+                        },
+                        leadingIcon = { Icon(Icons.Default.PersonRemove, contentDescription = null) }
+                    )
+                    DropdownMenuItem(
                         text = { Text(stringResource(R.string.friends_report_user)) },
                         onClick = {
                             showMenu = false
@@ -382,6 +412,30 @@ fun FriendCard(
                 }
             }
         }
+    }
+
+    if (showRemoveDialog) {
+        AlertDialog(
+            onDismissRequest = { showRemoveDialog = false },
+            title = { Text(stringResource(R.string.friends_remove_confirm_title, friend.name)) },
+            text = { Text(stringResource(R.string.friends_remove_confirm_message)) },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showRemoveDialog = false
+                        onRemove()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text(stringResource(R.string.action_remove))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRemoveDialog = false }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            }
+        )
     }
 
     if (showReportDialog) {

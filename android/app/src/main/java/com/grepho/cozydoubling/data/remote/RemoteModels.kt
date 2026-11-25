@@ -2,6 +2,7 @@ package com.grepho.cozydoubling.data.remote
 
 import androidx.compose.ui.graphics.Color
 import com.grepho.cozydoubling.core.profile.Profile
+import com.grepho.cozydoubling.core.safety.BlockedUser
 import com.grepho.cozydoubling.core.theming.ThemePalette
 import com.grepho.cozydoubling.features.room.FocusSession
 import com.grepho.cozydoubling.features.room.ParticipantPresence
@@ -69,7 +70,9 @@ data class FocusSessionDto(
     @SerialName("tasks_completed") val tasksCompleted: Int = 0,
     @SerialName("earned_leaves") val earnedLeaves: Long = 0,
     @SerialName("is_processed") val isProcessed: Boolean = false,
-    @SerialName("duration_minutes") val durationMinutes: Int = 0
+    @SerialName("duration_minutes") val durationMinutes: Int = 0,
+    @SerialName("end_reason") val endReason: String? = null,
+    @SerialName("was_capped") val wasCapped: Boolean = false
 ) {
     fun toDomain(): FocusSession = FocusSession(
         id = id,
@@ -79,7 +82,9 @@ data class FocusSessionDto(
         tasksCompleted = tasksCompleted,
         earnedLeaves = earnedLeaves,
         isProcessed = isProcessed,
-        durationMinutes = durationMinutes
+        durationMinutes = durationMinutes,
+        endReason = endReason,
+        wasCapped = wasCapped
     )
 }
 
@@ -135,7 +140,8 @@ data class StartSessionResponseDto(
 @Serializable
 data class FinishSessionRequestDto(
     @SerialName("tasks_completed") val tasksCompleted: Int,
-    @SerialName("last_task_text") val lastTaskText: String
+    @SerialName("last_task_text") val lastTaskText: String,
+    @SerialName("end_reason") val endReason: String? = null
 )
 
 @Serializable
@@ -159,6 +165,18 @@ data class FriendProfileDto(
     val id: String,
     @SerialName("display_name") val displayName: String,
     @SerialName("player_tag") val playerTag: String
+)
+
+@Serializable
+data class ActionMessageDto(
+    val ok: Boolean = true,
+    val message: String? = null
+)
+
+@Serializable
+data class WsFriendsMessage(
+    val type: String,
+    @SerialName("from_user_id") val fromUserId: String? = null
 )
 
 @Serializable
@@ -244,6 +262,19 @@ data class BlockedUsersDto(
 )
 
 @Serializable
+data class BlockedProfileDto(
+    val id: String,
+    @SerialName("display_name") val displayName: String,
+    @SerialName("player_tag") val playerTag: String
+) {
+    fun toDomain(): BlockedUser = BlockedUser(
+        id = id,
+        displayName = displayName,
+        playerTag = playerTag
+    )
+}
+
+@Serializable
 data class SyncSubscriptionRequestDto(
     @SerialName("is_supporter") val isSupporter: Boolean? = null
 )
@@ -253,7 +284,10 @@ data class WsRoomMessage(
     val type: String,
     val participants: List<ParticipantPresenceDto>? = null,
     val presence: ParticipantPresenceDto? = null,
-    @SerialName("presence_id") val presenceId: String? = null
+    @SerialName("presence_id") val presenceId: String? = null,
+    @SerialName("session_id") val sessionId: String? = null,
+    val reason: String? = null,
+    @SerialName("active_seconds") val activeSeconds: Int? = null
 )
 
 @Serializable

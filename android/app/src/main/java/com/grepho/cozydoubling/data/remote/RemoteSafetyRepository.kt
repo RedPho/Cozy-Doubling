@@ -2,6 +2,7 @@ package com.grepho.cozydoubling.data.remote
 
 import com.grepho.cozydoubling.core.auth.AuthRepository
 import com.grepho.cozydoubling.core.auth.AuthStatus
+import com.grepho.cozydoubling.core.safety.BlockedUser
 import com.grepho.cozydoubling.core.safety.SafetyRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -26,6 +27,9 @@ class RemoteSafetyRepository(
     private val _blockedUserIds = MutableStateFlow<Set<String>>(emptySet())
     override val blockedUserIds: StateFlow<Set<String>> = _blockedUserIds.asStateFlow()
 
+    private val _blockedUsers = MutableStateFlow<List<BlockedUser>>(emptyList())
+    override val blockedUsers: StateFlow<List<BlockedUser>> = _blockedUsers.asStateFlow()
+
     private var safetyWebSocket: WebSocket? = null
 
     init {
@@ -40,18 +44,26 @@ class RemoteSafetyRepository(
                         safetyWebSocket?.close(1000, "Signed out")
                         safetyWebSocket = null
                         _blockedUserIds.value = emptySet()
+                        _blockedUsers.value = emptyList()
                     }
                 }
             }
         }
     }
 
-    private suspend fun refreshBlockedUsers() {
-        val result = apiClient.get("/api/safety/blocks") { body ->
+    override suspend fun refreshBlockedUsers() {
+        val idsResult = apiClient.get("/api/safety/blocks") { body ->
             apiClient.json.decodeFromString<BlockedUsersDto>(body)
         }
-        result.onSuccess { dto ->
+        idsResult.onSuccess { dto ->
             _blockedUserIds.value = dto.blockedUserIds.toSet()
+        }
+
+        val profilesResult = apiClient.get("/api/safety/blocked-profiles") { body ->
+            apiClient.json.decodeFromString<List<BlockedProfileDto>>(body)
+        }
+        profilesResult.onSuccess { list ->
+            _blockedUsers.value = list.map { it.toDomain() }
         }
     }
 
@@ -108,13 +120,26 @@ class RemoteSafetyRepository(
     }
 
     override suspend fun blockUser(targetId: String) {
+        val previous = _blockedUserIds.value
         val body = apiClient.json.encodeToString(BlockUserRequestDto(targetId = targetId))
         _blockedUserIds.update { it + targetId }
-        apiClient.post("/api/safety/block", body) { }
+        val res = apiClient.post("/api/safety/block", body) { }
+        if (res.isFailure) {
+            _blockedUserIds.value = previous
+            res.getOrThrow()
+        }
+        refreshBlockedUsers()
+    }
+
+    override suspend fun unblockUser(targetId: String) {
+        val body = apiClient.json.encodeToString(BlockUserRequestDto(targetId = targetId))
+        apiClient.post("/api/safety/unblock", body) { }.getOrThrow()
+        _blockedUsers.update { list -> list.filter { it.id != targetId } }
+        refreshBlockedUsers()
     }
 
     override suspend fun reportUser(targetId: String, reason: String) {
         val body = apiClient.json.encodeToString(ReportUserRequestDto(targetId = targetId, reason = reason))
-        apiClient.post("/api/safety/report", body) { }
+        apiClient.post("/api/safety/report", body) { }.getOrThrow()
     }
 }

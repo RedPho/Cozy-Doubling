@@ -1,6 +1,6 @@
 from typing import Optional
 import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 class StartSessionResponse(BaseModel):
     session_id: str
@@ -8,6 +8,12 @@ class StartSessionResponse(BaseModel):
 class FinishSessionRequest(BaseModel):
     tasks_completed: int
     last_task_text: str = ""
+    end_reason: Optional[str] = None
+
+    @field_validator("last_task_text")
+    @classmethod
+    def clamp_task_text(cls, v: str) -> str:
+        return v.strip()[:120]
 
 class FocusSessionResponse(BaseModel):
     id: str
@@ -19,6 +25,8 @@ class FocusSessionResponse(BaseModel):
     is_processed: bool = False
     duration_minutes: int = 0
     last_task_text: Optional[str] = None
+    end_reason: Optional[str] = None
+    was_capped: bool = False
 
     @classmethod
     def from_orm_model(cls, s):
@@ -31,5 +39,7 @@ class FocusSessionResponse(BaseModel):
             earned_leaves=s.earned_leaves,
             is_processed=s.is_processed,
             duration_minutes=s.duration_minutes,
-            last_task_text=s.last_task_text
+            last_task_text=s.last_task_text,
+            end_reason=getattr(s, "end_reason", None),
+            was_capped=bool(getattr(s, "was_capped", False)),
         )

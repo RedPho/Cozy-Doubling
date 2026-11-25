@@ -1,8 +1,8 @@
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 class FriendRequestInput(BaseModel):
-    player_tag: str
+    player_tag: str = Field(..., min_length=1, max_length=16)
 
 class FriendProfileResponse(BaseModel):
     id: str

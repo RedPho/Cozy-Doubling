@@ -14,6 +14,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.CheckCircleOutline
 import androidx.compose.material.icons.filled.Eco
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.ShoppingCart // Replace with Leaf Icon later
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -38,13 +39,14 @@ import kotlinx.coroutines.launch
 @Composable
 fun SummaryScreen(
     sessionId: String,
+    wasInterrupted: Boolean = false,
     onContinueClick: () -> Unit,
     viewModel: SummaryViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    LaunchedEffect(sessionId) {
-        viewModel.loadSessionStats(sessionId)
+    LaunchedEffect(sessionId, wasInterrupted) {
+        viewModel.loadSessionStats(sessionId, wasInterrupted = wasInterrupted)
     }
 
     SummaryPage(
@@ -115,21 +117,46 @@ fun SummaryPage(
                 .padding(horizontal = 24.dp, vertical = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            val presentation = remember(uiState) { resolveSummaryPresentation(uiState) }
+            val (headerRes, subheaderRes) = when (presentation.headerKind) {
+                SummaryHeaderKind.ABANDONED ->
+                    R.string.summary_header_abandoned to R.string.summary_subheader_abandoned
+                SummaryHeaderKind.APP_CLOSED ->
+                    R.string.summary_header_app_closed to R.string.summary_subheader_app_closed
+                SummaryHeaderKind.NORMAL ->
+                    R.string.summary_header to R.string.summary_subheader
+            }
+
+            val noticeRes = when (presentation.noticeKind) {
+                SummaryNoticeKind.LOAD_ERROR -> R.string.summary_notice_load_error
+                SummaryNoticeKind.APP_CLOSED -> R.string.summary_notice_app_closed
+                SummaryNoticeKind.ABANDONED_DISCONNECT -> R.string.summary_notice_abandoned_disconnect
+                SummaryNoticeKind.OFFLINE_GAP -> R.string.summary_notice_offline_gap
+                SummaryNoticeKind.CAPPED_MAX_DURATION -> R.string.summary_notice_capped_max
+                SummaryNoticeKind.NONE -> null
+            }
+
             // --- Header ---
             Text(
-                text = stringResource(R.string.summary_header),
+                text = stringResource(headerRes),
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.primary,
                 textAlign = TextAlign.Center
             )
             Text(
-                text = stringResource(R.string.summary_subheader),
+                text = stringResource(subheaderRes),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                 textAlign = TextAlign.Center
             )
 
-            Spacer(modifier = Modifier.height(40.dp))
+            if (noticeRes != null && presentation.showNoticeAtTop) {
+                Spacer(modifier = Modifier.height(20.dp))
+                SummaryNoticeBanner(noticeRes = noticeRes)
+                Spacer(modifier = Modifier.height(24.dp))
+            } else {
+                Spacer(modifier = Modifier.height(40.dp))
+            }
 
             // --- Leaves Earned Card ---
             Surface(
@@ -168,13 +195,20 @@ fun SummaryPage(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    Text(
-                        text = "${animatedLeafCount.value.toInt()}",
-                        modifier = Modifier.testTag("summary_leaves_value"),
-                        style = MaterialTheme.typography.displayMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
+                    if (uiState.isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(36.dp),
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    } else {
+                        Text(
+                            text = "${animatedLeafCount.value.toInt()}",
+                            modifier = Modifier.testTag("summary_leaves_value"),
+                            style = MaterialTheme.typography.displayMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                     Text(
                         text = stringResource(R.string.summary_leaves_earned),
                         style = MaterialTheme.typography.labelLarge,
@@ -216,6 +250,11 @@ fun SummaryPage(
                     )
                 }
             }
+
+            if (noticeRes != null && !presentation.showNoticeAtTop) {
+                Spacer(modifier = Modifier.height(16.dp))
+                SummaryNoticeBanner(noticeRes = noticeRes)
+            }
         }
 
         // --- Continue Button ---
@@ -232,6 +271,33 @@ fun SummaryPage(
                     Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null)
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun SummaryNoticeBanner(noticeRes: Int) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.45f)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.Info,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = stringResource(noticeRes),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSecondaryContainer
+            )
         }
     }
 }

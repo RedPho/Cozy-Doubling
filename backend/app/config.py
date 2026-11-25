@@ -14,5 +14,8 @@ class Settings:
     REVENUECAT_WEBHOOK_AUTH: str = os.getenv("REVENUECAT_WEBHOOK_AUTH", "cozy_rc_secret_key")
     ROOM_CAPACITY_LIMIT: int = int(os.getenv("ROOM_CAPACITY_LIMIT", "50"))
     SUPPORTER_ENTITLEMENT_ID: str = "Cozy Doubling Supporter Pass"
+    MAX_SESSION_DURATION_MINUTES: int = int(os.getenv("MAX_SESSION_DURATION_MINUTES", "720"))
+    DISCONNECT_GRACE_MINUTES: int = int(os.getenv("DISCONNECT_GRACE_MINUTES", "10"))
+    ABANDON_TIMEOUT_MINUTES: int = int(os.getenv("ABANDON_TIMEOUT_MINUTES", "30"))
 
 settings = Settings()

@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.grepho.cozydoubling.BuildConfig
 import com.grepho.cozydoubling.R
+import com.grepho.cozydoubling.core.validation.TextLimits
 
 // --- THE SCREEN ENTRY POINT ---
 @Composable
@@ -248,8 +249,9 @@ fun ReviewerLoginDialog(
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = email,
-                    onValueChange = { email = it },
+                    onValueChange = { email = TextLimits.limitInput(it, TextLimits.MAX_EMAIL_LENGTH) },
                     label = { Text(stringResource(R.string.login_email_label)) },
+                    singleLine = true,
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("login_email_input"),
@@ -257,8 +259,9 @@ fun ReviewerLoginDialog(
                 )
                 OutlinedTextField(
                     value = password,
-                    onValueChange = { password = it },
+                    onValueChange = { password = TextLimits.limitInput(it, TextLimits.MAX_PASSWORD_LENGTH) },
                     label = { Text(stringResource(R.string.login_password_label)) },
+                    singleLine = true,
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("login_password_input"),

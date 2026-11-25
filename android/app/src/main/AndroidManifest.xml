@@ -4,6 +4,8 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="com.android.vending.BILLING" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 
     <application
         android:allowBackup="true"
@@ -19,6 +21,9 @@
             android:name=".core.MainActivity"
             android:exported="true"
             android:label="@string/app_name"
+            android:launchMode="singleTop"
+            android:supportsPictureInPicture="true"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
             android:theme="@style/Theme.CozyDoubling"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
@@ -27,6 +32,15 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <service
+            android:name=".data.local.FocusSessionService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Maintains live body-doubling focus room presence, elapsed timer, and quick task controls while the user focuses in other apps." />
+        </service>
 
         <service
             android:name=".core.notifications.CozyFirebaseMessagingService"

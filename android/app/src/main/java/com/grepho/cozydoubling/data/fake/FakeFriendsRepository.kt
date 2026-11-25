@@ -2,6 +2,7 @@ package com.grepho.cozydoubling.data.fake
 
 import com.grepho.cozydoubling.core.profile.Profile
 import com.grepho.cozydoubling.core.profile.ProfileRepository
+import com.grepho.cozydoubling.core.safety.SafetyRepository
 import com.grepho.cozydoubling.features.friends.FriendUiState
 import com.grepho.cozydoubling.features.friends.FriendsRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -10,7 +11,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
 class FakeFriendsRepository(
-    private val profileRepository: ProfileRepository
+    private val profileRepository: ProfileRepository,
+    private val safetyRepository: SafetyRepository? = null
 ) : FriendsRepository {
 
     private val _friends = MutableStateFlow(
@@ -57,15 +59,42 @@ class FakeFriendsRepository(
     )
     override val pendingRequests: StateFlow<List<Profile>> = _pendingRequests.asStateFlow()
 
-    override suspend fun sendFriendRequest(playerTag: String) {
-        val cleanTag = playerTag.uppercase().removePrefix("#")
-        val pendingMatch = _pendingRequests.value.find { it.playerTag.uppercase() == cleanTag }
-        if (pendingMatch != null) {
-            acceptFriendRequest(pendingMatch.id)
-            return
+    override suspend fun sendFriendRequest(playerTag: String): String {
+        val cleanTag = playerTag.trim().uppercase().removePrefix("#")
+        if (cleanTag.isBlank()) {
+            throw IllegalArgumentException("Please enter a friend code.")
+        }
+        val myTag = profileRepository.profile.value?.playerTag?.uppercase()
+        if (myTag != null && cleanTag == myTag) {
+            throw IllegalArgumentException("You can't add yourself!")
         }
 
-        // Add as accepted friend or new mock friend
+        val blockedUsers = safetyRepository?.blockedUsers?.value.orEmpty()
+        val blockedIds = safetyRepository?.blockedUserIds?.value.orEmpty()
+        val isBlocked = blockedUsers.any {
+            it.playerTag.equals(cleanTag, ignoreCase = true) ||
+                it.id.equals(cleanTag, ignoreCase = true) ||
+                it.id == "friend_$cleanTag"
+        } || blockedIds.any {
+            it.equals(cleanTag, ignoreCase = true) ||
+                it.removePrefix("friend_").equals(cleanTag, ignoreCase = true) ||
+                it.take(8).equals(cleanTag, ignoreCase = true)
+        }
+        if (isBlocked) {
+            throw IllegalStateException("You have blocked this user. Unblock them in Settings to add them.")
+        }
+
+        if (_friends.value.any { it.playerTag.equals(cleanTag, ignoreCase = true) }) {
+            throw IllegalStateException("Already friends!")
+        }
+
+        val pendingMatch = _pendingRequests.value.find { it.playerTag.equals(cleanTag, ignoreCase = true) }
+        if (pendingMatch != null) {
+            acceptFriendRequest(pendingMatch.id)
+            return "Friend request accepted!"
+        }
+
+        // Add mock friend for offline testing
         val newFriend = FriendUiState(
             id = "friend_$cleanTag",
             name = "Cozy Buddy ($cleanTag)",
@@ -76,6 +105,7 @@ class FakeFriendsRepository(
             friendsSince = "Today"
         )
         _friends.update { it + newFriend }
+        return "Friend request sent!"
     }
 
     override suspend fun acceptFriendRequest(senderId: String) {
@@ -95,6 +125,14 @@ class FakeFriendsRepository(
 
     override suspend fun rejectFriendRequest(senderId: String) {
         _pendingRequests.update { it.filter { p -> p.id != senderId } }
+    }
+
+    override suspend fun removeFriend(friendId: String) {
+        _friends.update { list -> list.filter { it.id != friendId } }
+    }
+
+    override suspend fun refresh() {
+        // Fake data is already live in memory
     }
 
     override suspend fun fetchIncomingRequests(): List<Profile> {

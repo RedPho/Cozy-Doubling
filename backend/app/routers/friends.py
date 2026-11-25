@@ -1,5 +1,5 @@
 import datetime
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
@@ -16,6 +16,7 @@ from app.schemas.friendship import (
     FriendStoryResponse,
 )
 from app.services.auth import get_current_user_and_profile
+from app.websockets.friends_manager import friends_manager
 
 router = APIRouter(prefix="/api/friends", tags=["friends"])
 
@@ -31,8 +32,19 @@ def get_blocked_user_ids(user_id: str, db: Session) -> set[str]:
         for b in blocks
     }
 
+def get_block_direction(my_id: str, target_id: str, db: Session) -> Optional[str]:
+    if db.query(UserBlock).filter(
+        (UserBlock.blocker_id == my_id) & (UserBlock.blocked_id == target_id)
+    ).first():
+        return "i_blocked"
+    if db.query(UserBlock).filter(
+        (UserBlock.blocker_id == target_id) & (UserBlock.blocked_id == my_id)
+    ).first():
+        return "blocked_by_target"
+    return None
+
 @router.post("/request")
-def send_friend_request(
+async def send_friend_request(
     req: FriendRequestInput,
     user_and_profile: tuple[User, Profile] = Depends(get_current_user_and_profile),
     db: Session = Depends(get_db)
@@ -41,17 +53,35 @@ def send_friend_request(
     my_id = profile.id
     target_tag = req.player_tag.strip().upper().lstrip("#")
 
+    if not target_tag:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Please enter a friend code."
+        )
+
     target = db.query(Profile).filter(Profile.player_tag == target_tag).first()
     if not target:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
+            detail="User not found. Please check the friend code."
         )
 
     if target.id == my_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="You can't add yourself!"
+        )
+
+    block_dir = get_block_direction(my_id, target.id, db)
+    if block_dir == "i_blocked":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You have blocked this user. Unblock them in Settings to add them."
+        )
+    if block_dir == "blocked_by_target":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Unable to send friend request to this user."
         )
 
     u1, u2 = canonical_pair(my_id, target.id)
@@ -74,6 +104,14 @@ def send_friend_request(
         existing.status = "accepted"
         existing.accepted_at = datetime.datetime.utcnow()
         db.commit()
+        await friends_manager.notify_friends_update(target.id, {
+            "type": "request_accepted",
+            "from_user_id": my_id,
+        })
+        await friends_manager.notify_friends_update(my_id, {
+            "type": "request_accepted",
+            "from_user_id": target.id,
+        })
         return {"ok": True, "message": "Friend request accepted!"}
 
     new_friendship = Friendship(
@@ -84,16 +122,33 @@ def send_friend_request(
     )
     db.add(new_friendship)
     db.commit()
+    await friends_manager.notify_friends_update(target.id, {
+        "type": "request_received",
+        "from_user_id": my_id,
+    })
     return {"ok": True, "message": "Friend request sent!"}
 
 @router.post("/{sender_id}/accept")
-def accept_friend(
+async def accept_friend(
     sender_id: str,
     user_and_profile: tuple[User, Profile] = Depends(get_current_user_and_profile),
     db: Session = Depends(get_db)
 ):
     _, profile = user_and_profile
     my_id = profile.id
+
+    block_dir = get_block_direction(my_id, sender_id, db)
+    if block_dir == "i_blocked":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You have blocked this user. Unblock them in Settings first."
+        )
+    if block_dir == "blocked_by_target":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Unable to accept this friend request."
+        )
+
     u1, u2 = canonical_pair(my_id, sender_id)
 
     f = db.query(Friendship).filter(
@@ -112,10 +167,18 @@ def accept_friend(
     f.status = "accepted"
     f.accepted_at = datetime.datetime.utcnow()
     db.commit()
+    await friends_manager.notify_friends_update(sender_id, {
+        "type": "request_accepted",
+        "from_user_id": my_id,
+    })
+    await friends_manager.notify_friends_update(my_id, {
+        "type": "request_accepted",
+        "from_user_id": sender_id,
+    })
     return {"ok": True, "message": "Friend request accepted"}
 
 @router.post("/{sender_id}/reject")
-def reject_friend(
+async def reject_friend(
     sender_id: str,
     user_and_profile: tuple[User, Profile] = Depends(get_current_user_and_profile),
     db: Session = Depends(get_db)
@@ -131,10 +194,18 @@ def reject_friend(
         (Friendship.status == "pending")
     ).delete()
     db.commit()
+    await friends_manager.notify_friends_update(sender_id, {
+        "type": "request_rejected",
+        "from_user_id": my_id,
+    })
+    await friends_manager.notify_friends_update(my_id, {
+        "type": "request_rejected",
+        "from_user_id": sender_id,
+    })
     return {"ok": True, "message": "Friend request rejected"}
 
 @router.delete("/{friend_id}")
-def unfriend(
+async def unfriend(
     friend_id: str,
     user_and_profile: tuple[User, Profile] = Depends(get_current_user_and_profile),
     db: Session = Depends(get_db)
@@ -149,6 +220,14 @@ def unfriend(
         (Friendship.status == "accepted")
     ).delete()
     db.commit()
+    await friends_manager.notify_friends_update(friend_id, {
+        "type": "friend_removed",
+        "from_user_id": my_id,
+    })
+    await friends_manager.notify_friends_update(my_id, {
+        "type": "friend_removed",
+        "from_user_id": friend_id,
+    })
     return {"ok": True, "message": "Friend removed"}
 
 @router.get("", response_model=List[FriendStoryResponse])

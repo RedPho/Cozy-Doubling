@@ -10,11 +10,16 @@ import com.grepho.cozydoubling.core.billing.BillingRepository
 import com.grepho.cozydoubling.core.di.ServiceLocator
 import com.grepho.cozydoubling.core.notifications.NotificationRepository
 import com.grepho.cozydoubling.core.profile.ProfileRepository
+import com.grepho.cozydoubling.core.room.FocusSessionLifecycleController
+import com.grepho.cozydoubling.core.safety.SafetyRepository
+import com.grepho.cozydoubling.core.validation.TextLimits
+import com.grepho.cozydoubling.features.friends.FriendsRepository
+import com.grepho.cozydoubling.features.room.FocusRoomRepository
 import com.grepho.cozydoubling.features.room.LocalTaskDataSource
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -22,35 +27,75 @@ class SettingsViewModel(
     private val profileRepository: ProfileRepository = ServiceLocator.profileRepository,
     private val billingRepository: BillingRepository = ServiceLocator.billingRepository,
     private val authRepository: AuthRepository = ServiceLocator.authRepository,
-    private val notificationRepository: NotificationRepository = ServiceLocator.notificationRepository
+    private val notificationRepository: NotificationRepository = ServiceLocator.notificationRepository,
+    private val safetyRepository: SafetyRepository = ServiceLocator.safetyRepository,
+    private val friendsRepository: FriendsRepository = ServiceLocator.friendsRepository,
+    private val focusSessionController: FocusSessionLifecycleController = ServiceLocator.focusSessionController,
+    private val focusRoomRepository: FocusRoomRepository = ServiceLocator.focusRoomRepository
 ) : ViewModel() {
 
     constructor() : this(
         profileRepository = ServiceLocator.profileRepository,
         billingRepository = ServiceLocator.billingRepository,
         authRepository = ServiceLocator.authRepository,
-        notificationRepository = ServiceLocator.notificationRepository
+        notificationRepository = ServiceLocator.notificationRepository,
+        safetyRepository = ServiceLocator.safetyRepository,
+        friendsRepository = ServiceLocator.friendsRepository,
+        focusSessionController = ServiceLocator.focusSessionController,
+        focusRoomRepository = ServiceLocator.focusRoomRepository
     )
 
-    // 1. Map the real profile into the Settings UI State
-    val uiState: StateFlow<SettingsUiState> = profileRepository.profile
-        .map { profile ->
-            SettingsUiState(
-                username = profile?.displayName ?: "Loading...",
-                isSupporter = profile?.isSupporter ?: false
-            )
-        }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = SettingsUiState(username = "Loading...")
+    // Map profile, blocked users, and PiP preference into Settings UI State
+    val uiState: StateFlow<SettingsUiState> = combine(
+        profileRepository.profile,
+        safetyRepository.blockedUsers,
+        focusSessionController.isPipEnabled
+    ) { profile, blockedUsers, isPipEnabled ->
+        SettingsUiState(
+            username = profile?.displayName ?: "Loading...",
+            isSupporter = profile?.isSupporter ?: false,
+            blockedUsers = blockedUsers,
+            isPipEnabled = isPipEnabled
         )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = SettingsUiState(username = "Loading...")
+    )
 
-    fun onUpdateUsername(newName: String) {
-        if (newName.isBlank()) return
+    fun onOpenBlockedUsers() {
         viewModelScope.launch {
             try {
-                profileRepository.updateDisplayName(newName)
+                safetyRepository.refreshBlockedUsers()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    fun onUnblockUser(targetId: String) {
+        viewModelScope.launch {
+            try {
+                safetyRepository.unblockUser(targetId)
+                friendsRepository.fetchFriendsWithStories()
+                friendsRepository.fetchIncomingRequests()
+                profileRepository.refreshProfile()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    fun onTogglePip(enabled: Boolean) {
+        focusSessionController.setPipEnabled(enabled)
+    }
+
+    fun onUpdateUsername(newName: String) {
+        val sanitized = TextLimits.sanitizeDisplayName(newName)
+        if (sanitized.isBlank()) return
+        viewModelScope.launch {
+            try {
+                profileRepository.updateDisplayName(sanitized)
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -60,6 +105,9 @@ class SettingsViewModel(
     fun onSignOut() {
         viewModelScope.launch {
             try {
+                focusSessionController.stopSession()
+                focusSessionController.clearInterruptedSession()
+                focusRoomRepository.leaveRoom()
                 notificationRepository.clearToken()
                 LocalTaskDataSource.clear()
                 profileRepository.signOut()
@@ -73,6 +121,9 @@ class SettingsViewModel(
     fun onDeleteAccount() {
         viewModelScope.launch {
             try {
+                focusSessionController.stopSession()
+                focusSessionController.clearInterruptedSession()
+                focusRoomRepository.leaveRoom()
                 notificationRepository.clearToken()
                 LocalTaskDataSource.clear()
                 profileRepository.deleteAccount()
