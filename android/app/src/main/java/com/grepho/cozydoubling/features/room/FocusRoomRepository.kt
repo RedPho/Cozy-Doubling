@@ -13,4 +13,5 @@ interface FocusRoomRepository {
     suspend fun startSession(): String?
     suspend fun finishSession(sessionId: String, tasksCompleted: Int, taskText: String)
     suspend fun fetchSession(sessionId: String): FocusSession?
+    fun observeSessionEvents(): Flow<RoomSessionEvent>
 }

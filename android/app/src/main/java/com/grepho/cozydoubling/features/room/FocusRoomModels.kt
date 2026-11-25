@@ -41,8 +41,17 @@ data class FocusSession(
     val tasksCompleted: Int = 0,
     val earnedLeaves: Long = 0,
     val isProcessed: Boolean = false,
-    val durationMinutes: Int = 0
+    val durationMinutes: Int = 0,
+    val endReason: String? = null,
+    val wasCapped: Boolean = false
 )
+
+sealed class RoomSessionEvent {
+    data class SessionEndedByServer(
+        val sessionId: String,
+        val reason: String
+    ) : RoomSessionEvent()
+}
 
 data class FocusRoomUiState(
     val tasks: List<FocusTask> = emptyList(),

@@ -40,7 +40,7 @@ An executive overview of product domains, goals, current implementation status, 
 - `[ECON-01]` End Focus Session & Server-Side Verification *(Implemented)*
 - `[ECON-02]` Leaf & Minutes Calculation Formula *(Implemented)*
 - `[ECON-03]` Post-Session Summary Screen *(Implemented)*
-- `[ECON-04]` Session Duration Cap & Abandoned Session Auto-Finalize *(Planned — Medium)*
+- `[ECON-04]` Session Duration Cap & Abandoned Session Auto-Finalize *(Implemented)*
 
 ---
 

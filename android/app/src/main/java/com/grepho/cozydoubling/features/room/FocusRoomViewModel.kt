@@ -38,6 +38,7 @@ class FocusRoomViewModel(
     val profile: StateFlow<com.grepho.cozydoubling.core.profile.Profile?> = profileRepository.profile
 
     private val persistedSession = sessionController.loadPersistedSession()
+    private val wasRestoredSession = (savedStateHandle.get<String>("session_id") ?: persistedSession?.first) != null
     private var currentSessionId: String? = savedStateHandle["session_id"] ?: persistedSession?.first
     private var sessionStartEpochMs: Long =
         savedStateHandle["session_start_ms"] ?: persistedSession?.second ?: System.currentTimeMillis()
@@ -83,8 +84,45 @@ class FocusRoomViewModel(
                 savedStateHandle["session_start_ms"] = sessionStartEpochMs
                 _uiState.update { it.copy(sessionStartEpochMs = sessionStartEpochMs) }
 
+                // If restoring an existing session, verify the server hasn't already finalized it as abandoned
+                if (wasRestoredSession) {
+                    val existing = try {
+                        roomRepository.fetchSession(sessionId)
+                    } catch (_: Exception) {
+                        null
+                    }
+                    if (existing?.isProcessed == true) {
+                        isFinishing = true
+                        sessionController.stopSession()
+                        profileRepository.refreshProfile()
+                        _autoFinishEvents.tryEmit(sessionId)
+                        return@launch
+                    }
+                }
+
                 // Start foreground service + persistent notification
                 sessionController.startOrResumeSession(buildSessionSnapshot())
+
+                // Observe server-initiated session expiration / cap events
+                launch {
+                    roomRepository.observeSessionEvents().collect { event ->
+                        when (event) {
+                            is RoomSessionEvent.SessionEndedByServer -> {
+                                if (!isFinishing) {
+                                    isFinishing = true
+                                    val endedId = event.sessionId.ifBlank { sessionId }
+                                    sessionController.stopSession()
+                                    try {
+                                        roomRepository.leaveRoom()
+                                        profileRepository.refreshProfile()
+                                    } catch (_: Exception) {
+                                    }
+                                    _autoFinishEvents.tryEmit(endedId)
+                                }
+                            }
+                        }
+                    }
+                }
 
                 // 2. Prepare flows (DO NOT subscribe yet)
                 val currentProfile = profileRepository.profile.value 

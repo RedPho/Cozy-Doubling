@@ -51,7 +51,7 @@ class RemoteRepositoriesTest {
         assertTrue(finishReqJson.contains("tasks_completed"))
         assertTrue(finishReqJson.contains("4"))
 
-        // 3. FocusSessionDto -> FocusSession mapping
+        // 3. FocusSessionDto -> FocusSession mapping (including ECON-04 fields)
         val sessionJson = """
             {
                 "id": "sess_abc",
@@ -61,13 +61,17 @@ class RemoteRepositoriesTest {
                 "tasks_completed": 3,
                 "earned_leaves": 34,
                 "is_processed": true,
-                "duration_minutes": 25
+                "duration_minutes": 25,
+                "end_reason": "abandoned_disconnect",
+                "was_capped": true
             }
         """.trimIndent()
         val sessionObj = apiClient.json.decodeFromString<FocusSessionDto>(sessionJson).toDomain()
         assertEquals("sess_abc", sessionObj.id)
         assertEquals(34L, sessionObj.earnedLeaves)
         assertEquals(25, sessionObj.durationMinutes)
+        assertEquals("abandoned_disconnect", sessionObj.endReason)
+        assertTrue(sessionObj.wasCapped)
 
         // 3b. ProfileDto -> Profile mapping
         val profileJson = """
@@ -128,6 +132,14 @@ class RemoteRepositoriesTest {
         val nullTaskJson = """{"id":"u3","name":"NullTasker","active_task":null,"completed_tasks":0,"total_tasks":0}"""
         val nullTaskPresence = apiClient.json.decodeFromString<ParticipantPresenceDto>(nullTaskJson).toDomain()
         assertEquals("Focusing", nullTaskPresence.displayTaskText)
+
+        // Verify session_expired WebSocket message deserialization (ECON-04)
+        val expiredWsMsg = apiClient.json.decodeFromString<WsRoomMessage>(
+            """{"type":"session_expired","session_id":"sess_exp_1","reason":"abandoned_disconnect"}"""
+        )
+        assertEquals("session_expired", expiredWsMsg.type)
+        assertEquals("sess_exp_1", expiredWsMsg.sessionId)
+        assertEquals("abandoned_disconnect", expiredWsMsg.reason)
     }
 
     @Test

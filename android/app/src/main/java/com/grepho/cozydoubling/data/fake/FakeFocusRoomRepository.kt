@@ -5,11 +5,13 @@ import com.grepho.cozydoubling.features.room.FocusRoomRepository
 import com.grepho.cozydoubling.features.room.FocusSession
 import com.grepho.cozydoubling.features.room.ParticipantPresence
 import com.grepho.cozydoubling.features.room.RoomConnectionStatus
+import com.grepho.cozydoubling.features.room.RoomSessionEvent
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flowOf
 
 class FakeFocusRoomRepository(
@@ -131,4 +133,6 @@ class FakeFocusRoomRepository(
             durationMinutes = 25
         )
     }
+
+    override fun observeSessionEvents(): Flow<RoomSessionEvent> = emptyFlow()
 }

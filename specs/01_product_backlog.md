@@ -582,19 +582,22 @@ As a user who just finished a session, I want to see a celebration summary of my
 
 ## [ECON-04] Session Duration Cap & Abandoned Session Auto-Finalize
 **Priority:** Medium  
-**Status:** `Planned`
+**Status:** `Implemented`
 
 ### Description
-As a product owner protecting the fairness of the Leaf economy, I want focus sessions to have a reasonable maximum duration cap and automatic server-side expiration for abandoned sessions so that users who forget to end a session do not earn runaway Leaves.
+As a product owner protecting the fairness of the Leaf economy while welcoming marathon deep-work studiers, I want focus sessions to track server-verified connected time with fair disconnect grace, automatic abandonment closure, and a 12-hour per-session cap so honest 12-hour studiers earn uninterrupted full rewards while users who leave early or disconnect cannot farm passive Leaves.
 
 ### Business Rules & Constraints
-- Enforce a server-side maximum rewardable session duration cap (e.g., 480 minutes / 8 hours) in `POST /api/sessions/{session_id}/finish`.
-- Sessions left unprocessed beyond a grace threshold (e.g., 12 hours without active `/ws/room` presence) are automatically finalized or marked expired so stale open sessions never accumulate.
-- Clearly communicate to the user on the Summary screen if a session was capped at the maximum duration.
+- **12-Hour Hard Cap:** Rewardable duration per session is capped at **720 minutes (12 hours)** (`end_reason = "capped_max_duration"`).
+- **Brief-Disconnect Grace (`<= 10 minutes`):** Short network drops count seamlessly toward verified active focus time (`0` minutes lost).
+- **Abandonment Timeout (`> 30 minutes`):** Reconnecting within 10–30 minutes resumes without paying the offline gap; disconnecting for `> 30` minutes (or never connecting to `/ws/room`) auto-finalizes the session cleanly at `last_disconnected_at` (`end_reason = "abandoned_disconnect"`), granting `0` leaves if both verified minutes and completed tasks equal `0`.
+- **Single Active Session:** Starting a new session automatically finalizes any prior unprocessed session for that user.
+- The Summary screen displays a clear notice whenever a session was auto-ended or capped.
 
 ### Acceptance Criteria
-- [ ] Given a focus session started 14 hours ago, when finalized, then rewarded duration is capped at 480 minutes.
-- [ ] Given an abandoned open session with no active WebSocket presence past the expiry window, then the backend finalizes/closes it cleanly and prevents duplicate processing.
+- [x] Given an uninterrupted 5h–12h marathon session (even without clicks in background), all verified minutes up to 720m are rewarded.
+- [x] Given an 18-hour session, rewarded duration is capped at 720 minutes (`was_capped = true`, `end_reason = "capped_max_duration"`).
+- [x] Given a user disconnects after 25m and is gone for 3 hours, the session auto-finalizes at 25m (`end_reason = "abandoned_disconnect"`), and a 0m/0-task immediate abandon grants `0` leaves.
 
 ---
 ---

@@ -17,4 +17,13 @@ class FocusSession(Base):
     duration_minutes = Column(Integer, default=0, nullable=False)
     last_task_text = Column(String, nullable=True)
 
+    active_seconds = Column(Integer, default=0, nullable=False)
+    ever_connected = Column(Boolean, default=False, nullable=False)
+    last_connected_at = Column(DateTime, nullable=True)
+    last_disconnected_at = Column(DateTime, nullable=True)
+    last_seen_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=True)
+    last_activity_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=True)
+    end_reason = Column(String, nullable=True)
+    was_capped = Column(Boolean, default=False, nullable=False)
+
     profile = relationship("Profile", back_populates="focus_sessions")

@@ -1,6 +1,10 @@
+import datetime
 import json
 import time
 from starlette.testclient import TestClient
+from app.database import get_db
+from app.main import app
+from app.models.session import FocusSession
 from app.services.auth import create_access_token
 from app.websockets.room_manager import focus_room_manager
 from app.websockets.safety_manager import safety_manager
@@ -338,3 +342,38 @@ def test_two_clients_same_account_distinct_sessions(client: TestClient):
             assert up1["type"] == "presence_update"
             assert up1["presence"]["id"] == "shared_user_01:device_2_sess"
             assert up1["presence"]["name"] == "Device2"
+
+
+def test_abandoned_session_reconnect_receives_session_expired(client: TestClient):
+    """
+    If a user starts a session, connects briefly, disconnects for > ABANDON_TIMEOUT_MINUTES,
+    and later reconnects to /ws/room, they receive session_expired and socket closes cleanly.
+    """
+    focus_room_manager.clear()
+
+    reg = client.post("/api/auth/register", json={"email": "expired_ws@test.com", "password": "Password123!"})
+    token = reg.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+    uid = client.get("/api/auth/me", headers=headers).json()["id"]
+    sid = client.post("/api/sessions/start", headers=headers).json()["session_id"]
+
+    with client.websocket_connect(f"/ws/room?token={token}&presence_key={uid}:{sid}&name=Leaver") as ws1:
+        _ = ws1.receive_text()
+
+    # Backdate last_disconnected_at past ABANDON_TIMEOUT_MINUTES
+    dep = app.dependency_overrides[get_db]
+    gen = dep()
+    db = next(gen)
+    try:
+        sess = db.query(FocusSession).filter(FocusSession.id == sid).first()
+        sess.last_disconnected_at -= datetime.timedelta(minutes=45)
+        sess.start_time -= datetime.timedelta(minutes=50)
+        db.commit()
+    finally:
+        gen.close()
+
+    with client.websocket_connect(f"/ws/room?token={token}&presence_key={uid}:{sid}&name=Leaver") as ws2:
+        expired_msg = json.loads(ws2.receive_text())
+        assert expired_msg["type"] == "session_expired"
+        assert expired_msg["session_id"] == sid
+        assert expired_msg["reason"] == "abandoned_disconnect"

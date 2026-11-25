@@ -19,6 +19,8 @@ class FocusSessionResponse(BaseModel):
     is_processed: bool = False
     duration_minutes: int = 0
     last_task_text: Optional[str] = None
+    end_reason: Optional[str] = None
+    was_capped: bool = False
 
     @classmethod
     def from_orm_model(cls, s):
@@ -31,5 +33,7 @@ class FocusSessionResponse(BaseModel):
             earned_leaves=s.earned_leaves,
             is_processed=s.is_processed,
             duration_minutes=s.duration_minutes,
-            last_task_text=s.last_task_text
+            last_task_text=s.last_task_text,
+            end_reason=getattr(s, "end_reason", None),
+            was_capped=bool(getattr(s, "was_capped", False)),
         )

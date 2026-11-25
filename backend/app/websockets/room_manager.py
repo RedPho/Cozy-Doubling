@@ -118,13 +118,13 @@ class FocusRoomManager:
         for k, ws in disconnected_items:
             await self.disconnect(k, websocket=ws)
 
-    async def disconnect(self, presence_key: str, websocket: Optional[WebSocket] = None):
+    async def disconnect(self, presence_key: str, websocket: Optional[WebSocket] = None) -> bool:
         if presence_key in self.active_participants:
             current_entry = self.active_participants[presence_key]
             # Ignore disconnect if this is from a replaced/stale socket
             if websocket is not None and current_entry.websocket != websocket:
                 logger.info(f"Ignoring stale disconnect event for {presence_key}")
-                return
+                return False
 
             entry = self.active_participants.pop(presence_key)
             logger.info(f"Disconnected {presence_key}. Remaining active: {list(self.active_participants.keys())}")
@@ -140,6 +140,8 @@ class FocusRoomManager:
                     await other.websocket.send_text(leave_msg)
                 except Exception:
                     pass
+            return True
+        return False
 
     async def handle_user_blocked(self, blocker_id: str, blocked_id: str):
         """Immediately separates two users in the room if a block occurs."""

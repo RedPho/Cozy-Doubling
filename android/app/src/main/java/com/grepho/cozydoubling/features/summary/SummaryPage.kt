@@ -14,6 +14,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.CheckCircleOutline
 import androidx.compose.material.icons.filled.Eco
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.ShoppingCart // Replace with Leaf Icon later
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -212,6 +213,38 @@ fun SummaryPage(
                         value = stringResource(R.string.summary_tasks_count, uiState.tasksFinished),
                         icon = Icons.Default.CheckCircleOutline
                     )
+                }
+            }
+
+            val noticeRes = when (uiState.endReason) {
+                "abandoned_disconnect" -> R.string.summary_notice_abandoned_disconnect
+                "capped_max_duration" -> R.string.summary_notice_capped_max
+                else -> if (uiState.wasCapped) R.string.summary_notice_capped_max else null
+            }
+            if (noticeRes != null) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(20.dp),
+                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.45f)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Info,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = stringResource(noticeRes),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    }
                 }
             }
         }

@@ -163,4 +163,8 @@
     <string name="notification_action_complete_task">Complete Task</string>
     <string name="notification_action_finish">Finish</string>
     <string name="room_enter_pip_label">Floating Mini-Widget</string>
+
+    <!-- ECON-04 Session Verification Notices -->
+    <string name="summary_notice_abandoned_disconnect">Session auto-ended after being away from the Focus Room for more than 30 minutes. Your verified active focus time was saved.</string>
+    <string name="summary_notice_capped_max">Sessions are capped at 12 hours of verified focus per sitting to keep the Leaf garden fair.</string>
 </resources>

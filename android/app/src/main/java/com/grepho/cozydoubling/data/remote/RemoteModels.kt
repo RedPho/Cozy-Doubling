@@ -70,7 +70,9 @@ data class FocusSessionDto(
     @SerialName("tasks_completed") val tasksCompleted: Int = 0,
     @SerialName("earned_leaves") val earnedLeaves: Long = 0,
     @SerialName("is_processed") val isProcessed: Boolean = false,
-    @SerialName("duration_minutes") val durationMinutes: Int = 0
+    @SerialName("duration_minutes") val durationMinutes: Int = 0,
+    @SerialName("end_reason") val endReason: String? = null,
+    @SerialName("was_capped") val wasCapped: Boolean = false
 ) {
     fun toDomain(): FocusSession = FocusSession(
         id = id,
@@ -80,7 +82,9 @@ data class FocusSessionDto(
         tasksCompleted = tasksCompleted,
         earnedLeaves = earnedLeaves,
         isProcessed = isProcessed,
-        durationMinutes = durationMinutes
+        durationMinutes = durationMinutes,
+        endReason = endReason,
+        wasCapped = wasCapped
     )
 }
 
@@ -267,7 +271,9 @@ data class WsRoomMessage(
     val type: String,
     val participants: List<ParticipantPresenceDto>? = null,
     val presence: ParticipantPresenceDto? = null,
-    @SerialName("presence_id") val presenceId: String? = null
+    @SerialName("presence_id") val presenceId: String? = null,
+    @SerialName("session_id") val sessionId: String? = null,
+    val reason: String? = null
 )
 
 @Serializable

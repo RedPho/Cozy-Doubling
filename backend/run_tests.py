@@ -82,6 +82,14 @@ print("[PASS] test_profile_fcm_token_update", flush=True)
 from tests.test_sessions import (
     test_session_lifecycle_and_leaf_rewards,
     test_session_minimum_reward_floor,
+    test_twelve_hour_uninterrupted_marathon_earns_full_credits,
+    test_eighteen_hour_connected_session_capped_at_twelve_hours,
+    test_brief_disconnect_within_grace_loses_zero_time,
+    test_medium_disconnect_resumes_without_paying_offline_gap,
+    test_abandoned_early_leave_auto_finalizes_and_zeros_empty_abandoned,
+    test_five_hour_uninterrupted_background_session_earns_full_credits,
+    test_never_connected_late_finish_grants_zero_minutes,
+    test_starting_new_session_auto_finalizes_previous,
 )
 reset_db()
 test_session_lifecycle_and_leaf_rewards(client)
@@ -90,6 +98,38 @@ print("[PASS] test_session_lifecycle_and_leaf_rewards", flush=True)
 reset_db()
 test_session_minimum_reward_floor(client)
 print("[PASS] test_session_minimum_reward_floor", flush=True)
+
+reset_db()
+test_twelve_hour_uninterrupted_marathon_earns_full_credits(client)
+print("[PASS] test_twelve_hour_uninterrupted_marathon_earns_full_credits", flush=True)
+
+reset_db()
+test_eighteen_hour_connected_session_capped_at_twelve_hours(client)
+print("[PASS] test_eighteen_hour_connected_session_capped_at_twelve_hours", flush=True)
+
+reset_db()
+test_brief_disconnect_within_grace_loses_zero_time(client)
+print("[PASS] test_brief_disconnect_within_grace_loses_zero_time", flush=True)
+
+reset_db()
+test_medium_disconnect_resumes_without_paying_offline_gap(client)
+print("[PASS] test_medium_disconnect_resumes_without_paying_offline_gap", flush=True)
+
+reset_db()
+test_abandoned_early_leave_auto_finalizes_and_zeros_empty_abandoned(client)
+print("[PASS] test_abandoned_early_leave_auto_finalizes_and_zeros_empty_abandoned", flush=True)
+
+reset_db()
+test_five_hour_uninterrupted_background_session_earns_full_credits(client)
+print("[PASS] test_five_hour_uninterrupted_background_session_earns_full_credits", flush=True)
+
+reset_db()
+test_never_connected_late_finish_grants_zero_minutes(client)
+print("[PASS] test_never_connected_late_finish_grants_zero_minutes", flush=True)
+
+reset_db()
+test_starting_new_session_auto_finalizes_previous(client)
+print("[PASS] test_starting_new_session_auto_finalizes_previous", flush=True)
 
 from tests.test_friends import (
     test_friend_request_flow,
@@ -135,6 +175,7 @@ from tests.test_websockets import (
     test_invalid_token_rejected_on_connect,
     test_safety_websocket_realtime_events,
     test_two_clients_same_account_distinct_sessions,
+    test_abandoned_session_reconnect_receives_session_expired,
 )
 reset_db()
 test_two_clients_full_presence_lifecycle(client)
@@ -172,6 +213,10 @@ reset_db()
 test_two_clients_same_account_distinct_sessions(client)
 print("[PASS] test_two_clients_same_account_distinct_sessions", flush=True)
 
+reset_db()
+test_abandoned_session_reconnect_receives_session_expired(client)
+print("[PASS] test_abandoned_session_reconnect_receives_session_expired", flush=True)
+
 from tests.test_websockets_live import (
     test_live_uvicorn_two_clients_bidirectional_presence_and_keepalive,
     test_live_uvicorn_many_websockets_do_not_exhaust_db_pool,
@@ -184,4 +229,4 @@ reset_db()
 test_live_uvicorn_many_websockets_do_not_exhaust_db_pool(client)
 print("[PASS] test_live_uvicorn_many_websockets_do_not_exhaust_db_pool", flush=True)
 
-print("=== ALL 26 BACKEND TESTS PASSED SUCCESSFULLY! ===", flush=True)
+print("=== ALL 35 BACKEND TESTS PASSED SUCCESSFULLY! ===", flush=True)

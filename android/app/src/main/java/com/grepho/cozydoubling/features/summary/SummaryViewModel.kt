@@ -25,7 +25,9 @@ class SummaryViewModel(
                         SummaryUiState(
                             focusedMinutes = session.durationMinutes,
                             tasksFinished = session.tasksCompleted,
-                            leavesEarned = session.earnedLeaves.toInt()
+                            leavesEarned = session.earnedLeaves.toInt(),
+                            endReason = session.endReason,
+                            wasCapped = session.wasCapped
                         )
                     }
                 }
