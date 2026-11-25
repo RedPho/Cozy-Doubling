@@ -449,7 +449,7 @@
     <div class="meta">
       <span>Developer: grepho</span>
       <span>Effective: July 21, 2026</span>
-      <span>Last updated: August 11, 2026</span>
+      <span>Last updated: [2.0 RELEASE DATE]</span>
     </div>
   </header>
 
@@ -489,9 +489,16 @@
     <section id="s1">
       <h2><span class="num">1</span> Information We Collect</h2>
 
-      <h3>1.1 Account Information (from Google Sign-In)</h3>
-      <p>When you sign in with Google, we receive your <strong>Google account ID</strong> and <strong>display
-          name</strong> from Google. We do not store your email address in our own database.</p>
+      <h3>1.1 Account Information</h3>
+      <p>You can create an account with Google Sign-In or with an email address and password.</p>
+      <ul>
+        <li><strong>Google Sign-In</strong> — we receive your <strong>Google account ID</strong>, <strong>email
+            address</strong>, and <strong>name</strong> from Google. We store the account ID and email address to
+          identify your account; your name is used as your initial Display Name.</li>
+        <li><strong>Email &amp; password</strong> — we store your <strong>email address</strong> and a
+          <strong>one-way hash of your password</strong> (bcrypt). We never store your password in readable form.</li>
+      </ul>
+      <p>Your email address is never shown to other users.</p>
 
       <h3>1.2 Profile Information You Set</h3>
       <ul>
@@ -516,8 +523,10 @@
           accepted).</li>
         <li><strong>Block List</strong> — user IDs of users you have blocked, preventing them from interacting with you.
         </li>
+        <li><strong>Reports</strong> — when you report another user, we store the reported user's ID, your user ID,
+          the reason you enter, and the time of the report so we can review it.</li>
         <li><strong>Real-Time Presence</strong> — while you are in a Focus Room, your display name, current
-          task text, and task progress are broadcast live to other room participants via Supabase Realtime.
+          task text, and task progress are broadcast live to other room participants through our servers.
           Live broadcast data is not permanently stored. However, the <strong>last task text and progress
             from each session</strong> is saved to your focus session record so that your friends can see
           your recent activity.</li>
@@ -534,8 +543,20 @@
           status</strong> (active/inactive).</p>
 
       <h3>1.7 Technical Data</h3>
-      <p>The App requires internet access to function. Standard network data (such as IP addresses) may be processed by
-        our backend provider (Supabase) in the normal course of service operation.</p>
+      <p>The App requires internet access to function. Our servers, operated on <strong>[HOSTING PROVIDER]</strong>,
+        process standard network data such as your <strong>IP address</strong> to deliver the service, protect it
+        against abuse (for example, limiting repeated failed sign-in attempts), and keep short-lived technical logs
+        (retained for up to <strong>[N] days</strong>).</p>
+
+      <h3>1.8 Data Stored on Your Device</h3>
+      <ul>
+        <li>Your <strong>sign-in session token</strong>, encrypted with a key held in the Android Keystore, so you stay
+          signed in.</li>
+        <li>Your <strong>unfinished task list</strong> and the state of an active focus session, so they survive app
+          restarts.</li>
+        <li>App preferences such as the picture-in-picture setting.</li>
+      </ul>
+      <p>This data is removed when you sign out or delete your account and is excluded from Android backups.</p>
     </section>
 
     <!-- 2 -->
@@ -552,7 +573,7 @@
         <tbody>
           <tr>
             <td>Authenticate your account</td>
-            <td>Google account ID, User ID</td>
+            <td>Google account ID or email address and password hash, User ID</td>
           </tr>
           <tr>
             <td>Show your profile to you and friends</td>
@@ -579,8 +600,8 @@
             <td>RevenueCat User ID (linked to account), Supporter status</td>
           </tr>
           <tr>
-            <td>Operate and improve the App</td>
-            <td>Aggregated, anonymised usage data</td>
+            <td>Keep the community safe (blocking, reports, abuse prevention)</td>
+            <td>User IDs, report reasons, IP address (rate limiting)</td>
           </tr>
           <tr>
             <td>Respond to support requests</td>
@@ -610,9 +631,10 @@
         <div class="provider">
           <div class="provider-dot"></div>
           <div>
-            <strong>Supabase</strong>
-            <span class="desc">Backend database and authentication. Stores your profile, focus sessions, and friends
-              list. <a href="https://supabase.com/privacy" target="_blank" rel="noopener">Privacy Policy ↗</a></span>
+            <strong>[HOSTING PROVIDER]</strong>
+            <span class="desc">Hosts our servers and database, which store your account, profile, focus sessions,
+              friends list, and reports. <a href="[HOSTING PROVIDER PRIVACY URL]" target="_blank" rel="noopener">Privacy
+                Policy ↗</a></span>
           </div>
         </div>
         <div class="provider">
@@ -660,13 +682,15 @@
       <h2><span class="num">4</span> Data Retention</h2>
       <ul>
         <li><strong>Active Accounts</strong> — We retain your data for as long as your account is active.</li>
-        <li><strong>Focus Session Records</strong> — Retained to compute your statistics and populate your journey
-          history.</li>
         <li><strong>Focus Session Records &amp; Task Text</strong> — Retained to compute your statistics and populate
           your journey history. The <strong>last task text</strong> from each session is also stored so your
           friends can see your recent activity. Live broadcast data (streamed during a session) is not separately
           persisted.</li>
-        </li>
+        <li><strong>Reports</strong> — Reports you file are kept for moderation. If you delete your account, reports
+          you filed are kept without your user ID; reports about you are deleted.</li>
+        <li><strong>Technical logs</strong> — Kept for up to [N] days.</li>
+        <li><strong>Backups</strong> — Deleted data may remain in encrypted database backups for up to [30] days
+          before being overwritten.</li>
       </ul>
 
       <div class="callout red">
@@ -683,9 +707,11 @@
       <ul>
         <li>All communication between the App and our servers is encrypted in transit using <strong>HTTPS /
             TLS</strong>.</li>
-        <li>Authentication uses Supabase Auth with industry-standard <strong>JWT tokens</strong>.</li>
-        <li>Access to your data is enforced by <strong>Row-Level Security (RLS)</strong> policies on our database — you
-          can only access your own data.</li>
+        <li>Sign-in uses signed <strong>JWT</strong> session tokens; Google sign-ins are verified with Google
+          before an account is created or opened.</li>
+        <li>Passwords are stored only as salted <strong>bcrypt</strong> hashes, and repeated failed sign-in attempts
+          are temporarily blocked.</li>
+        <li>Every request is authorised on the server — you can only access and change your own data.</li>
         <li>In-app purchases are validated server-side through RevenueCat.</li>
       </ul>
       <p>No method of electronic transmission is 100% secure. We cannot guarantee absolute security, but we take
@@ -738,7 +764,8 @@
     <!-- 8 -->
     <section id="s8">
       <h2><span class="num">8</span> International Data Transfers</h2>
-      <p>Our services are hosted on Supabase infrastructure, which may be located outside your country of residence. By
+      <p>Our services are hosted on [HOSTING PROVIDER] infrastructure in [REGION], which may be located outside your
+        country of residence. By
         using the App, you consent to your information being transferred to and processed in other countries, which may
         have different data protection laws than your own.</p>
     </section>
