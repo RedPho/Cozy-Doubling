@@ -1,9 +1,42 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.secrets)
     alias(libs.plugins.google.services)
+}
+
+val localProps: Properties = Properties().apply {
+    rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
+}
+
+// OAuth 2.0 *web* client ID used to request Google ID tokens. Empty in debug = mock Google tokens.
+val googleWebClientId: String = (project.findProperty("googleWebClientId") as String?)
+    ?: localProps.getProperty("GOOGLE_WEB_CLIENT_ID", "")
+
+val releaseApiBaseUrl: String = (project.findProperty("releaseApiBaseUrl") as String?)
+    ?: (project.findProperty("apiBaseUrl") as String?)
+    ?: ""
+
+// Fail release packaging early instead of shipping an app that points at a dev server or cannot
+// sign in with Google. Debug builds are unaffected.
+tasks.configureEach {
+    // preReleaseBuild is the first task of every release variant (assembleRelease, bundleRelease).
+    if (name == "preReleaseBuild") {
+        // Plain local copies: the configuration cache cannot serialize build-script references.
+        val apiUrl = releaseApiBaseUrl
+        val webClientId = googleWebClientId
+        doFirst {
+            check(apiUrl.startsWith("https://")) {
+                "Release builds need -PreleaseApiBaseUrl=https://... (got '$apiUrl')."
+            }
+            check(webClientId.isNotBlank()) {
+                "Release builds need GOOGLE_WEB_CLIENT_ID (OAuth web client ID) in local.properties or -PgoogleWebClientId=..."
+            }
+        }
+    }
 }
 
 android {
@@ -18,17 +51,24 @@ android {
         applicationId = "com.grepho.cozydoubling"
         minSdk = 24
         targetSdk = 36
-        versionCode = 9
-        versionName = "1.1.0"
+        // Play Console already has versionCode 9 / 1.1.0 (Supabase build, commit b949621).
+        versionCode = 10
+        versionName = "2.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        val apiBaseUrl = (project.findProperty("apiBaseUrl") as String?) ?: "http://10.0.2.2:8000"
-        buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
+        buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$googleWebClientId\"")
     }
 
     buildTypes {
+        debug {
+            // Local FastAPI backend (emulator loopback) unless overridden with -PapiBaseUrl=...
+            val debugApiBaseUrl = (project.findProperty("apiBaseUrl") as String?) ?: "http://10.0.2.2:8000"
+            buildConfigField("String", "API_BASE_URL", "\"$debugApiBaseUrl\"")
+        }
         release {
+            // Production API must be HTTPS; cleartext is only permitted in debug builds.
+            buildConfigField("String", "API_BASE_URL", "\"$releaseApiBaseUrl\"")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
@@ -44,6 +84,10 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+    testOptions {
+        // Lets JVM unit tests pass inert Android stubs (e.g. an Activity for sign-in APIs).
+        unitTests.isReturnDefaultValues = true
     }
 
     bundle {
@@ -85,8 +129,21 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.okhttp)
 
+    // Google Sign-In through Credential Manager
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services.auth)
+    implementation(libs.googleid)
+
     // Firebase
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.messaging)
     implementation(libs.kotlinx.coroutines.play.services)
+}
+
+secrets {
+    // Non-secret defaults (legal page URLs, empty client IDs) so a fresh clone and CI can build.
+    // Real values go in local.properties, which overrides these and is never committed.
+    defaultPropertiesFileName = "local.defaults.properties"
+    // Generated explicitly above (the plugin emits invalid Java for empty values).
+    ignoreList.add("GOOGLE_WEB_CLIENT_ID")
 }

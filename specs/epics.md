@@ -14,8 +14,11 @@ An executive overview of product domains, goals, current implementation status, 
 - `[AUTH-05]` Update Display Name *(Implemented)*
 - `[AUTH-06]` Sign Out & Device Data Sanitization *(Implemented)*
 - `[AUTH-07]` Permanent Account Deletion *(Implemented)*
-- `[AUTH-08]` Guest Access & Self-Serve Email Registration *(Planned)*
+- `[AUTH-08]` Self-Serve Email Registration *(Implemented)*
 - `[AUTH-09]` Persistent Encrypted Token Storage & Seamless Cold-Start Auto-Login *(Implemented)*
+- `[AUTH-10]` Password Reset *(Planned — High)*
+- `[AUTH-11]` Guest Access Mode *(Planned — Low)*
+- `[AUTH-12]` Migrate 1.x (Supabase) Accounts to the New Backend *(Planned — High, release blocker)*
 
 ---
 

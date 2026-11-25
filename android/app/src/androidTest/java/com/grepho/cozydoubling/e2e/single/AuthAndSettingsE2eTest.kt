@@ -20,6 +20,8 @@ import com.grepho.cozydoubling.e2e.E2eTestHarness
 import com.grepho.cozydoubling.e2e.addTaskInFocusRoom
 import com.grepho.cozydoubling.e2e.openOasisSubTab
 import com.grepho.cozydoubling.e2e.openSettingsFromTopBar
+import com.grepho.cozydoubling.e2e.LOGIN_SCREEN_MARKER
+import com.grepho.cozydoubling.e2e.registerWithEmailUi
 import com.grepho.cozydoubling.e2e.signInWithEmailUi
 import com.grepho.cozydoubling.e2e.waitUntilNodeDoesNotExist
 import com.grepho.cozydoubling.e2e.waitUntilNodeExists
@@ -57,46 +59,60 @@ class AuthAndSettingsE2eTest {
         val email = E2eTestHarness.uniqueEmail("auth_flow")
         val password = "StrongPassword1!"
 
-        // Edge case: Cancel Reviewer Access dialog cleanly
-        composeRule.waitUntilNodeExists(hasText("Reviewer Access"))
-        composeRule.onNodeWithText("Reviewer Access").performClick()
+        // Edge case: Cancel the email dialog cleanly
+        composeRule.waitUntilNodeExists(hasText(LOGIN_SCREEN_MARKER))
+        composeRule.onNodeWithText(LOGIN_SCREEN_MARKER).performClick()
         composeRule.waitUntilNodeExists(hasTestTag("login_submit_button"))
         composeRule.onNodeWithTag("login_submit_button").assertIsNotEnabled()
         composeRule.onNodeWithText("Cancel").performClick()
         composeRule.waitUntilNodeDoesNotExist(hasTestTag("login_submit_button"))
         composeRule.onNodeWithText("Login Error").assertDoesNotExist()
 
-        // Edge case: Whitespace-only email/password keeps Login button disabled
-        composeRule.onNodeWithText("Reviewer Access").performClick()
+        // Edge case: Whitespace-only email/password keeps the submit button disabled
+        composeRule.onNodeWithText(LOGIN_SCREEN_MARKER).performClick()
         composeRule.waitUntilNodeExists(hasTestTag("login_email_input"))
         composeRule.onNodeWithTag("login_email_input").performTextInput("   ")
         composeRule.onNodeWithTag("login_password_input").performTextInput("   ")
         composeRule.onNodeWithTag("login_submit_button").assertIsNotEnabled()
 
-        // Happy path: Auto-register & login
+        // Edge case: Signing in with an unknown email does NOT silently create an account
         composeRule.onNodeWithTag("login_email_input").performTextClearance()
         composeRule.onNodeWithTag("login_email_input").performTextInput(email)
         composeRule.onNodeWithTag("login_password_input").performTextClearance()
         composeRule.onNodeWithTag("login_password_input").performTextInput(password)
-        composeRule.onNodeWithTag("login_submit_button").assertIsEnabled().performClick()
-        composeRule.waitUntilNodeExists(hasText("Start Focus"))
+        composeRule.onNodeWithTag("login_submit_button").performClick()
+        composeRule.waitUntilNodeExists(hasTestTag("login_error_text"))
+        composeRule.onNodeWithText("Invalid email or password").assertIsDisplayed()
+        composeRule.onNodeWithText("Cancel").performClick()
+
+        // Happy path: Explicit registration from the in-app form
+        composeRule.registerWithEmailUi(email, password)
 
         // Sign out via Settings
         composeRule.openSettingsFromTopBar()
         composeRule.onNodeWithText("Sign Out").performScrollTo().performClick()
-        composeRule.waitUntilNodeExists(hasText("Reviewer Access"))
+        composeRule.waitUntilNodeExists(hasText(LOGIN_SCREEN_MARKER))
 
-        // Edge case: Wrong password for existing account shows explicit error dialog
-        composeRule.onNodeWithText("Reviewer Access").performClick()
+        // Edge case: Registering the same email again is rejected
+        composeRule.onNodeWithText(LOGIN_SCREEN_MARKER).performClick()
+        composeRule.waitUntilNodeExists(hasTestTag("login_mode_toggle"))
+        composeRule.onNodeWithTag("login_mode_toggle").performClick()
+        composeRule.onNodeWithTag("login_email_input").performTextInput(email)
+        composeRule.onNodeWithTag("login_password_input").performTextInput(password)
+        composeRule.onNodeWithTag("register_confirm_password_input").performTextInput(password)
+        composeRule.onNodeWithTag("login_submit_button").performClick()
+        composeRule.waitUntilNodeExists(hasText("Email already registered"))
+        composeRule.onNodeWithText("Cancel").performClick()
+
+        // Edge case: Wrong password shows the generic (non-enumerating) error inside the dialog
+        composeRule.onNodeWithText(LOGIN_SCREEN_MARKER).performClick()
         composeRule.waitUntilNodeExists(hasTestTag("login_email_input"))
         composeRule.onNodeWithTag("login_email_input").performTextInput(email)
         composeRule.onNodeWithTag("login_password_input").performTextInput("WrongPass999!")
         composeRule.onNodeWithTag("login_submit_button").performClick()
-
-        composeRule.waitUntilNodeExists(hasText("Login Error"))
-        composeRule.onNodeWithText("Incorrect password for this account.").assertIsDisplayed()
-        composeRule.onNodeWithText("OK").performClick()
-        composeRule.waitUntilNodeDoesNotExist(hasText("Login Error"))
+        composeRule.waitUntilNodeExists(hasText("Invalid email or password"))
+        composeRule.onNodeWithText("Cancel").performClick()
+        composeRule.waitUntilNodeDoesNotExist(hasTestTag("login_email_input"))
 
         // Happy path: Returning login normalizes uppercase and surrounding whitespace
         composeRule.signInWithEmailUi("  ${email.uppercase()}  ", password)
@@ -183,7 +199,7 @@ class AuthAndSettingsE2eTest {
         // Sign out and sign back in: unfinished task must have been wiped
         composeRule.openSettingsFromTopBar()
         composeRule.onNodeWithText("Sign Out").performScrollTo().performClick()
-        composeRule.waitUntilNodeExists(hasText("Reviewer Access"))
+        composeRule.waitUntilNodeExists(hasText(LOGIN_SCREEN_MARKER))
 
         composeRule.signInWithEmailUi(email, initialPass)
         composeRule.onNodeWithText("Start Focus").performClick()
@@ -206,7 +222,7 @@ class AuthAndSettingsE2eTest {
         composeRule.onNodeWithText("Delete Account").performScrollTo().performClick()
         composeRule.waitUntilNodeExists(hasText("Delete"))
         composeRule.onNodeWithText("Delete").performClick()
-        composeRule.waitUntilNodeExists(hasText("Reviewer Access"))
+        composeRule.waitUntilNodeExists(hasText(LOGIN_SCREEN_MARKER))
 
         // Re-registering the exact same email with a brand new password succeeds (proving cascade delete)
         composeRule.signInWithEmailUi(email, newPassAfterDelete)
