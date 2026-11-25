@@ -146,6 +146,19 @@ class RemoteRepositoriesTest {
         assertEquals("sess_exp_1", expiredWsMsg.sessionId)
         assertEquals("abandoned_disconnect", expiredWsMsg.reason)
 
+        val syncWsMsg = apiClient.json.decodeFromString<WsRoomMessage>(
+            """{"type":"session_sync","session_id":"sess_sync_1","active_seconds":900}"""
+        )
+        assertEquals("session_sync", syncWsMsg.type)
+        assertEquals("sess_sync_1", syncWsMsg.sessionId)
+        assertEquals(900, syncWsMsg.activeSeconds)
+
+        val pongWsMsg = apiClient.json.decodeFromString<WsRoomMessage>(
+            """{"type":"pong","session_id":"sess_sync_1","active_seconds":960}"""
+        )
+        assertEquals("pong", pongWsMsg.type)
+        assertEquals(960, pongWsMsg.activeSeconds)
+
         // Verify WsFriendsMessage deserialization (BUG-2)
         val friendsWsMsg = apiClient.json.decodeFromString<WsFriendsMessage>(
             """{"type":"request_received","from_user_id":"user_alice_1"}"""
@@ -626,5 +639,79 @@ class RemoteRepositoriesTest {
             }
         assertEquals(1, deduplicated.size)
         assertEquals("New Task", deduplicated.first().activeTaskText)
+    }
+
+    @Test
+    fun testRemoteFocusRoomRepository_finishSessionPropagatesErrorsAndCachesResult() = runBlocking {
+        var finishShouldFail = true
+        var getShouldFail = true
+
+        val interceptor = Interceptor { chain ->
+            val request = chain.request()
+            val path = request.url.encodedPath
+            when {
+                path == "/api/sessions/sess_finish_1/finish" && finishShouldFail ->
+                    Response.Builder()
+                        .request(request).protocol(Protocol.HTTP_1_1).code(500).message("Server Error")
+                        .body("""{"detail":"Database unavailable"}""".toResponseBody("application/json".toMediaType()))
+                        .build()
+                path == "/api/sessions/sess_finish_1/finish" ->
+                    Response.Builder()
+                        .request(request).protocol(Protocol.HTTP_1_1).code(200).message("OK")
+                        .body(
+                            """
+                            {
+                                "id": "sess_finish_1",
+                                "user_id": "u1",
+                                "start_time": "2026-11-25T10:00:00",
+                                "end_time": "2026-11-25T10:20:00",
+                                "tasks_completed": 1,
+                                "earned_leaves": 23,
+                                "is_processed": true,
+                                "duration_minutes": 20,
+                                "end_reason": "completed_with_offline_gap",
+                                "was_capped": true
+                            }
+                            """.trimIndent().toResponseBody("application/json".toMediaType())
+                        )
+                        .build()
+                path == "/api/sessions/sess_finish_1" && getShouldFail ->
+                    Response.Builder()
+                        .request(request).protocol(Protocol.HTTP_1_1).code(503).message("Unavailable")
+                        .body("""{"detail":"Temporary outage"}""".toResponseBody("application/json".toMediaType()))
+                        .build()
+                else ->
+                    Response.Builder()
+                        .request(request).protocol(Protocol.HTTP_1_1).code(200).message("OK")
+                        .body("""{"id":"u1","display_name":"Tester","player_tag":"TEST1234"}""".toResponseBody("application/json".toMediaType()))
+                        .build()
+            }
+        }
+
+        val apiClient = ApiClient(
+            baseUrl = "http://mockserver:8000",
+            customOkHttpClient = OkHttpClient.Builder().addInterceptor(interceptor).build()
+        )
+        val authRepo = RemoteAuthRepository(apiClient)
+        val profileRepo = RemoteProfileRepository(apiClient, authRepo)
+        val roomRepo = RemoteFocusRoomRepository(apiClient, profileRepo)
+
+        // 1. Finish failure throws instead of silently swallowing
+        var finishError: Exception? = null
+        try {
+            roomRepo.finishSession("sess_finish_1", 1, "Task")
+        } catch (e: Exception) {
+            finishError = e
+        }
+        assertTrue(finishError is ApiException)
+
+        // 2. Successful finish caches processed session even if subsequent GET fails
+        finishShouldFail = false
+        roomRepo.finishSession("sess_finish_1", 1, "Task")
+        val cached = roomRepo.fetchSession("sess_finish_1")
+        assertNotNull(cached)
+        assertTrue(cached!!.isProcessed)
+        assertEquals("completed_with_offline_gap", cached.endReason)
+        assertEquals(20, cached.durationMinutes)
     }
 }

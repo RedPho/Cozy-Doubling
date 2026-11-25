@@ -1,6 +1,6 @@
 from typing import Optional
 import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 class StartSessionResponse(BaseModel):
     session_id: str
@@ -9,6 +9,11 @@ class FinishSessionRequest(BaseModel):
     tasks_completed: int
     last_task_text: str = ""
     end_reason: Optional[str] = None
+
+    @field_validator("last_task_text")
+    @classmethod
+    def clamp_task_text(cls, v: str) -> str:
+        return v.strip()[:120]
 
 class FocusSessionResponse(BaseModel):
     id: str

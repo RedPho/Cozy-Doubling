@@ -12,6 +12,7 @@ import com.grepho.cozydoubling.core.notifications.NotificationRepository
 import com.grepho.cozydoubling.core.profile.ProfileRepository
 import com.grepho.cozydoubling.core.room.FocusSessionLifecycleController
 import com.grepho.cozydoubling.core.safety.SafetyRepository
+import com.grepho.cozydoubling.core.validation.TextLimits
 import com.grepho.cozydoubling.features.friends.FriendsRepository
 import com.grepho.cozydoubling.features.room.FocusRoomRepository
 import com.grepho.cozydoubling.features.room.LocalTaskDataSource
@@ -90,10 +91,11 @@ class SettingsViewModel(
     }
 
     fun onUpdateUsername(newName: String) {
-        if (newName.isBlank()) return
+        val sanitized = TextLimits.sanitizeDisplayName(newName)
+        if (sanitized.isBlank()) return
         viewModelScope.launch {
             try {
-                profileRepository.updateDisplayName(newName)
+                profileRepository.updateDisplayName(sanitized)
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -104,6 +106,7 @@ class SettingsViewModel(
         viewModelScope.launch {
             try {
                 focusSessionController.stopSession()
+                focusSessionController.clearInterruptedSession()
                 focusRoomRepository.leaveRoom()
                 notificationRepository.clearToken()
                 LocalTaskDataSource.clear()
@@ -119,6 +122,7 @@ class SettingsViewModel(
         viewModelScope.launch {
             try {
                 focusSessionController.stopSession()
+                focusSessionController.clearInterruptedSession()
                 focusRoomRepository.leaveRoom()
                 notificationRepository.clearToken()
                 LocalTaskDataSource.clear()

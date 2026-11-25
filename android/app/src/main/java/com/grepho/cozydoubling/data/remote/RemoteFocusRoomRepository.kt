@@ -27,7 +27,8 @@ class RemoteFocusRoomRepository(
     private val _participants = MutableStateFlow<List<ParticipantPresence>>(emptyList())
     private val _channelStatus = MutableStateFlow<RoomConnectionStatus>(RoomConnectionStatus.DISCONNECTED)
     private val _broadcastFlow = MutableSharedFlow<ParticipantPresence>(replay = 1, extraBufferCapacity = 64)
-    private val _sessionEvents = MutableSharedFlow<RoomSessionEvent>(extraBufferCapacity = 4)
+    private val _sessionEvents = MutableSharedFlow<RoomSessionEvent>(extraBufferCapacity = 8)
+    private val finishedSessionsCache = java.util.concurrent.ConcurrentHashMap<String, FocusSession>()
 
     @Volatile private var activeWebSocket: WebSocket? = null
     @Volatile private var currentPresenceKey: String? = null
@@ -108,6 +109,12 @@ class RemoteFocusRoomRepository(
                             _participants.update { current ->
                                 current.filter { it.id != pid }
                             }
+                        }
+                        "session_sync" -> {
+                            emitTimeSyncIfValid(pKey, msg.sessionId, msg.activeSeconds, forceSync = true)
+                        }
+                        "pong" -> {
+                            emitTimeSyncIfValid(pKey, msg.sessionId, msg.activeSeconds, forceSync = false)
                         }
                         "session_expired" -> {
                             val expectedSessionId = pKey.substringAfter(":", "")
@@ -258,6 +265,32 @@ class RemoteFocusRoomRepository(
         return id
     }
 
+    private fun emitTimeSyncIfValid(
+        presenceKey: String,
+        messageSessionId: String?,
+        activeSeconds: Int?,
+        forceSync: Boolean
+    ) {
+        val syncedSeconds = activeSeconds ?: return
+        val expectedSessionId = presenceKey.substringAfter(":", "")
+        val syncedId = messageSessionId ?: expectedSessionId
+        if (syncedId.isNotBlank() &&
+            expectedSessionId.isNotBlank() &&
+            syncedId != expectedSessionId
+        ) {
+            return
+        }
+        if (syncedId.isNotBlank()) {
+            _sessionEvents.tryEmit(
+                RoomSessionEvent.SessionTimeSynced(
+                    sessionId = syncedId,
+                    activeSeconds = maxOf(0, syncedSeconds),
+                    forceSync = forceSync
+                )
+            )
+        }
+    }
+
     override suspend fun finishSession(sessionId: String, tasksCompleted: Int, taskText: String, endReason: String?) {
         val body = apiClient.json.encodeToString(
             FinishSessionRequestDto(
@@ -266,14 +299,24 @@ class RemoteFocusRoomRepository(
                 endReason = endReason
             )
         )
-        apiClient.post("/api/sessions/$sessionId/finish", body) { }
-        profileRepository.refreshProfile()
+        val result = apiClient.post("/api/sessions/$sessionId/finish", body) { respBody ->
+            runCatching { apiClient.json.decodeFromString<FocusSessionDto>(respBody).toDomain() }.getOrNull()
+        }
+        val finished = result.getOrThrow()
+        if (finished != null && finished.isProcessed) {
+            finishedSessionsCache[sessionId] = finished
+        }
+        runCatching { profileRepository.refreshProfile() }
     }
 
     override suspend fun fetchSession(sessionId: String): FocusSession? {
         val result = apiClient.get("/api/sessions/$sessionId") { body ->
             apiClient.json.decodeFromString<FocusSessionDto>(body).toDomain()
         }
-        return result.getOrNull()
+        val remote = result.getOrNull()
+        if (remote != null && remote.isProcessed) {
+            finishedSessionsCache[sessionId] = remote
+        }
+        return remote ?: finishedSessionsCache[sessionId]
     }
 }

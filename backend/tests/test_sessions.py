@@ -182,7 +182,51 @@ def test_medium_disconnect_resumes_without_paying_offline_gap(client: TestClient
         )
         # Paid 20m before + 10m after = 30m (20m gap not paid)
         assert done.duration_minutes == 30
-        assert done.end_reason == "completed"
+        assert done.end_reason == "completed_with_offline_gap"
+        assert done.was_capped is True
+    finally:
+        gen.close()
+
+    # Case 2: Finish directly after a 15-minute disconnect without reconnecting -> gap excluded & offline gap labeled
+    sid2 = client.post("/api/sessions/start", headers=headers).json()["session_id"]
+    gen, db = _get_test_db()
+    try:
+        s2 = db.query(FocusSession).filter(FocusSession.id == sid2).first()
+        t0 = s2.start_time
+        record_ws_connect(db, uid, sid2, now=t0)
+        record_ws_disconnect(db, uid, sid2, now=t0 + datetime.timedelta(minutes=25))
+        done2 = finalize_session(
+            db, s2, tasks_completed=1, last_task_text="Finish after offline gap",
+            now=t0 + datetime.timedelta(minutes=45)
+        )
+        assert done2.duration_minutes == 25
+        assert done2.earned_leaves == 28
+        assert done2.end_reason == "completed_with_offline_gap"
+        assert done2.was_capped is True
+    finally:
+        gen.close()
+
+
+def test_late_ws_startup_beyond_grace_marks_offline_gap(client: TestClient):
+    user = create_user_helper(client, "latestartup@cozy.com")
+    headers = user["headers"]
+    uid = user["profile"]["id"]
+    sid = client.post("/api/sessions/start", headers=headers).json()["session_id"]
+
+    gen, db = _get_test_db()
+    try:
+        s = db.query(FocusSession).filter(FocusSession.id == sid).first()
+        t0 = s.start_time
+        # Connect 15m after startSession (beyond 10m grace, within 30m abandon): caps startup at 10m
+        assert record_ws_connect(db, uid, sid, now=t0 + datetime.timedelta(minutes=15)) == "ok"
+        from app.services.session_lifecycle import finalize_session
+        done = finalize_session(
+            db, s, tasks_completed=0, last_task_text="Late WS connect",
+            now=t0 + datetime.timedelta(minutes=25)
+        )
+        assert done.duration_minutes == 20
+        assert done.end_reason == "completed_with_offline_gap"
+        assert done.was_capped is True
     finally:
         gen.close()
 
@@ -378,3 +422,34 @@ def test_session_finish_with_app_closed_reason_saves_verified_time_without_offli
     assert empty_resp.json()["duration_minutes"] == 0
     assert empty_resp.json()["earned_leaves"] == 0
     assert empty_resp.json()["end_reason"] == "app_closed"
+
+
+def test_text_length_caps_enforced_across_endpoints(client: TestClient):
+    user = create_user_helper(client, "caps@cozy.com")
+    headers = user["headers"]
+
+    # Report reason > 200 chars -> 422
+    long_reason_resp = client.post(
+        "/api/safety/report",
+        headers=headers,
+        json={"target_id": "other_user", "reason": "R" * 201},
+    )
+    assert long_reason_resp.status_code == 422
+
+    # Friend player_tag > 16 chars -> 422
+    long_tag_resp = client.post(
+        "/api/friends/request",
+        headers=headers,
+        json={"player_tag": "T" * 17},
+    )
+    assert long_tag_resp.status_code == 422
+
+    # Finish session last_task_text > 120 chars cleanly clamped to 120 chars
+    sid = client.post("/api/sessions/start", headers=headers).json()["session_id"]
+    finish_resp = client.post(
+        f"/api/sessions/{sid}/finish",
+        headers=headers,
+        json={"tasks_completed": 1, "last_task_text": "  " + ("X" * 150) + "  "},
+    )
+    assert finish_resp.status_code == 200
+    assert finish_resp.json()["last_task_text"] == "X" * 120

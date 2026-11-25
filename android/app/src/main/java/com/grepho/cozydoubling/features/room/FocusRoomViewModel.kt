@@ -10,6 +10,7 @@ import com.grepho.cozydoubling.core.room.FocusNotificationAction
 import com.grepho.cozydoubling.core.room.FocusSessionLifecycleController
 import com.grepho.cozydoubling.core.room.InterruptedFocusSession
 import com.grepho.cozydoubling.core.safety.SafetyRepository
+import com.grepho.cozydoubling.core.validation.TextLimits
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlinx.serialization.encodeToString
@@ -154,7 +155,7 @@ class FocusRoomViewModel(
                 // Start foreground service + persistent notification
                 sessionController.startOrResumeSession(buildSessionSnapshot())
 
-                // Observe server-initiated session expiration / cap events
+                // Observe server-initiated session expiration, cap, and verified time sync events
                 launch {
                     roomRepository.observeSessionEvents().collect { event ->
                         when (event) {
@@ -174,6 +175,22 @@ class FocusRoomViewModel(
                                     }
                                     _autoFinishEvents.tryEmit(endedId)
                                     startRoomJob?.cancel()
+                                }
+                            }
+                            is RoomSessionEvent.SessionTimeSynced -> {
+                                if (!isFinishing &&
+                                    event.sessionId.isNotBlank() &&
+                                    event.sessionId == currentSessionId
+                                ) {
+                                    val now = System.currentTimeMillis()
+                                    val localElapsedSeconds = maxOf(0L, (now - sessionStartEpochMs) / 1000L)
+                                    val driftSeconds = kotlin.math.abs(localElapsedSeconds - event.activeSeconds.toLong())
+                                    if (event.forceSync || driftSeconds >= 2L) {
+                                        sessionStartEpochMs = now - (event.activeSeconds.toLong() * 1000L)
+                                        savedStateHandle["session_start_ms"] = sessionStartEpochMs
+                                        _uiState.update { it.copy(sessionStartEpochMs = sessionStartEpochMs) }
+                                        publishSessionSnapshot()
+                                    }
                                 }
                             }
                         }
@@ -247,14 +264,16 @@ class FocusRoomViewModel(
                         }
                 }
 
-                // 5. AUTO-SYNC ON RECONNECT
-                // This ensures presence is re-announced whenever the socket connects or reconnects.
+                // 5. AUTO-SYNC & CONNECTION STATUS
+                // Keep UI connection indicator accurate and re-announce presence on every reconnect.
                 launch {
                     roomRepository.getChannelStatus()
-                        .filter { it == RoomConnectionStatus.CONNECTED }
-                        .collect {
-                            println("DEBUG: FocusRoomViewModel - Channel CONNECTED, triggering sync")
-                            syncWithOthers()
+                        .collect { status ->
+                            _uiState.update { it.copy(connectionStatus = status) }
+                            if (status == RoomConnectionStatus.CONNECTED) {
+                                println("DEBUG: FocusRoomViewModel - Channel CONNECTED, triggering sync")
+                                syncWithOthers()
+                            }
                         }
                 }
 
@@ -374,8 +393,9 @@ class FocusRoomViewModel(
     }
 
     fun onAddTask(text: String) {
-        if (text.isBlank()) return
-        val newTask = FocusTask(id = System.currentTimeMillis().toString(), text = text)
+        val sanitized = TextLimits.sanitizeTaskText(text)
+        if (sanitized.isBlank()) return
+        val newTask = FocusTask(id = System.currentTimeMillis().toString(), text = sanitized)
 
         _uiState.update { state ->
             val updatedTasks = state.tasks + newTask

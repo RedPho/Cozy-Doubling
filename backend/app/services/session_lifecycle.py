@@ -109,10 +109,17 @@ def finalize_session(
         final_reason = "capped_max_duration"
     elif end_reason is not None:
         final_reason = end_reason
+    elif was_capped or session.was_capped:
+        final_reason = "completed_with_offline_gap"
     else:
         final_reason = "completed"
 
-    final_was_capped = bool(was_capped or hit_max_cap or final_reason == "capped_max_duration")
+    final_was_capped = bool(
+        was_capped
+        or session.was_capped
+        or hit_max_cap
+        or final_reason in ("capped_max_duration", "completed_with_offline_gap")
+    )
 
     session.end_time = end_time
     session.tasks_completed = max(0, tasks_completed)
@@ -173,6 +180,8 @@ def record_ws_connect(
             return "expired"
         elif gap <= grace_seconds:
             session.active_seconds = (session.active_seconds or 0) + int(gap)
+        else:
+            session.was_capped = True
     elif not session.ever_connected:
         startup_gap = max(0.0, (current_time - session.start_time).total_seconds())
         if startup_gap > abandon_seconds:
@@ -186,6 +195,8 @@ def record_ws_connect(
                 forced_end_reason="abandoned_disconnect",
             )
             return "expired"
+        if startup_gap > grace_seconds:
+            session.was_capped = True
         session.active_seconds = (session.active_seconds or 0) + int(min(startup_gap, grace_seconds))
         session.ever_connected = True
 
@@ -324,6 +335,32 @@ def auto_finalize_stale_sessions(
             finalized_count += 1
 
     return finalized_count
+
+
+def get_verified_active_seconds(
+    db: Session,
+    user_id: str,
+    session_id: Optional[str],
+    now: Optional[datetime.datetime] = None,
+) -> Optional[int]:
+    """
+    Returns total verified active seconds for the given session, including any
+    currently open connected stretch up to `now`, capped at MAX_SESSION_DURATION_MINUTES.
+    """
+    if not session_id:
+        return None
+    session = db.query(FocusSession).filter(
+        (FocusSession.id == session_id) & (FocusSession.user_id == user_id)
+    ).first()
+    if not session:
+        return None
+
+    total = session.active_seconds or 0
+    if not session.is_processed and session.last_connected_at is not None:
+        total += _accrue_connected_stretch(session, _utcnow(now))
+
+    max_seconds = settings.MAX_SESSION_DURATION_MINUTES * 60
+    return int(min(total, max_seconds))
 
 
 def finalize_open_sessions_on_new_start(

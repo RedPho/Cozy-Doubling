@@ -116,28 +116,24 @@ fun SummaryPage(
                 .padding(horizontal = 24.dp, vertical = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            val (headerRes, subheaderRes) = when {
-                uiState.endReason == "abandoned_disconnect" ->
+            val presentation = remember(uiState) { resolveSummaryPresentation(uiState) }
+            val (headerRes, subheaderRes) = when (presentation.headerKind) {
+                SummaryHeaderKind.ABANDONED ->
                     R.string.summary_header_abandoned to R.string.summary_subheader_abandoned
-                uiState.endReason == "app_closed" || uiState.wasInterrupted ->
+                SummaryHeaderKind.APP_CLOSED ->
                     R.string.summary_header_app_closed to R.string.summary_subheader_app_closed
-                else ->
+                SummaryHeaderKind.NORMAL ->
                     R.string.summary_header to R.string.summary_subheader
             }
 
-            val noticeRes = when {
-                uiState.loadError -> R.string.summary_notice_load_error
-                uiState.endReason == "app_closed" -> R.string.summary_notice_app_closed
-                uiState.endReason == "abandoned_disconnect" -> R.string.summary_notice_abandoned_disconnect
-                uiState.endReason == "capped_max_duration" || uiState.wasCapped -> R.string.summary_notice_capped_max
-                uiState.wasInterrupted -> R.string.summary_notice_app_closed
-                else -> null
+            val noticeRes = when (presentation.noticeKind) {
+                SummaryNoticeKind.LOAD_ERROR -> R.string.summary_notice_load_error
+                SummaryNoticeKind.APP_CLOSED -> R.string.summary_notice_app_closed
+                SummaryNoticeKind.ABANDONED_DISCONNECT -> R.string.summary_notice_abandoned_disconnect
+                SummaryNoticeKind.OFFLINE_GAP -> R.string.summary_notice_offline_gap
+                SummaryNoticeKind.CAPPED_MAX_DURATION -> R.string.summary_notice_capped_max
+                SummaryNoticeKind.NONE -> null
             }
-
-            val showTopNotice = uiState.endReason == "app_closed" ||
-                uiState.endReason == "abandoned_disconnect" ||
-                uiState.wasInterrupted ||
-                uiState.loadError
 
             // --- Header ---
             Text(
@@ -153,7 +149,7 @@ fun SummaryPage(
                 textAlign = TextAlign.Center
             )
 
-            if (noticeRes != null && showTopNotice) {
+            if (noticeRes != null && presentation.showNoticeAtTop) {
                 Spacer(modifier = Modifier.height(20.dp))
                 SummaryNoticeBanner(noticeRes = noticeRes)
                 Spacer(modifier = Modifier.height(24.dp))
@@ -198,12 +194,19 @@ fun SummaryPage(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    Text(
-                        text = "${animatedLeafCount.value.toInt()}",
-                        style = MaterialTheme.typography.displayMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
+                    if (uiState.isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(36.dp),
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    } else {
+                        Text(
+                            text = "${animatedLeafCount.value.toInt()}",
+                            style = MaterialTheme.typography.displayMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                     Text(
                         text = stringResource(R.string.summary_leaves_earned),
                         style = MaterialTheme.typography.labelLarge,
@@ -246,7 +249,7 @@ fun SummaryPage(
                 }
             }
 
-            if (!showTopNotice && noticeRes != null) {
+            if (noticeRes != null && !presentation.showNoticeAtTop) {
                 Spacer(modifier = Modifier.height(16.dp))
                 SummaryNoticeBanner(noticeRes = noticeRes)
             }

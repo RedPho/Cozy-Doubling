@@ -4,13 +4,17 @@ import android.app.Activity
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.unit.Density
 import androidx.core.view.WindowCompat
 import com.grepho.cozydoubling.core.theming.ThemePalette
 import com.grepho.cozydoubling.core.theming.toColorScheme
+import com.grepho.cozydoubling.core.validation.TextLimits
 
 
 private val LightColorScheme = lightColorScheme(
@@ -55,9 +59,17 @@ fun CozyDoublingTheme(
         }
     }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
-        content = content
+    val currentDensity = LocalDensity.current
+    val cappedDensity = Density(
+        density = currentDensity.density,
+        fontScale = TextLimits.clampFontScale(currentDensity.fontScale)
     )
+
+    CompositionLocalProvider(LocalDensity provides cappedDensity) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = Typography,
+            content = content
+        )
+    }
 }

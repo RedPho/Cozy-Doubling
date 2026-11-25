@@ -163,6 +163,8 @@
     <string name="notification_action_complete_task">Complete Task</string>
     <string name="notification_action_finish">Finish</string>
     <string name="room_enter_pip_label">Floating Mini-Widget</string>
+    <string name="room_status_connecting">Connecting&#8230;</string>
+    <string name="room_status_reconnecting">Reconnecting&#8230;</string>
 
     <!-- ECON-04 Session Verification Notices -->
     <string name="summary_notice_abandoned_disconnect">Session auto-ended after being away from the Focus Room for more than 30 minutes. Your verified active focus time was saved.</string>
@@ -174,5 +176,6 @@
     <string name="summary_header_abandoned">Previous Session Auto-Ended</string>
     <string name="summary_subheader_abandoned">You were away for a while, so we wrapped up your last session.</string>
     <string name="summary_notice_app_closed">Your previous focus session ended because the app was closed during the session. Your verified focus time and completed tasks were saved.</string>
+    <string name="summary_notice_offline_gap">Offline time over 10 minutes wasn\'t counted toward your verified focus time.</string>
     <string name="summary_notice_load_error">We couldn\'t reach the server for full session stats right now, but your last session has been closed cleanly.</string>
 </resources>

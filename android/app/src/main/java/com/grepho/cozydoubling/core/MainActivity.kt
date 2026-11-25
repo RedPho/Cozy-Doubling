@@ -41,6 +41,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
@@ -57,6 +58,7 @@ import com.grepho.cozydoubling.core.network.ConnectivityObserver
 import com.grepho.cozydoubling.core.profile.ProfileState
 import com.grepho.cozydoubling.core.room.FocusNotificationAction
 import com.grepho.cozydoubling.core.room.FocusSessionIntentExtras
+import com.grepho.cozydoubling.core.room.shouldRestoreFocusRoomOnPipExit
 import com.grepho.cozydoubling.features.room.FocusPipOverlay
 import com.grepho.cozydoubling.features.room.LocalTaskDataSource
 import com.grepho.cozydoubling.ui.theme.BackgroundCream
@@ -160,22 +162,24 @@ class MainActivity : ComponentActivity() {
 
                 CozyDoublingTheme(customPalette = customPalette) {
                     val snapshot = activeFocusSession
-                    if (isInPipMode && snapshot != null) {
-                        FocusPipOverlay(snapshot = snapshot)
-                    } else {
-                        Box {
-                            CozyDoublingApp(
-                                authStatus = authStatus,
-                                returnToFocusRoomTrigger = returnToFocusRoomTrigger,
-                                onEnterPipClick = if (isPipSupported() && isPipEnabled) {
-                                    {
-                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                                            enterFocusPipMode()
-                                        }
+                    // Always keep CozyDoublingApp composed so entering/exiting PiP never
+                    // destroys the NavController backstack or FocusRoomViewModel.
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        CozyDoublingApp(
+                            authStatus = authStatus,
+                            returnToFocusRoomTrigger = returnToFocusRoomTrigger,
+                            onEnterPipClick = if (isPipSupported() && isPipEnabled) {
+                                {
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                        enterFocusPipMode()
                                     }
-                                } else null
-                            )
+                                }
+                            } else null
+                        )
 
+                        if (isInPipMode && snapshot != null) {
+                            FocusPipOverlay(snapshot = snapshot)
+                        } else {
                             ConnectionErrorDialog(
                                 state = connectionState,
                                 onRetry = {
@@ -205,7 +209,17 @@ class MainActivity : ComponentActivity() {
         newConfig: Configuration
     ) {
         super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        val wasInPip = isInPipMode
         isInPipMode = isInPictureInPictureMode
+        if (shouldRestoreFocusRoomOnPipExit(
+                wasInPip = wasInPip,
+                isNowInPip = isInPictureInPictureMode,
+                isActivityStarted = lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED),
+                hasActiveSession = ServiceLocator.focusSessionController.activeSession.value != null
+            )
+        ) {
+            returnToFocusRoomTrigger += 1
+        }
     }
 
     override fun onUserLeaveHint() {

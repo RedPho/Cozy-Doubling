@@ -13,6 +13,7 @@ from app.seed import seed_catalog_if_empty
 from app.services.auth import decode_access_token
 from app.services.session_lifecycle import (
     auto_finalize_stale_sessions,
+    get_verified_active_seconds,
     record_ws_activity,
     record_ws_connect,
     record_ws_disconnect,
@@ -165,10 +166,12 @@ async def focus_room_websocket(
 
     blocked_ids = _fetch_blocked_ids(user_id)
 
+    safe_name = (name or "Cozy Doubler").strip()[:30] or "Cozy Doubler"
+    safe_task = (active_task or "Focusing").strip()[:120] or "Focusing"
     initial_presence = {
         "id": p_key,
-        "name": name,
-        "active_task": active_task,
+        "name": safe_name,
+        "active_task": safe_task,
         "completed_tasks": completed_tasks,
         "total_tasks": total_tasks
     }
@@ -184,6 +187,17 @@ async def focus_room_websocket(
     if not connected:
         return
 
+    if session_id is not None:
+        active_secs = _run_with_db(
+            lambda db: get_verified_active_seconds(db, user_id, session_id)
+        )
+        if active_secs is not None:
+            await websocket.send_text(json.dumps({
+                "type": "session_sync",
+                "session_id": session_id,
+                "active_seconds": active_secs,
+            }))
+
     try:
         while True:
             data = await websocket.receive_text()
@@ -194,7 +208,11 @@ async def focus_room_websocket(
                 continue
             msg_type = msg.get("type")
             if msg_type == "presence_update":
-                updated_presence = msg.get("presence", {})
+                updated_presence = dict(msg.get("presence", {}))
+                if isinstance(updated_presence.get("name"), str):
+                    updated_presence["name"] = updated_presence["name"].strip()[:30]
+                if isinstance(updated_presence.get("active_task"), str):
+                    updated_presence["active_task"] = updated_presence["active_task"].strip()[:120]
                 await focus_room_manager.update_presence(p_key, updated_presence)
                 act_status = _run_with_db(
                     lambda db: record_ws_activity(
@@ -215,7 +233,6 @@ async def focus_room_websocket(
                     await websocket.close(code=4002, reason="Max duration reached")
                     return
             elif msg_type == "ping":
-                await websocket.send_text(json.dumps({"type": "pong"}))
                 act_status = _run_with_db(
                     lambda db: record_ws_activity(
                         db,
@@ -232,6 +249,18 @@ async def focus_room_websocket(
                     await focus_room_manager.disconnect(p_key, websocket=websocket)
                     await websocket.close(code=4002, reason="Max duration reached")
                     return
+                if session_id is not None:
+                    active_secs = _run_with_db(
+                        lambda db: get_verified_active_seconds(db, user_id, session_id)
+                    )
+                    pong_payload = {
+                        "type": "pong",
+                        "session_id": session_id,
+                        "active_seconds": active_secs,
+                    } if active_secs is not None else {"type": "pong"}
+                else:
+                    pong_payload = {"type": "pong"}
+                await websocket.send_text(json.dumps(pong_payload))
     except WebSocketDisconnect as e:
         logger.info(f"WebSocket client disconnected for {p_key}: code={e.code}")
         removed = await focus_room_manager.disconnect(p_key, websocket=websocket)

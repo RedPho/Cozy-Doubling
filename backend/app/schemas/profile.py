@@ -39,6 +39,8 @@ class ProfileUpdateRequest(BaseModel):
         clean = v.strip()
         if not clean:
             raise ValueError("Display name cannot be blank or whitespace-only")
+        if len(clean) > 30:
+            raise ValueError("Display name must be at most 30 characters")
         return clean
 
 class FcmTokenUpdateRequest(BaseModel):

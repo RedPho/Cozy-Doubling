@@ -433,3 +433,54 @@ def test_friends_websocket_realtime_events(client: TestClient):
             time.sleep(0.05)
             rem_msg_b = json.loads(ws_b.receive_text())
             assert rem_msg_b["type"] == "friend_removed"
+
+
+def test_room_websocket_sends_session_sync_and_pong_active_seconds(client: TestClient):
+    """
+    Verify /ws/room pushes session_sync with server-verified active_seconds on connect/reconnect
+    and returns active_seconds in pong frames so client timer stays synced after offline gaps.
+    """
+    focus_room_manager.clear()
+
+    reg = client.post("/api/auth/register", json={"email": "sync_ws@test.com", "password": "Password123!"})
+    token = reg.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+    uid = client.get("/api/auth/me", headers=headers).json()["id"]
+    sid = client.post("/api/sessions/start", headers=headers).json()["session_id"]
+
+    with client.websocket_connect(f"/ws/room?token={token}&presence_key={uid}:{sid}&name=Syncer") as ws1:
+        msg1 = json.loads(ws1.receive_text())
+        assert msg1["type"] == "presence_state"
+        sync_msg = json.loads(ws1.receive_text())
+        assert sync_msg["type"] == "session_sync"
+        assert sync_msg["session_id"] == sid
+        assert sync_msg["active_seconds"] >= 0
+
+        ws1.send_text(json.dumps({"type": "ping"}))
+        pong_msg = json.loads(ws1.receive_text())
+        assert pong_msg["type"] == "pong"
+        assert pong_msg["session_id"] == sid
+        assert pong_msg["active_seconds"] >= 0
+
+    # Simulate 20 minutes offline gap (>10m grace, <=30m abandon) after accruing 1200 verified seconds
+    dep = app.dependency_overrides[get_db]
+    gen = dep()
+    db = next(gen)
+    try:
+        sess = db.query(FocusSession).filter(FocusSession.id == sid).first()
+        sess.active_seconds = 1200
+        sess.last_disconnected_at -= datetime.timedelta(minutes=20)
+        sess.last_seen_at -= datetime.timedelta(minutes=20)
+        sess.start_time -= datetime.timedelta(minutes=40)
+        db.commit()
+    finally:
+        gen.close()
+
+    with client.websocket_connect(f"/ws/room?token={token}&presence_key={uid}:{sid}&name=Syncer") as ws2:
+        msg1 = json.loads(ws2.receive_text())
+        assert msg1["type"] == "presence_state"
+        sync_msg2 = json.loads(ws2.receive_text())
+        assert sync_msg2["type"] == "session_sync"
+        assert sync_msg2["session_id"] == sid
+        # Reconnect after 20m offline gap must report 1200s verified (excluding the 20m offline gap)
+        assert 1200 <= sync_msg2["active_seconds"] <= 1205

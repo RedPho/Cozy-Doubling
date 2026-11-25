@@ -164,7 +164,7 @@ As a user, I want to edit my display name in Settings so that my friends and co-
 - [ ] Given an update request, the system strictly disallows modifying leaf balance or player tag.
 
 ### Open Questions
-- Is there a defined maximum character limit for `display_name`? (Currently unrestricted in database, UI suggests single-line text field).
+- Resolved: Display name is capped at 30 characters across Android inputs, backend API validation, and `/ws/room` presence (`[UI-01]`).
 
 ---
 
@@ -288,7 +288,7 @@ As a user in the Focus Room, I want to add, select, complete, and delete tasks s
 
 ### Business Rules & Constraints
 - **Adding Tasks:**
-  - Tasks require a non-blank text description.
+  - Tasks require a non-blank text description and are sanitized and capped at **120 characters** (`TextLimits.MAX_TASK_TEXT_LENGTH` on Android and clamped on backend completion / WebSocket presence).
   - Adding a task when no active task is selected automatically designates the new task as the active task.
   - New tasks default to unfinished status.
 - **Selecting Active Task:**
@@ -423,11 +423,16 @@ As a user who switches to another app (e.g., notes, PDF reader, Anki, browser) o
   - Users can opt in (via a toggle in Settings or a Focus Room top-bar button) to show a compact floating focus pill when backgrounding the app.
   - Preferred implementation: Android **Picture-in-Picture (PiP)** mode (requires zero special overlay permissions and works cleanly across Android 12–17), displaying elapsed time, active task title, and co-worker count, with tap-to-expand back into the room.
   - Optional enhancement: Home-screen Glance widget showing active session status or quick `"Start Focus"` launcher.
-- **Process-Death & Crash Recovery:**
-  - Persist `active_session_id` and `session_start_epoch_ms` locally while a session is active, and clear them upon `finishSession()` or sign-out.
-  - If the OS kills the process mid-session, reopening the app detects the unfinished `active_session_id` and automatically resumes the Focus Room instead of stranding the session.
+- **Live Room Time Sync & Connection Status:**
+  - Server pushes verified `active_seconds` on `/ws/room` connect/reconnect (`session_sync`) and heartbeats (`pong`) so the room timer, PiP overlay, and persistent notification chronometer remain synchronized after network drops.
+  - Focus Room shows a subtle `Connecting…` / `Reconnecting…` indicator whenever WebSocket status is not `CONNECTED`.
+- **Unexpected Closure & Process-Death Recovery:**
+  - Persist active session state synchronously (`.commit()`) while a session is active, and clear it upon normal `finishSession()`, sign-out, or account deletion.
+  - Keeping `CozyDoublingApp` mounted during PiP ensures expanding PiP back to fullscreen returns directly to the active Focus Room without losing the backstack.
+  - If the app is swiped away (`onTaskRemoved` / `onCleared`) or killed mid-session, `InterruptedSessionRecoveryCoordinator` detects the interrupted session on next cold start, finalizes verified progress idempotently on the server (`end_reason = "app_closed"`), and presents the Summary screen clearly explaining what happened.
 - **Clean Architecture & Privacy Constraints:**
-  - `FocusRoomViewModel` interacts only with a domain interface (`FocusSessionLifecycleController`) in `core/` — never importing Android `Service` or `NotificationManager` classes directly.
+  - `FocusRoomViewModel` interacts only with domain interfaces (`FocusSessionLifecycleController`, `TextLimits`) in `core/` — never importing Android `Service`, `NotificationManager`, or `data.*` classes directly.
+  - Explicit "Start Focus" clears any leftover persisted session ID so stale sessions never hijack a brand-new focus session (`recovery = false` vs `recovery = true`).
   - Stopping or finishing a session, signing out, or deleting the account immediately stops the foreground service and dismisses the persistent notification.
 
 ### Acceptance Criteria
@@ -492,6 +497,23 @@ As a focusing user, I want to edit typos in unfinished tasks, reorder my task li
 - [ ] Given ambient sound is enabled, when the user exits the Focus Room, then playback fades out and stops cleanly.
 
 ---
+
+## [ROOM-10] Home-Screen Focus Glance Widget
+**Priority:** Low  
+**Status:** `Planned`
+
+### Description
+As a user, I want an optional Android home-screen Glance widget showing my active session elapsed time or a one-tap `"Start Focus"` shortcut so that entering or checking a session feels effortless.
+
+### Business Rules & Constraints
+- Displays current active task & elapsed session timer when `FocusSessionLifecycleController.activeSession` is active, or a calm `"Start Focus"` CTA when idle.
+- Reads state cleanly via `core/` abstractions and deep-links into the Focus Room without creating duplicate sessions.
+
+### Acceptance Criteria
+- [ ] Given an active focus session, the home-screen widget reflects the current active task and links directly back to the Focus Room.
+- [ ] Given no active session, tapping `"Start Focus"` on the widget opens Cozy Doubling directly into a fresh session.
+
+---
 ---
 
 # Epic: Session Completion & Leaf Economy
@@ -552,7 +574,7 @@ As a user, I want to earn Leaves and accumulate focus minutes based on my focus 
 - [ ] Given a user with an initial balance of 50 leaves and 100 focus minutes, when finishing a 20-minute session with 2 tasks ($20 + 6 = 26$ leaves), then their new balance is 76 leaves and total focus minutes is 120.
 
 ### Open Questions
-- Is there a maximum cap on focus duration per session (e.g., maximum 8 hours or 480 minutes) to prevent runaway leaf accumulation if a user forgets to close the app? (Currently unbounded in schema).
+- Resolved: Rewardable duration per session is capped at 720 minutes (12 hours) in `[ECON-04]`.
 
 ---
 
@@ -590,9 +612,11 @@ As a product owner protecting the fairness of the Leaf economy while welcoming m
 ### Business Rules & Constraints
 - **12-Hour Hard Cap:** Rewardable duration per session is capped at **720 minutes (12 hours)** (`end_reason = "capped_max_duration"`).
 - **Brief-Disconnect Grace (`<= 10 minutes`):** Short network drops count seamlessly toward verified active focus time (`0` minutes lost).
-- **Abandonment Timeout (`> 30 minutes`):** Reconnecting within 10–30 minutes resumes without paying the offline gap; disconnecting for `> 30` minutes (or never connecting to `/ws/room`) auto-finalizes the session cleanly at `last_disconnected_at` (`end_reason = "abandoned_disconnect"`), granting `0` leaves if both verified minutes and completed tasks equal `0`.
+- **Offline Gap Exclusion (`10–30 minutes`):** Reconnecting or finishing after a 10–30 minute offline gap excludes the unpaid gap, sets `was_capped = true`, and records `end_reason = "completed_with_offline_gap"` (distinct from `"capped_max_duration"` so Summary displays an accurate offline-gap notice rather than the 12-hour cap message).
+- **Abandonment Timeout (`> 30 minutes`):** Disconnecting for `> 30` minutes (or never connecting to `/ws/room`) auto-finalizes the session cleanly at `last_disconnected_at` (`end_reason = "abandoned_disconnect"`), granting `0` leaves if both verified minutes and completed tasks equal `0`.
+- **Unexpected App Closure (`app_closed`):** Closing/swiping away the app mid-session triggers idempotent finalization on next launch using server-verified connected seconds (`end_reason = "app_closed"`), granting `0` leaves if `0m` and `0` tasks, and explaining what happened on Summary.
 - **Single Active Session:** Starting a new session automatically finalizes any prior unprocessed session for that user.
-- The Summary screen displays a clear notice whenever a session was auto-ended or capped.
+- The Summary screen displays an accurate header and notice banner driven by `resolveSummaryPresentation` (`app_closed`, `abandoned_disconnect`, `completed_with_offline_gap`, `capped_max_duration`, or `loadError`).
 
 ### Acceptance Criteria
 - [x] Given an uninterrupted 5h–12h marathon session (even without clicks in background), all verified minutes up to 720m are rewarded.
@@ -687,7 +711,7 @@ As a user with incoming friend requests, I want to review, accept, or decline pe
 - [ ] Given an accepted friendship, then both users start receiving room entry push notifications for each other.
 
 ### Open Questions
-- None. (Unfriending is documented in [SOC-05]).
+- Resolved: Bidirectional block enforcement returns `HTTP 403` with clear user error messages on send/accept (`BUG-1`), and real-time `/ws/friends` updates + pull-to-refresh + tab badge keep requests synced immediately (`Bug-2`).
 
 ---
 
@@ -1055,7 +1079,7 @@ As a user, I want to block another user if they behave inappropriately so that t
 - [ ] Given user A blocks user B who is an existing friend, then user B no longer appears in user A's active Friends list.
 
 ### Open Questions
-- Is there an unblock management UI currently exposed in Settings, or can users only unblock via database/support? (The repository supports unblocking via delete on `user_blocks`, but check if a "Blocked Users" screen exists in Settings).
+- Resolved: Manage Blocked Users & Unblock UI implemented in Settings (`[SAFE-04]`).
 
 ---
 
@@ -1175,3 +1199,51 @@ As a regular user, I want to see my recent completed focus sessions, my daily fo
 ### Acceptance Criteria
 - [ ] Given a user completes 3 focus sessions across 3 consecutive days, then Journey displays a 3-day focus streak and lists all 3 recent sessions.
 - [ ] Given a new user with 0 completed sessions, then Journey displays a warm empty state encouraging their first session.
+
+---
+---
+
+# Epic: UX Polish, Accessibility & Localization
+
+**Goal:** Ensure layouts stay resilient across device accessibility settings and screen sizes, prevent oversized user text from breaking cards, and deliver consistent multilingual translations.  
+**Scope:**
+- Font Scale Bounds (`TextLimits`)
+- Input Character Caps Across Client & Server
+- Localization String Parity
+
+---
+
+## [UI-01] Typography Font-Scale Cap & Input Length Guardrails
+**Priority:** High  
+**Status:** `Implemented`
+
+### Description
+As a user with large system accessibility font sizes or entering long text, I want Cozy Doubling to cap extreme font scaling and enforce sensible input length bounds so cards, pills, and buttons never overlap or overflow awkwardly.
+
+### Business Rules & Constraints
+- **Font Scale Cap (`CozyDoublingTheme`):** `LocalDensity.fontScale` is bounded via `TextLimits.clampFontScale` (`0.85f..1.25f`).
+- **Input & Server Bounds:**
+  - Display Name: max **30** characters (`ProfileUpdateRequest`, `UserRegisterRequest`, `SettingsPage`, `SettingsViewModel`, `/ws/room`).
+  - Focus Task Text: max **120** characters (`FinishSessionRequest`, `FocusRoomPage`, `FocusRoomViewModel`, `/ws/room`).
+  - Connect / Friend Code: max **9** chars in UI input (`16` max on API to allow optional formatting/whitespace).
+  - Report Reason: **1–200** characters (`ReportUserRequest`).
+  - Auth Email / Password: max **254** / **128** characters.
+
+### Acceptance Criteria
+- [x] Given OS font scale is set to `2.0x`, `CozyDoublingTheme` clamps effective `fontScale` to `1.25f`.
+- [x] Given a user types or sends a 50-char display name or 200-char task/report, UI and backend enforce limits cleanly without layout breakage.
+
+---
+
+## [UI-02] Multi-Language Localization Parity
+**Priority:** Medium  
+**Status:** `Planned`
+
+### Description
+As an international user whose device uses Turkish, German, Spanish, French, or Italian, I want all newer UI notices, status badges, and settings strings to appear in my selected language rather than falling back to English.
+
+### Business Rules & Constraints
+- Audit `values-tr`, `values-de`, `values-es`, `values-fr`, and `values-it` against base `values/strings.xml` so every newly added key (PiP, Blocked Users, Session Summary closure/offline-gap banners, Focus Room connection status pills) has verified translations.
+
+### Acceptance Criteria
+- [ ] Zero untranslated non-brand string keys missing from any supported locale `strings.xml`.

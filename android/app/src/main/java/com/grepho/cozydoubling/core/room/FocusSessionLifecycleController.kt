@@ -32,6 +32,17 @@ object FocusSessionIntentExtras {
 }
 
 /**
+ * Returns true when leaving PiP back to an active fullscreen foreground window while
+ * a Focus session is still active, so the user stays in Focus Room instead of Home.
+ */
+fun shouldRestoreFocusRoomOnPipExit(
+    wasInPip: Boolean,
+    isNowInPip: Boolean,
+    isActivityStarted: Boolean,
+    hasActiveSession: Boolean
+): Boolean = wasInPip && !isNowInPip && isActivityStarted && hasActiveSession
+
+/**
  * Clean Architecture boundary isolating Android foreground-service / PiP / session-recovery
  * lifecycle from FocusRoomViewModel and SettingsViewModel.
  */

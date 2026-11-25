@@ -27,10 +27,11 @@ An executive overview of product domains, goals, current implementation status, 
 - `[ROOM-03]` Local Task Persistence & Cache Recovery *(Implemented)*
 - `[ROOM-04]` Real-Time Participant Presence & Status Broadcasting *(Implemented)*
 - `[ROOM-05]` Notify Friends Upon Entering Room *(Implemented)*
-- `[ROOM-06]` Robust Background Focus Continuity (Foreground Service, Persistent Notification & Floating Mini-Widget) *(Implemented)*
+- `[ROOM-06]` Robust Background Focus Continuity (Foreground Service, Persistent Notification, PiP Mini-Widget & Interrupted Recovery) *(Implemented)*
 - `[ROOM-07]` Structured Focus Timer & Pomodoro Interval Modes *(Planned — High)*
 - `[ROOM-08]` Private / Friend-Only Focus Rooms with Invite Codes *(Planned — Medium)*
 - `[ROOM-09]` Task Editing, Reordering & Ambient Cozy Soundscapes *(Planned — Low)*
+- `[ROOM-10]` Home-Screen Focus Glance Widget *(Planned — Low)*
 
 ---
 
@@ -93,3 +94,11 @@ An executive overview of product domains, goals, current implementation status, 
 **Stories:**
 - `[JOURN-01]` View Personal Journey Dashboard *(Implemented — "Member Since" bio pending UI restore)*
 - `[JOURN-02]` Focus Session History, Daily Streaks & Milestones *(Planned — Medium)*
+
+---
+
+## Epic 9: UX Polish, Accessibility & Localization
+**Goal:** Keep layouts crisp and legible across accessibility font settings, enforce clean input limits, and support complete multilingual translations.  
+**Stories:**
+- `[UI-01]` Typography Font-Scale Cap & Input Length Guardrails *(Implemented)*
+- `[UI-02]` Multi-Language Localization Parity (`tr`, `de`, `es`, `fr`, `it`) *(Planned — Medium)*

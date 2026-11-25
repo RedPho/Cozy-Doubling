@@ -51,11 +51,18 @@ sealed class RoomSessionEvent {
         val sessionId: String,
         val reason: String
     ) : RoomSessionEvent()
+
+    data class SessionTimeSynced(
+        val sessionId: String,
+        val activeSeconds: Int,
+        val forceSync: Boolean = false
+    ) : RoomSessionEvent()
 }
 
 data class FocusRoomUiState(
     val tasks: List<FocusTask> = emptyList(),
     val activeTaskId: String? = null,
     val otherParticipants: List<RoomParticipant> = emptyList(),
-    val sessionStartEpochMs: Long = System.currentTimeMillis()
+    val sessionStartEpochMs: Long = System.currentTimeMillis(),
+    val connectionStatus: RoomConnectionStatus = RoomConnectionStatus.CONNECTING
 )

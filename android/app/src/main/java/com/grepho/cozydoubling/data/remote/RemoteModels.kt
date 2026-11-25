@@ -286,7 +286,8 @@ data class WsRoomMessage(
     val presence: ParticipantPresenceDto? = null,
     @SerialName("presence_id") val presenceId: String? = null,
     @SerialName("session_id") val sessionId: String? = null,
-    val reason: String? = null
+    val reason: String? = null,
+    @SerialName("active_seconds") val activeSeconds: Int? = null
 )
 
 @Serializable

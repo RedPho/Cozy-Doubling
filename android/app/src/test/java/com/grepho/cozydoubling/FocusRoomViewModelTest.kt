@@ -49,6 +49,7 @@ class FocusRoomViewModelTest {
 
         private val _participants = MutableStateFlow<List<ParticipantPresence>>(emptyList())
         private val _sessionEvents = MutableSharedFlow<RoomSessionEvent>(extraBufferCapacity = 8)
+        val channelStatusFlow = MutableStateFlow(RoomConnectionStatus.DISCONNECTED)
 
         fun emitSessionEvent(event: RoomSessionEvent) {
             _sessionEvents.tryEmit(event)
@@ -60,7 +61,7 @@ class FocusRoomViewModelTest {
             subscribeCount += 1
         }
 
-        override fun getChannelStatus(): Flow<RoomConnectionStatus> = flowOf(RoomConnectionStatus.DISCONNECTED)
+        override fun getChannelStatus(): Flow<RoomConnectionStatus> = channelStatusFlow.asStateFlow()
 
         override suspend fun broadcastPresence(presence: ParticipantPresence) {}
 
@@ -416,6 +417,87 @@ class FocusRoomViewModelTest {
             assertEquals("interrupted_sess_55", interrupted?.sessionId)
             assertEquals("Write physics notes", interrupted?.lastTaskText)
             assertNull(controller.activeSession.value)
+        } finally {
+            scope.cancel()
+        }
+    }
+
+    @Test
+    fun sessionTimeSyncedAdjustsTimerAndSnapshotAndIgnoresStaleSessionId() = runBlocking {
+        val (roomRepo, profileRepo, controller) = createDeps()
+        roomRepo.startSessionHandler = { "synced_sess_42" }
+        val authRepo = FakeAuthRepository()
+        val scope = CoroutineScope(Dispatchers.Unconfined + SupervisorJob())
+
+        try {
+            val savedState = SavedStateHandle(mapOf("recovery" to false, "tasks_json" to "[]"))
+            val vm = FocusRoomViewModel(
+                savedStateHandle = savedState,
+                roomRepository = roomRepo,
+                profileRepository = profileRepo,
+                safetyRepository = FakeSafetyRepository(),
+                authRepository = authRepo,
+                sessionController = controller,
+                scopeOverride = scope
+            )
+
+            val initialStartMs = vm.uiState.value.sessionStartEpochMs
+
+            // Stale sync for a different session ID must be ignored
+            roomRepo.emitSessionEvent(
+                RoomSessionEvent.SessionTimeSynced(
+                    sessionId = "old_sess_99",
+                    activeSeconds = 3600,
+                    forceSync = true
+                )
+            )
+            assertEquals(initialStartMs, vm.uiState.value.sessionStartEpochMs)
+
+            // Valid sync with server verified activeSeconds (e.g. 15m after a 20m offline gap)
+            roomRepo.emitSessionEvent(
+                RoomSessionEvent.SessionTimeSynced(
+                    sessionId = "synced_sess_42",
+                    activeSeconds = 900,
+                    forceSync = true
+                )
+            )
+            val updatedElapsedSecs = (System.currentTimeMillis() - vm.uiState.value.sessionStartEpochMs) / 1000L
+            assertTrue(
+                "Expected elapsed timer synced to ~900s, got $updatedElapsedSecs",
+                updatedElapsedSecs in 898L..902L
+            )
+            assertEquals(vm.uiState.value.sessionStartEpochMs, controller.activeSession.value?.startTimeEpochMs)
+        } finally {
+            scope.cancel()
+        }
+    }
+
+    @Test
+    fun channelStatusTransitionsUpdateUiConnectionStatus() = runBlocking {
+        val (roomRepo, profileRepo, controller) = createDeps()
+        roomRepo.startSessionHandler = { "status_sess_1" }
+        roomRepo.channelStatusFlow.value = RoomConnectionStatus.CONNECTING
+        val authRepo = FakeAuthRepository()
+        val scope = CoroutineScope(Dispatchers.Unconfined + SupervisorJob())
+
+        try {
+            val savedState = SavedStateHandle(mapOf("recovery" to false, "tasks_json" to "[]"))
+            val vm = FocusRoomViewModel(
+                savedStateHandle = savedState,
+                roomRepository = roomRepo,
+                profileRepository = profileRepo,
+                safetyRepository = FakeSafetyRepository(),
+                authRepository = authRepo,
+                sessionController = controller,
+                scopeOverride = scope
+            )
+            assertEquals(RoomConnectionStatus.CONNECTING, vm.uiState.value.connectionStatus)
+
+            roomRepo.channelStatusFlow.value = RoomConnectionStatus.CONNECTED
+            assertEquals(RoomConnectionStatus.CONNECTED, vm.uiState.value.connectionStatus)
+
+            roomRepo.channelStatusFlow.value = RoomConnectionStatus.DISCONNECTED
+            assertEquals(RoomConnectionStatus.DISCONNECTED, vm.uiState.value.connectionStatus)
         } finally {
             scope.cancel()
         }

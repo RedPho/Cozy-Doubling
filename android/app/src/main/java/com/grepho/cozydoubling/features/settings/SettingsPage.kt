@@ -33,6 +33,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.grepho.cozydoubling.BuildConfig
 import com.grepho.cozydoubling.R
 import com.grepho.cozydoubling.core.safety.BlockedUser
+import com.grepho.cozydoubling.core.validation.TextLimits
 
 // --- THE SCREEN ENTRY POINT ---
 @Composable
@@ -268,8 +269,11 @@ fun SettingsPage(
             text = {
                 OutlinedTextField(
                     value = tempUsername,
-                    onValueChange = { tempUsername = it },
+                    onValueChange = { tempUsername = TextLimits.limitInput(it, TextLimits.MAX_DISPLAY_NAME_LENGTH) },
                     singleLine = true,
+                    supportingText = {
+                        Text("${tempUsername.length}/${TextLimits.MAX_DISPLAY_NAME_LENGTH}")
+                    },
                     modifier = Modifier.fillMaxWidth()
                 )
             },
@@ -278,7 +282,8 @@ fun SettingsPage(
                     onClick = {
                         onSaveUsername(tempUsername)
                         showUsernameDialog = false
-                    }
+                    },
+                    enabled = tempUsername.isNotBlank()
                 ) {
                     Text(stringResource(R.string.action_save))
                 }

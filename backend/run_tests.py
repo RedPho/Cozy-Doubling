@@ -91,6 +91,8 @@ from tests.test_sessions import (
     test_never_connected_late_finish_grants_zero_minutes,
     test_starting_new_session_auto_finalizes_previous,
     test_session_finish_with_app_closed_reason_saves_verified_time_without_offline_gap,
+    test_late_ws_startup_beyond_grace_marks_offline_gap,
+    test_text_length_caps_enforced_across_endpoints,
 )
 reset_db()
 test_session_lifecycle_and_leaf_rewards(client)
@@ -135,6 +137,14 @@ print("[PASS] test_starting_new_session_auto_finalizes_previous", flush=True)
 reset_db()
 test_session_finish_with_app_closed_reason_saves_verified_time_without_offline_gap(client)
 print("[PASS] test_session_finish_with_app_closed_reason_saves_verified_time_without_offline_gap", flush=True)
+
+reset_db()
+test_late_ws_startup_beyond_grace_marks_offline_gap(client)
+print("[PASS] test_late_ws_startup_beyond_grace_marks_offline_gap", flush=True)
+
+reset_db()
+test_text_length_caps_enforced_across_endpoints(client)
+print("[PASS] test_text_length_caps_enforced_across_endpoints", flush=True)
 
 from tests.test_friends import (
     test_friend_request_flow,
@@ -187,6 +197,7 @@ from tests.test_websockets import (
     test_two_clients_same_account_distinct_sessions,
     test_abandoned_session_reconnect_receives_session_expired,
     test_friends_websocket_realtime_events,
+    test_room_websocket_sends_session_sync_and_pong_active_seconds,
 )
 reset_db()
 test_two_clients_full_presence_lifecycle(client)
@@ -232,6 +243,10 @@ reset_db()
 test_friends_websocket_realtime_events(client)
 print("[PASS] test_friends_websocket_realtime_events", flush=True)
 
+reset_db()
+test_room_websocket_sends_session_sync_and_pong_active_seconds(client)
+print("[PASS] test_room_websocket_sends_session_sync_and_pong_active_seconds", flush=True)
+
 from tests.test_websockets_live import (
     test_live_uvicorn_two_clients_bidirectional_presence_and_keepalive,
     test_live_uvicorn_many_websockets_do_not_exhaust_db_pool,
@@ -244,4 +259,4 @@ reset_db()
 test_live_uvicorn_many_websockets_do_not_exhaust_db_pool(client)
 print("[PASS] test_live_uvicorn_many_websockets_do_not_exhaust_db_pool", flush=True)
 
-print("=== ALL 38 BACKEND TESTS PASSED SUCCESSFULLY! ===", flush=True)
+print("=== ALL 41 BACKEND TESTS PASSED SUCCESSFULLY! ===", flush=True)

@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.grepho.cozydoubling.R
 import com.grepho.cozydoubling.core.profile.Profile
+import com.grepho.cozydoubling.core.validation.TextLimits
 import kotlinx.coroutines.launch
 
 // --- THE SCREEN ENTRY POINT ---
@@ -211,7 +212,7 @@ fun FriendsPage(
             text = {
                 OutlinedTextField(
                     value = newFriendTag,
-                    onValueChange = { newFriendTag = it },
+                    onValueChange = { newFriendTag = TextLimits.limitInput(it, TextLimits.MAX_FRIEND_CODE_LENGTH) },
                     placeholder = { Text(stringResource(R.string.friends_enter_code_hint)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),

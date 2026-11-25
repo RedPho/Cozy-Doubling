@@ -38,7 +38,7 @@ class SummaryViewModel(
         scope.launch {
             try {
                 val session = repository.fetchSession(sessionId)
-                if (session != null) {
+                if (session != null && session.isProcessed) {
                     val resolvedReason = session.endReason ?: if (wasInterrupted) "app_closed" else null
                     val interrupted = wasInterrupted ||
                         resolvedReason == "app_closed" ||

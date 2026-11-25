@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.grepho.cozydoubling.R
 import com.grepho.cozydoubling.core.room.ActiveFocusSessionSnapshot
+import com.grepho.cozydoubling.core.validation.TextLimits
 import kotlinx.coroutines.delay
 
 // --- THE SCREEN ENTRY POINT ---
@@ -266,27 +267,50 @@ fun FocusRoomPage(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                Surface(
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                    if (uiState.connectionStatus != RoomConnectionStatus.CONNECTED) {
+                        val statusRes = if (uiState.connectionStatus == RoomConnectionStatus.CONNECTING) {
+                            R.string.room_status_connecting
+                        } else {
+                            R.string.room_status_reconnecting
+                        }
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f)
+                        ) {
+                            Text(
+                                text = stringResource(statusRes),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Schedule,
-                            contentDescription = null,
-                            modifier = Modifier.size(14.dp),
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = elapsedLabel,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            fontWeight = FontWeight.SemiBold
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Schedule,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp),
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = elapsedLabel,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
                     }
                 }
             }
@@ -599,8 +623,9 @@ fun TaskBottomSheet(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 TextField(
                     value = newTaskText,
-                    onValueChange = onNewTaskTextChange,
+                    onValueChange = { onNewTaskTextChange(TextLimits.limitInput(it, TextLimits.MAX_TASK_TEXT_LENGTH)) },
                     placeholder = { Text(stringResource(R.string.room_next_task_hint)) },
+                    singleLine = true,
                     modifier = Modifier
                         .weight(1f)
                         .height(56.dp),
