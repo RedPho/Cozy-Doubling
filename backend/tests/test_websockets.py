@@ -6,6 +6,7 @@ from app.database import get_db
 from app.main import app
 from app.models.session import FocusSession
 from app.services.auth import create_access_token
+from tests.conftest import seeded_token
 from app.websockets.room_manager import focus_room_manager
 from app.websockets.safety_manager import safety_manager
 from app.websockets.friends_manager import friends_manager
@@ -18,8 +19,8 @@ def test_two_clients_full_presence_lifecycle(client: TestClient):
     """
     focus_room_manager.clear()
 
-    token1 = create_access_token({"sub": "user_emin_01", "email": "emin@cozy.com"})
-    token2 = create_access_token({"sub": "user_osman_02", "email": "osman@cozy.com"})
+    token1 = seeded_token("user_emin_01", "emin")
+    token2 = seeded_token("user_osman_02", "osman")
 
     # 1. Emin connects
     with client.websocket_connect(
@@ -99,9 +100,9 @@ def test_three_concurrent_clients_presence(client: TestClient):
     """
     focus_room_manager.clear()
 
-    t1 = create_access_token({"sub": "u1", "email": "u1@cozy.com"})
-    t2 = create_access_token({"sub": "u2", "email": "u2@cozy.com"})
-    t3 = create_access_token({"sub": "u3", "email": "u3@cozy.com"})
+    t1 = seeded_token("u1", "User1")
+    t2 = seeded_token("u2", "User2")
+    t3 = seeded_token("u3", "User3")
 
     with client.websocket_connect(f"/ws/room?token={t1}&presence_key=u1:s1&name=User1") as ws1:
         _ = ws1.receive_text()  # state 0
@@ -224,7 +225,7 @@ def test_reconnect_replaces_old_socket_cleanly(client: TestClient):
     """
     focus_room_manager.clear()
 
-    token = create_access_token({"sub": "u_reconnect", "email": "rec@cozy.com"})
+    token = seeded_token("u_reconnect", "RecUser")
     p_key = "u_reconnect:sess_active"
 
     with client.websocket_connect(f"/ws/room?token={token}&presence_key={p_key}&name=RecUser") as ws_old:
@@ -240,7 +241,7 @@ def test_reconnect_replaces_old_socket_cleanly(client: TestClient):
             # Current entry must be updated with the new server websocket and name
             new_server_ws = focus_room_manager.active_participants[p_key].websocket
             assert new_server_ws != old_server_ws
-            assert focus_room_manager.active_participants[p_key].presence_data["name"] == "RecUserReconnected"
+            assert focus_room_manager.active_participants[p_key].presence_data["name"] == "RecUser"
 
 def test_room_capacity_limit_rejection(client: TestClient):
     """
@@ -251,9 +252,9 @@ def test_room_capacity_limit_rejection(client: TestClient):
     settings.ROOM_CAPACITY_LIMIT = 2
 
     try:
-        t1 = create_access_token({"sub": "cap1", "email": "cap1@cozy.com"})
-        t2 = create_access_token({"sub": "cap2", "email": "cap2@cozy.com"})
-        t3 = create_access_token({"sub": "cap3", "email": "cap3@cozy.com"})
+        t1 = seeded_token("cap1", "C1")
+        t2 = seeded_token("cap2", "C2")
+        t3 = seeded_token("cap3", "C3")
 
         with client.websocket_connect(f"/ws/room?token={t1}&presence_key=cap1:s&name=C1"):
             with client.websocket_connect(f"/ws/room?token={t2}&presence_key=cap2:s&name=C2"):
@@ -322,7 +323,7 @@ def test_two_clients_same_account_distinct_sessions(client: TestClient):
     """
     focus_room_manager.clear()
 
-    token = create_access_token({"sub": "shared_user_01", "email": "shared@cozy.com"})
+    token = seeded_token("shared_user_01", "SharedUser")
 
     with client.websocket_connect(
         f"/ws/room?token={token}&presence_key=shared_user_01:device_1_sess&name=Device1"
@@ -342,7 +343,7 @@ def test_two_clients_same_account_distinct_sessions(client: TestClient):
             up1 = json.loads(ws1.receive_text())
             assert up1["type"] == "presence_update"
             assert up1["presence"]["id"] == "shared_user_01:device_2_sess"
-            assert up1["presence"]["name"] == "Device2"
+            assert up1["presence"]["name"] == "SharedUser"
 
 
 def test_abandoned_session_reconnect_receives_session_expired(client: TestClient):

@@ -81,7 +81,17 @@ pytest backend/tests -v -c backend/pytest.ini
 
 | Variable | Default | Description |
 |---|---|---|
-| `DATABASE_URL` | `sqlite:///./cozy_doubling.db` | Database connection string (supports SQLite or PostgreSQL) |
-| `SECRET_KEY` | `cozy-doubling-super-secret-key...` | JWT secret signing key |
+| `ENVIRONMENT` | `development` | `production` disables mock Google tokens and client-asserted supporter status, and refuses to boot with development secrets |
+| `DATABASE_URL` | `sqlite:///./cozy_doubling.db` | Database connection string. Production requires a managed database (PostgreSQL) |
+| `SECRET_KEY` | development value | JWT signing key. **Required** in production (random, ≥ 32 chars) |
+| `GOOGLE_CLIENT_IDS` | *(empty)* | Comma-separated Google OAuth **web** client ID(s) whose ID tokens are accepted. Required in production |
+| `REVENUECAT_WEBHOOK_AUTH` | development value | Authorization header value configured on the RevenueCat webhook. Required in production |
+| `REVENUECAT_API_KEY` | *(empty)* | RevenueCat secret REST key (`sk_...`). When set, "Restore Purchases" verifies entitlements server-side |
+| `FIREBASE_CREDENTIALS_FILE` | *(empty)* | Path to a Firebase service-account JSON. When unset, friend push notifications are only logged |
 | `ROOM_CAPACITY_LIMIT` | `50` | Maximum participants in global focus room |
-| `REVENUECAT_WEBHOOK_AUTH` | `cozy_rc_secret_key` | Secret authorization token for RevenueCat webhooks |
+| `MAX_REWARDED_TASKS_PER_SESSION` | `20` | Completed tasks that earn leaves in one session (anti leaf-farming) |
+
+### Production checklist
+- Set `ENVIRONMENT=production` plus every variable marked *required* above — the server will not start otherwise.
+- Serve the API only over HTTPS/WSS (TLS-terminating proxy in front of Uvicorn).
+- Run a **single** Uvicorn worker: room presence, safety sockets and the login throttle are in-memory. Scaling out needs a shared store (e.g. Redis pub/sub).

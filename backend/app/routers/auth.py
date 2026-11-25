@@ -1,6 +1,11 @@
+import re
 import uuid
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session, joinedload
+from typing import Optional
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
+
+from app.config import settings
 
 from app.database import get_db
 from app.models.user import User
@@ -22,112 +27,148 @@ from app.services.auth import (
     create_access_token,
     get_current_user_and_profile,
 )
+from app.services.google_identity import InvalidGoogleToken, verify_google_id_token
+from app.services.login_throttle import login_throttle
 from app.services.tag_generator import generate_player_tag
+
+EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
-@router.post("/register", response_model=TokenResponse)
-def register(req: UserRegisterRequest, db: Session = Depends(get_db)):
-    clean_email = req.email.strip().lower()
-    
-    # Check existing user
-    existing = db.query(User).filter(User.email == clean_email).first()
-    if existing:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered"
-        )
-    
+def _create_user_with_profile(
+    db: Session,
+    email: str,
+    hashed_password: Optional[str],
+    display_name: Optional[str],
+    google_sub: Optional[str] = None,
+) -> User:
     user_id = str(uuid.uuid4())
-    user = User(
-        id=user_id,
-        email=clean_email,
-        hashed_password=hash_password(req.password)
-    )
+    user = User(id=user_id, email=email, hashed_password=hashed_password, google_sub=google_sub)
     db.add(user)
     db.flush()
 
-    player_tag = generate_player_tag(db)
-    display_name = req.display_name.strip() if req.display_name and req.display_name.strip() else "Cozy Doubler"
-
+    clean_name = (display_name or "").strip()[:30]
     profile = Profile(
         id=user_id,
-        display_name=display_name,
-        player_tag=player_tag,
+        display_name=clean_name or "Cozy Doubler",
+        player_tag=generate_player_tag(db),
         equipped_theme_id="system_default",
         leaves=0,
         total_minutes_focused=0,
         is_supporter=False
     )
     db.add(profile)
+    db.add(UserInventory(user_id=user_id, item_id="system_default"))
+    return user
 
-    # Add system default to inventory
-    inventory = UserInventory(user_id=user_id, item_id="system_default")
-    db.add(inventory)
 
-    db.commit()
+@router.post("/register", response_model=TokenResponse)
+def register(req: UserRegisterRequest, db: Session = Depends(get_db)):
+    clean_email = req.email.strip().lower()
+    if not EMAIL_PATTERN.match(clean_email):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Please enter a valid email address.")
+    if len(req.password) < settings.MIN_PASSWORD_LENGTH:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Password must be at least {settings.MIN_PASSWORD_LENGTH} characters."
+        )
 
-    token = create_access_token({"sub": user_id, "email": clean_email})
+    existing = db.query(User).filter(User.email == clean_email).first()
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already registered"
+        )
+
+    user = _create_user_with_profile(
+        db,
+        email=clean_email,
+        hashed_password=hash_password(req.password),
+        display_name=req.display_name,
+    )
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
+
+    token = create_access_token({"sub": user.id, "email": clean_email})
     return TokenResponse(access_token=token)
 
 @router.post("/login", response_model=TokenResponse)
-def login(req: UserLoginRequest, db: Session = Depends(get_db)):
+def login(req: UserLoginRequest, request: Request, db: Session = Depends(get_db)):
     clean_email = req.email.strip().lower()
+    client_ip = request.client.host if request.client else "unknown"
+    throttle_key = f"{clean_email}|{client_ip}"
+
+    retry_after = login_throttle.retry_after_seconds(throttle_key)
+    if retry_after > 0:
+        minutes = max(1, (retry_after + 59) // 60)
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Too many failed sign-in attempts. Please try again in {minutes} minute(s).",
+            headers={"Retry-After": str(retry_after)},
+        )
+
     user = db.query(User).filter(User.email == clean_email).first()
 
     # Generic error message to prevent user enumeration
     generic_error = "Invalid email or password"
-    if not user or not user.hashed_password:
+    if not user or not user.hashed_password or not verify_password(req.password, user.hashed_password):
+        login_throttle.record_failure(throttle_key)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=generic_error
         )
 
-    if not verify_password(req.password, user.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=generic_error
-        )
-
+    login_throttle.reset(throttle_key)
     token = create_access_token({"sub": user.id, "email": user.email})
     return TokenResponse(access_token=token)
 
 @router.post("/google", response_model=TokenResponse)
 def google_auth(req: GoogleAuthRequest, db: Session = Depends(get_db)):
-    raw_token = req.id_token.strip()
-    if raw_token.startswith("mock:google:"):
-        parts = raw_token.split(":")
-        google_id = parts[2] if len(parts) > 2 else "google_test_user"
-        name = parts[3] if len(parts) > 3 else "Google User"
-        email = parts[4] if len(parts) > 4 else f"{google_id}@gmail.com"
-    else:
-        google_id = "google_" + raw_token[:16]
-        name = "Google User"
-        email = f"{google_id}@gmail.com"
+    try:
+        identity = verify_google_id_token(req.id_token)
+    except InvalidGoogleToken as exc:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc))
 
-    clean_email = email.lower().strip()
-    user = db.query(User).options(joinedload(User.profile)).filter(User.email == clean_email).first()
+    clean_email = identity.email.strip().lower()
 
+    # 1. Match on the stable Google account ID.
+    user = db.query(User).filter(User.google_sub == identity.subject).first()
+
+    # 2. Link an existing account with the same email only when Google has verified that email,
+    #    otherwise an unverified Google account could take over an email/password account.
     if not user:
-        user_id = str(uuid.uuid4())
-        user = User(id=user_id, email=clean_email, hashed_password=None)
-        db.add(user)
-        db.flush()
+        by_email = db.query(User).filter(User.email == clean_email).first()
+        if by_email:
+            if not identity.email_verified or (by_email.google_sub and by_email.google_sub != identity.subject):
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="An account with this email already exists. Please sign in with your email and password."
+                )
+            by_email.google_sub = identity.subject
+            user = by_email
+            db.commit()
 
-        player_tag = generate_player_tag(db)
-        profile = Profile(
-            id=user_id,
-            display_name=name if name else "Cozy Doubler",
-            player_tag=player_tag,
-            equipped_theme_id="system_default",
-            leaves=0,
-            total_minutes_focused=0,
-            is_supporter=False
+    # 3. First sign-in: provision a new account and profile.
+    if not user:
+        user = _create_user_with_profile(
+            db,
+            email=clean_email,
+            hashed_password=None,
+            display_name=identity.name,
+            google_sub=identity.subject,
         )
-        db.add(profile)
-        db.add(UserInventory(user_id=user_id, item_id="system_default"))
-        db.commit()
-    
+        try:
+            db.commit()
+        except IntegrityError:
+            # Concurrent first sign-in for the same Google account: resolve to the row that won.
+            db.rollback()
+            user = db.query(User).filter(User.google_sub == identity.subject).first()
+            if not user:
+                raise
+
     token = create_access_token({"sub": user.id, "email": user.email})
     return TokenResponse(access_token=token)
 
@@ -162,8 +203,11 @@ def delete_account(
     db.query(FocusSession).filter(FocusSession.user_id == my_id).delete()
     # 4. User blocks
     db.query(UserBlock).filter((UserBlock.blocker_id == my_id) | (UserBlock.blocked_id == my_id)).delete()
-    # 5. User reports
+    # 5. User reports: reports against the user are removed; reports the user filed are kept
+    #    anonymously for moderation (reporter unlinked). Done explicitly because SQLite does not
+    #    enforce the ON DELETE SET NULL foreign key.
     db.query(UserReport).filter(UserReport.reported_id == my_id).delete()
+    db.query(UserReport).filter(UserReport.reporter_id == my_id).update({UserReport.reporter_id: None})
     # 6. Profile
     db.query(Profile).filter(Profile.id == my_id).delete()
     # 7. User

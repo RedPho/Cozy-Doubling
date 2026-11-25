@@ -10,6 +10,8 @@ class User(Base):
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=True)
+    # Stable Google account ID ("sub"); accounts are matched on this, not on the email claim.
+    google_sub = Column(String, unique=True, index=True, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
 
     profile = relationship("Profile", back_populates="user", uselist=False, cascade="all, delete-orphan")

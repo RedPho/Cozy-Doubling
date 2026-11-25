@@ -21,13 +21,15 @@ def test_shop_items_listing_and_leaf_purchase(client: TestClient):
     assert fail_buy.status_code == 400
     assert "not enough leaves" in fail_buy.json()["detail"].lower()
 
-    # 3. Earn enough leaves via focus session (34 tasks = 102 leaves)
-    start_resp = client.post("/api/sessions/start", headers=headers)
-    session_id = start_resp.json()["session_id"]
-    client.post(f"/api/sessions/{session_id}/finish", headers=headers, json={
-        "tasks_completed": 34,
-        "last_task_text": "Massive study session"
-    })
+    # 3. Earn enough leaves via two focus sessions (task rewards are capped at 20 per session:
+    #    2 x 20 tasks x 3 = 120 leaves)
+    for _ in range(2):
+        start_resp = client.post("/api/sessions/start", headers=headers)
+        session_id = start_resp.json()["session_id"]
+        client.post(f"/api/sessions/{session_id}/finish", headers=headers, json={
+            "tasks_completed": 20,
+            "last_task_text": "Massive study session"
+        })
 
     # Verify leaves
     profile_resp = client.get("/api/profile", headers=headers)

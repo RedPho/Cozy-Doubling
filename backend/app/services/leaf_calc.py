@@ -14,7 +14,7 @@ def calculate_verified_rewards(
     Formula:
     raw_minutes = floor(verified_seconds / 60)
     duration_minutes = min(raw_minutes, max_minutes)
-    earned_leaves = (duration_minutes * 1) + (tasks_completed * 3)
+    earned_leaves = (duration_minutes * 1) + (min(tasks_completed, MAX_REWARDED_TASKS_PER_SESSION) * 3)
     Minimum floor = 1 leaf (unless allow_zero_floor=True and raw_leaves == 0 for empty abandoned sessions).
 
     Returns: (duration_minutes, earned_leaves, was_capped)
@@ -23,7 +23,8 @@ def calculate_verified_rewards(
     was_capped = raw_minutes > max_minutes
     duration_minutes = min(raw_minutes, max_minutes)
 
-    raw_leaves = (duration_minutes * 1) + (max(0, tasks_completed) * 3)
+    rewarded_tasks = min(max(0, tasks_completed), settings.MAX_REWARDED_TASKS_PER_SESSION)
+    raw_leaves = (duration_minutes * 1) + (rewarded_tasks * 3)
     if allow_zero_floor and raw_leaves == 0:
         earned_leaves = 0
     else:
