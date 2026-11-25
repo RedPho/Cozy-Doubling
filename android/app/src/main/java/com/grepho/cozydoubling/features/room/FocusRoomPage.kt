@@ -34,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -351,7 +352,9 @@ fun ParticipantCard(
     val isSelf = participant.id == "self"
 
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("room_participant_card_${participant.id}"),
         shape = RoundedCornerShape(24.dp),
         color = MaterialTheme.colorScheme.surface,
         shadowElevation = 2.dp
@@ -362,7 +365,9 @@ fun ParticipantCard(
                 Box(modifier = Modifier.align(Alignment.TopEnd).padding(2.dp)) {
                     IconButton(
                         onClick = { showMenu = true },
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier
+                            .size(32.dp)
+                            .testTag("room_participant_options_${participant.id}")
                     ) {
                         Icon(
                             imageVector = Icons.Default.MoreVert,
@@ -560,6 +565,7 @@ fun TaskBottomSheet(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 4.dp)
+                            .testTag("room_task_row_${task.text}")
                             .clickable { onTaskClick(task.id) },
                         shape = RoundedCornerShape(16.dp),
                         color = when {
@@ -577,7 +583,8 @@ fun TaskBottomSheet(
                         ) {
                             Checkbox(
                                 checked = task.isCompleted,
-                                onCheckedChange = { onTaskToggleStatus(task.id) }
+                                onCheckedChange = { onTaskToggleStatus(task.id) },
+                                modifier = Modifier.testTag("room_task_checkbox_${task.text}")
                             )
                             Text(
                                 text = task.text,
@@ -602,7 +609,9 @@ fun TaskBottomSheet(
                             if (!task.isCompleted) {
                                 IconButton(
                                     onClick = { onDeleteTask(task.id) },
-                                    modifier = Modifier.size(24.dp)
+                                    modifier = Modifier
+                                        .size(24.dp)
+                                        .testTag("room_task_delete_${task.text}")
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Close,
@@ -628,7 +637,8 @@ fun TaskBottomSheet(
                     singleLine = true,
                     modifier = Modifier
                         .weight(1f)
-                        .height(56.dp),
+                        .height(56.dp)
+                        .testTag("room_task_input"),
                     shape = CircleShape,
                     colors = TextFieldDefaults.colors(
                         focusedTextColor = MaterialTheme.colorScheme.onSurface,
@@ -648,7 +658,9 @@ fun TaskBottomSheet(
                     shape = CircleShape,
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = Color.White,
-                    modifier = Modifier.size(48.dp)
+                    modifier = Modifier
+                        .size(48.dp)
+                        .testTag("room_add_task_button")
                 ) {
                     Icon(Icons.Default.Add, contentDescription = stringResource(R.string.friends_add_title))
                 }

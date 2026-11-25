@@ -27,6 +27,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -107,7 +108,10 @@ fun FriendsPage(
         modifier = Modifier.fillMaxSize()
     ) {
         LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 24.dp)
+                .testTag("friends_list"),
             contentPadding = PaddingValues(top = 24.dp, bottom = 100.dp) // Extra padding for the FAB
         ) {
             // --- 1. Connect Code Capsule ---
@@ -138,7 +142,13 @@ fun FriendsPage(
                                 modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text(text = myTag, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                                Text(
+                                    text = myTag,
+                                    modifier = Modifier.testTag("friends_connect_code"),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Bold
+                                )
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Icon(Icons.Default.ContentCopy, contentDescription = stringResource(R.string.action_ok), modifier = Modifier.size(18.dp), tint = Color.Gray)
                             }
@@ -215,7 +225,9 @@ fun FriendsPage(
                     onValueChange = { newFriendTag = TextLimits.limitInput(it, TextLimits.MAX_FRIEND_CODE_LENGTH) },
                     placeholder = { Text(stringResource(R.string.friends_enter_code_hint)) },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("friends_add_input"),
                     shape = RoundedCornerShape(16.dp)
                 )
             },
@@ -255,7 +267,9 @@ fun PendingRequestCard(
     onReject: () -> Unit
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("pending_request_card_$tag"),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f))
     ) {
         Row(
@@ -266,11 +280,18 @@ fun PendingRequestCard(
                 Text(text = name, style = MaterialTheme.typography.titleSmall)
                 Text(text = "#$tag", style = MaterialTheme.typography.labelSmall)
             }
-            TextButton(onClick = onReject) {
+            TextButton(
+                onClick = onReject,
+                modifier = Modifier.testTag("pending_reject_$tag")
+            ) {
                 Text(stringResource(R.string.action_reject), color = MaterialTheme.colorScheme.error)
             }
             Spacer(modifier = Modifier.width(8.dp))
-            Button(onClick = onAccept, shape = CircleShape) {
+            Button(
+                onClick = onAccept,
+                shape = CircleShape,
+                modifier = Modifier.testTag("pending_accept_$tag")
+            ) {
                 Text(stringResource(R.string.action_accept))
             }
         }
@@ -290,7 +311,9 @@ fun FriendCard(
     var showRemoveDialog by remember { mutableStateOf(false) }
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("friends_card_${friend.id}"),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
         ),
@@ -352,7 +375,10 @@ fun FriendCard(
 
             // --- 3. More Menu ---
             Box {
-                IconButton(onClick = { showMenu = true }) {
+                IconButton(
+                    onClick = { showMenu = true },
+                    modifier = Modifier.testTag("friends_more_${friend.id}")
+                ) {
                     Icon(Icons.Default.MoreVert, contentDescription = "More options")
                 }
                 DropdownMenu(

@@ -38,7 +38,7 @@ class FriendsViewModel(
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
-        initialValue = friendsRepository.friends.value
+        initialValue = friendsRepository.friends.value.filter { it.id !in safetyRepository.blockedUserIds.value }
     )
 
     val pendingRequests: StateFlow<List<Profile>> = combine(
@@ -49,7 +49,7 @@ class FriendsViewModel(
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
-        initialValue = friendsRepository.pendingRequests.value
+        initialValue = friendsRepository.pendingRequests.value.filter { it.id !in safetyRepository.blockedUserIds.value }
     )
 
     val profile: StateFlow<Profile?> = profileRepository.profile
@@ -59,6 +59,8 @@ class FriendsViewModel(
 
     private val _uiEvents = MutableSharedFlow<String>(extraBufferCapacity = 4)
     val uiEvents: SharedFlow<String> = _uiEvents.asSharedFlow()
+
+    fun refresh() = onRefresh(showErrorOnFailure = false)
 
     fun onRefresh(showErrorOnFailure: Boolean = false) {
         viewModelScope.launch {

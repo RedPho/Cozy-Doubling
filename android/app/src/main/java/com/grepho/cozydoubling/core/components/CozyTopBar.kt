@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -51,6 +52,7 @@ fun CozyTopBar(
                 color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
                 shape = CircleShape,
                 modifier = Modifier
+                    .testTag("top_bar_leaves")
                     .clickable { onShopClick() }
                     .padding(vertical = 4.dp)
             ) {

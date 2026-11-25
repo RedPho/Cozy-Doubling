@@ -1,6 +1,6 @@
 # Cozy Doubling — Epic Catalog & Story Map
 
-An executive overview of product domains, goals, current implementation status, and story mappings across Cozy Doubling. Full story specifications live in [01_product_backlog.md](01_product_backlog.md).
+An executive overview of product domains, goals, current implementation status, and story mappings across Cozy Doubling. Full story specifications live in [01_product_backlog.md](01_product_backlog.md); E2E test automation tickets live in [02_e2e_test_tickets.md](02_e2e_test_tickets.md).
 
 ---
 
@@ -36,7 +36,7 @@ An executive overview of product domains, goals, current implementation status, 
 ---
 
 ## Epic 3: Session Completion & Leaf Economy
-**Goal:** Reward users for productive focus time by accurately computing and granting Leaf currency, updating verified focus statistics, and displaying an accomplishment summary.  
+**Goal:** Reward users for productive focus time by accurately computing and granting Leaf currency, preventing abuse, updating verified focus statistics, and displaying an accomplishment summary.  
 **Stories:**
 - `[ECON-01]` End Focus Session & Server-Side Verification *(Implemented)*
 - `[ECON-02]` Leaf & Minutes Calculation Formula *(Implemented)*

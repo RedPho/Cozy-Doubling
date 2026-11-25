@@ -18,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -45,7 +46,10 @@ fun InventoryPage(
     onEquipClick: (String) -> Unit
 ) {
     LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 24.dp)
+            .testTag("inventory_list"),
         contentPadding = PaddingValues(vertical = 24.dp)
     ) {
         item {
@@ -80,7 +84,9 @@ fun ThemeInventoryCard(
     onEquipClick: () -> Unit
 ) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("inventory_theme_card_${theme.id}"),
         shape = RoundedCornerShape(32.dp),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f),
         border = if (theme.isEquipped) BorderStroke(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)) else null
@@ -114,7 +120,8 @@ fun ThemeInventoryCard(
                 if (theme.isEquipped) {
                     Surface(
                         color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
-                        shape = CircleShape
+                        shape = CircleShape,
+                        modifier = Modifier.testTag("inventory_equipped_${theme.id}")
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
@@ -129,6 +136,7 @@ fun ThemeInventoryCard(
                     IconButton(
                         onClick = onEquipClick,
                         modifier = Modifier
+                            .testTag("inventory_apply_${theme.id}")
                             .clip(CircleShape)
                             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
                     ) {

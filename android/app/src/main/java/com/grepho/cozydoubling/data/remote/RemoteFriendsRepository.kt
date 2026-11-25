@@ -240,8 +240,8 @@ class RemoteFriendsRepository(
         name = displayName,
         playerTag = playerTag,
         lastSessionDuration = durationMinutes,
-        lastSessionDate = endTime ?: "Just now",
-        lastTaskText = lastTaskText ?: "Focusing",
+        lastSessionDate = endTime,
+        lastTaskText = lastTaskText,
         friendsSince = acceptedAt ?: "Recently"
     )
 }
