@@ -32,6 +32,8 @@ import kotlinx.coroutines.flow.collectLatest
 fun AppNavHost(
     navController: NavHostController,
     authStatus: AuthStatus,
+    returnToFocusRoomTrigger: Int = 0,
+    onEnterPipClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     authViewModel: LoginViewModel = viewModel()
 ) {
@@ -59,6 +61,31 @@ fun AppNavHost(
                     }
                 }
                 else -> { /* Loading... we can just wait or show a splash */ }
+            }
+        }
+    }
+
+    // Recover an active Focus Room session after OS process death
+    LaunchedEffect(authStatus) {
+        if (authStatus is AuthStatus.Authenticated &&
+            ServiceLocator.focusSessionController.loadPersistedSession() != null &&
+            navController.currentDestination?.route != Screen.FocusRoom.route
+        ) {
+            navController.navigate(Screen.FocusRoom.route) {
+                launchSingleTop = true
+            }
+        }
+    }
+
+    // Bring Focus Room to front when tapped from the persistent notification
+    LaunchedEffect(returnToFocusRoomTrigger, authStatus) {
+        if (returnToFocusRoomTrigger > 0 &&
+            authStatus is AuthStatus.Authenticated &&
+            ServiceLocator.focusSessionController.activeSession.value != null &&
+            navController.currentDestination?.route != Screen.FocusRoom.route
+        ) {
+            navController.navigate(Screen.FocusRoom.route) {
+                launchSingleTop = true
             }
         }
     }
@@ -180,7 +207,8 @@ fun AppNavHost(
                     navController.navigate(Screen.Summary.createRoute(sessionId)) {
                         popUpTo(Screen.FocusRoom.route) { inclusive = true }
                     }
-                }
+                },
+                onEnterPipClick = onEnterPipClick
             )
         }
 

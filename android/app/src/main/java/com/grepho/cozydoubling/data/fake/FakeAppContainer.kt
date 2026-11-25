@@ -6,6 +6,7 @@ import com.grepho.cozydoubling.core.di.AppContainer
 import com.grepho.cozydoubling.core.economy.EconomyRepository
 import com.grepho.cozydoubling.core.notifications.NotificationRepository
 import com.grepho.cozydoubling.core.profile.ProfileRepository
+import com.grepho.cozydoubling.core.room.FocusSessionLifecycleController
 import com.grepho.cozydoubling.core.safety.SafetyRepository
 import com.grepho.cozydoubling.features.friends.FriendsRepository
 import com.grepho.cozydoubling.features.room.FocusRoomRepository
@@ -19,4 +20,5 @@ class FakeAppContainer : AppContainer {
     override val safetyRepository: SafetyRepository by lazy { FakeSafetyRepository() }
     override val notificationRepository: NotificationRepository by lazy { FakeNotificationRepository() }
     override val billingRepository: BillingRepository by lazy { FakeBillingRepository(profileRepository) }
+    override val focusSessionController: FocusSessionLifecycleController by lazy { NoOpFocusSessionLifecycleController() }
 }

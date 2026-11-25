@@ -59,6 +59,12 @@ class RemoteFriendsRepository(
         fetchIncomingRequests()
     }
 
+    override suspend fun removeFriend(friendId: String) {
+        apiClient.delete("/api/friends/$friendId") { }.getOrThrow()
+        _friends.value = _friends.value.filter { it.id != friendId }
+        fetchFriendsWithStories()
+    }
+
     override suspend fun fetchIncomingRequests(): List<Profile> {
         val result = apiClient.get("/api/friends/requests") { body ->
             apiClient.json.decodeFromString<List<FriendProfileDto>>(body)

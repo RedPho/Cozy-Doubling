@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.MailOutline
+import androidx.compose.material.icons.filled.PersonRemove
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -62,6 +63,7 @@ fun FriendsScreen(
         onAddFriend = { tag -> viewModel.onSendRequest(tag) },
         onAcceptRequest = { id -> viewModel.onAcceptRequest(id) },
         onRejectRequest = { id -> viewModel.onRejectRequest(id) },
+        onRemoveFriend = { id -> viewModel.onRemoveFriend(id) },
         onBlockUser = { id -> viewModel.onBlockUser(id) },
         onReportUser = { id, reason -> viewModel.onReportUser(id, reason) }
     )
@@ -76,6 +78,7 @@ fun FriendsPage(
     onAddFriend: (String) -> Unit,
     onAcceptRequest: (String) -> Unit,
     onRejectRequest: (String) -> Unit,
+    onRemoveFriend: (String) -> Unit,
     onBlockUser: (String) -> Unit,
     onReportUser: (String, String) -> Unit
 ) {
@@ -163,6 +166,7 @@ fun FriendsPage(
             items(friendsList) { friend ->
                 FriendCard(
                     friend = friend,
+                    onRemove = { onRemoveFriend(friend.id) },
                     onBlock = { onBlockUser(friend.id) },
                     onReport = { reason -> onReportUser(friend.id, reason) }
                 )
@@ -260,11 +264,13 @@ fun PendingRequestCard(
 @Composable
 fun FriendCard(
     friend: FriendUiState,
+    onRemove: () -> Unit,
     onBlock: () -> Unit,
     onReport: (String) -> Unit
 ) {
     var showMenu by remember { mutableStateOf(false) }
     var showReportDialog by remember { mutableStateOf(false) }
+    var showRemoveDialog by remember { mutableStateOf(false) }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -337,6 +343,14 @@ fun FriendCard(
                     onDismissRequest = { showMenu = false }
                 ) {
                     DropdownMenuItem(
+                        text = { Text(stringResource(R.string.friends_remove_friend)) },
+                        onClick = {
+                            showMenu = false
+                            showRemoveDialog = true
+                        },
+                        leadingIcon = { Icon(Icons.Default.PersonRemove, contentDescription = null) }
+                    )
+                    DropdownMenuItem(
                         text = { Text(stringResource(R.string.friends_report_user)) },
                         onClick = {
                             showMenu = false
@@ -355,6 +369,30 @@ fun FriendCard(
                 }
             }
         }
+    }
+
+    if (showRemoveDialog) {
+        AlertDialog(
+            onDismissRequest = { showRemoveDialog = false },
+            title = { Text(stringResource(R.string.friends_remove_confirm_title, friend.name)) },
+            text = { Text(stringResource(R.string.friends_remove_confirm_message)) },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showRemoveDialog = false
+                        onRemove()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text(stringResource(R.string.action_remove))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRemoveDialog = false }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            }
+        )
     }
 
     if (showReportDialog) {

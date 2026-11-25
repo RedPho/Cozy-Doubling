@@ -42,9 +42,20 @@ def test_friend_request_flow(client: TestClient):
     unfriend_resp = client.delete(f"/api/friends/{bob['profile']['id']}", headers=alice["headers"])
     assert unfriend_resp.status_code == 200
 
-    # Now friends list is empty
+    # Now both friends lists are empty
     alice_friends_after = client.get("/api/friends", headers=alice["headers"])
     assert len(alice_friends_after.json()) == 0
+    bob_friends_after = client.get("/api/friends", headers=bob["headers"])
+    assert len(bob_friends_after.json()) == 0
+
+    # Either user can send a new friend request later without being blocked
+    readd_resp = client.post("/api/friends/request", headers=bob["headers"], json={
+        "player_tag": alice["profile"]["player_tag"]
+    })
+    assert readd_resp.status_code == 200
+    alice_pending_again = client.get("/api/friends/requests", headers=alice["headers"])
+    assert len(alice_pending_again.json()) == 1
+    assert alice_pending_again.json()[0]["id"] == bob["profile"]["id"]
 
 def test_mutual_auto_acceptance(client: TestClient):
     charlie = create_user_helper(client, "charlie@cozy.com", name="Charlie")

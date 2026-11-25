@@ -11,10 +11,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.CardMembership
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.PictureInPictureAlt
 import androidx.compose.material.icons.filled.Policy
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
@@ -30,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.grepho.cozydoubling.BuildConfig
 import com.grepho.cozydoubling.R
+import com.grepho.cozydoubling.core.safety.BlockedUser
 
 // --- THE SCREEN ENTRY POINT ---
 @Composable
@@ -44,6 +47,9 @@ fun SettingsScreen(
         uiState = uiState,
         onBackClick = onBackClick,
         onSaveUsername = { viewModel.onUpdateUsername(it) },
+        onOpenBlockedUsers = { viewModel.onOpenBlockedUsers() },
+        onUnblockUser = { viewModel.onUnblockUser(it) },
+        onTogglePip = { viewModel.onTogglePip(it) },
         onSignOut = { viewModel.onSignOut() },
         onDeleteAccount = { viewModel.onDeleteAccount() },
         onManageSubscription = { viewModel.onManageSubscription(context) },
@@ -64,6 +70,9 @@ fun SettingsPage(
     uiState: SettingsUiState,
     onBackClick: () -> Unit,
     onSaveUsername: (String) -> Unit,
+    onOpenBlockedUsers: () -> Unit,
+    onUnblockUser: (String) -> Unit,
+    onTogglePip: (Boolean) -> Unit,
     onSignOut: () -> Unit,
     onDeleteAccount: () -> Unit,
     onManageSubscription: () -> Unit,
@@ -72,6 +81,8 @@ fun SettingsPage(
 ) {
     var showUsernameDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showBlockedUsersSheet by remember { mutableStateOf(false) }
+    var pendingUnblockUser by remember { mutableStateOf<BlockedUser?>(null) }
     var tempUsername by remember { mutableStateOf("") }
 
     Scaffold(
@@ -129,6 +140,34 @@ fun SettingsPage(
                     value = stringResource(R.string.settings_restore_value),
                     icon = Icons.Default.Refresh,
                     onClick = onRestorePurchases
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // --- FOCUS & SAFETY ---
+            SettingsGroup(title = stringResource(R.string.settings_group_focus_safety)) {
+                SettingsToggleItem(
+                    label = stringResource(R.string.settings_label_pip_mode),
+                    subtitle = stringResource(R.string.settings_pip_subtitle),
+                    icon = Icons.Default.PictureInPictureAlt,
+                    checked = uiState.isPipEnabled,
+                    onCheckedChange = onTogglePip
+                )
+
+                val blockedSummary = if (uiState.blockedUsers.isEmpty()) {
+                    stringResource(R.string.settings_blocked_none)
+                } else {
+                    stringResource(R.string.settings_blocked_count, uiState.blockedUsers.size)
+                }
+                SettingsItem(
+                    label = stringResource(R.string.settings_label_blocked_users),
+                    value = blockedSummary,
+                    icon = Icons.Default.Block,
+                    onClick = {
+                        onOpenBlockedUsers()
+                        showBlockedUsersSheet = true
+                    }
                 )
             }
 
@@ -274,6 +313,123 @@ fun SettingsPage(
                 }
             }
         )
+    }
+
+    if (showBlockedUsersSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showBlockedUsersSheet = false }
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+                    .padding(bottom = 32.dp)
+            ) {
+                Text(
+                    text = stringResource(R.string.settings_label_blocked_users),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                if (uiState.blockedUsers.isEmpty()) {
+                    Text(
+                        text = stringResource(R.string.settings_blocked_empty),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(vertical = 16.dp)
+                    )
+                } else {
+                    uiState.blockedUsers.forEach { blocked ->
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = blocked.displayName,
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Text(
+                                        text = "#${blocked.playerTag}",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                TextButton(onClick = { pendingUnblockUser = blocked }) {
+                                    Text(stringResource(R.string.action_unblock))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    pendingUnblockUser?.let { target ->
+        AlertDialog(
+            onDismissRequest = { pendingUnblockUser = null },
+            title = { Text(stringResource(R.string.settings_unblock_confirm_title, target.displayName)) },
+            text = { Text(stringResource(R.string.settings_unblock_confirm_message)) },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onUnblockUser(target.id)
+                        pendingUnblockUser = null
+                    }
+                ) {
+                    Text(stringResource(R.string.action_unblock))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingUnblockUser = null }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            }
+        )
+    }
+}
+
+@Composable
+fun SettingsToggleItem(
+    label: String,
+    subtitle: String,
+    icon: ImageVector,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onCheckedChange(!checked) }
+            .padding(horizontal = 24.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(20.dp)
+        )
+        Spacer(modifier = Modifier.width(16.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = label, style = MaterialTheme.typography.bodyLarge)
+            Text(text = subtitle, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+        }
+        Spacer(modifier = Modifier.width(8.dp))
+        Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
 

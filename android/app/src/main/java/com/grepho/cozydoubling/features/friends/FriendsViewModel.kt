@@ -58,6 +58,19 @@ class FriendsViewModel(
         }
     }
 
+    fun onRemoveFriend(friendId: String) {
+        viewModelScope.launch {
+            try {
+                friendsRepository.removeFriend(friendId)
+                profileRepository.refreshProfile()
+                _uiEvents.emit("Friend removed")
+            } catch (e: Exception) {
+                e.printStackTrace()
+                _uiEvents.emit(e.message ?: "Could not remove friend")
+            }
+        }
+    }
+
     fun onBlockUser(userId: String) {
         viewModelScope.launch {
             safetyRepository.blockUser(userId)

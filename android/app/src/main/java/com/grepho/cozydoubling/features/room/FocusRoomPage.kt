@@ -25,6 +25,8 @@ import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.PictureInPictureAlt
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -41,16 +43,25 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.grepho.cozydoubling.R
+import com.grepho.cozydoubling.core.room.ActiveFocusSessionSnapshot
+import kotlinx.coroutines.delay
 
 // --- THE SCREEN ENTRY POINT ---
 @Composable
 fun FocusRoomScreen(
     onNavigateToSummary: (String) -> Unit,
+    onEnterPipClick: (() -> Unit)? = null,
     viewModel: FocusRoomViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val profile by viewModel.profile.collectAsState()
     val myName = profile?.displayName ?: "You"
+
+    LaunchedEffect(Unit) {
+        viewModel.autoFinishEvents.collect { finishedSessionId ->
+            onNavigateToSummary(finishedSessionId)
+        }
+    }
 
     val handleExit = {
         println("DEBUG: FocusRoomScreen - User requested exit")
@@ -91,8 +102,82 @@ fun FocusRoomScreen(
         },
         onBlockUser = { viewModel.onBlockUser(it) },
         onReportUser = { id, reason -> viewModel.onReportUser(id, reason) },
+        onEnterPipClick = onEnterPipClick,
         onExitClick = handleExit
     )
+}
+
+@Composable
+fun rememberElapsedTimeLabel(startTimeEpochMs: Long): String {
+    var elapsedSeconds by remember(startTimeEpochMs) {
+        mutableStateOf(maxOf(0L, (System.currentTimeMillis() - startTimeEpochMs) / 1000L))
+    }
+    LaunchedEffect(startTimeEpochMs) {
+        while (true) {
+            elapsedSeconds = maxOf(0L, (System.currentTimeMillis() - startTimeEpochMs) / 1000L)
+            delay(1000L)
+        }
+    }
+    val hours = elapsedSeconds / 3600
+    val minutes = (elapsedSeconds % 3600) / 60
+    val seconds = elapsedSeconds % 60
+    return if (hours > 0) {
+        String.format("%d:%02d:%02d", hours, minutes, seconds)
+    } else {
+        String.format("%02d:%02d", minutes, seconds)
+    }
+}
+
+@Composable
+fun FocusPipOverlay(snapshot: ActiveFocusSessionSnapshot) {
+    val elapsedLabel = rememberElapsedTimeLabel(snapshot.startTimeEpochMs)
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.surface
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(12.dp),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = elapsedLabel,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                ) {
+                    Text(
+                        text = stringResource(R.string.room_focusing_now, snapshot.participantCount),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+            }
+            Text(
+                text = snapshot.activeTaskText.ifBlank { stringResource(R.string.room_cozy_room) },
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = stringResource(R.string.room_tasks_done, snapshot.completedTasks, snapshot.totalTasks),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
 }
 
 // --- THE UI COMPONENT ---
@@ -109,8 +194,11 @@ fun FocusRoomPage(
     onAddTask: () -> Unit,
     onBlockUser: (String) -> Unit,
     onReportUser: (String, String) -> Unit,
+    onEnterPipClick: (() -> Unit)? = null,
     onExitClick: () -> Unit
 ) {
+    val elapsedLabel = rememberElapsedTimeLabel(uiState.sessionStartEpochMs)
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -118,6 +206,17 @@ fun FocusRoomPage(
                 navigationIcon = {
                     IconButton(onClick = onExitClick) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.room_leave_label), tint = MaterialTheme.colorScheme.primary)
+                    }
+                },
+                actions = {
+                    if (onEnterPipClick != null) {
+                        IconButton(onClick = onEnterPipClick) {
+                            Icon(
+                                imageVector = Icons.Default.PictureInPictureAlt,
+                                contentDescription = stringResource(R.string.room_enter_pip_label),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
@@ -148,21 +247,48 @@ fun FocusRoomPage(
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.primary
             )
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Default.Groups,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = stringResource(R.string.room_focusing_now, allParticipants.size),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                
-
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Groups,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = stringResource(R.string.room_focusing_now, allParticipants.size),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Schedule,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = elapsedLabel,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(24.dp))

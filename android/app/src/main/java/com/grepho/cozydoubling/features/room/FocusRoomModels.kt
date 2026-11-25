@@ -47,5 +47,6 @@ data class FocusSession(
 data class FocusRoomUiState(
     val tasks: List<FocusTask> = emptyList(),
     val activeTaskId: String? = null,
-    val otherParticipants: List<RoomParticipant> = emptyList()
+    val otherParticipants: List<RoomParticipant> = emptyList(),
+    val sessionStartEpochMs: Long = System.currentTimeMillis()
 )

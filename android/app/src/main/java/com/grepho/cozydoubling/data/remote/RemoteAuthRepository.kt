@@ -2,23 +2,76 @@ package com.grepho.cozydoubling.data.remote
 
 import com.grepho.cozydoubling.core.auth.AuthRepository
 import com.grepho.cozydoubling.core.auth.AuthStatus
+import com.grepho.cozydoubling.data.local.InMemoryTokenStore
+import com.grepho.cozydoubling.data.local.TokenStore
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
 
 class RemoteAuthRepository(
-    private val apiClient: ApiClient
+    private val apiClient: ApiClient,
+    private val tokenStore: TokenStore = InMemoryTokenStore(),
+    private val onTransientRestoreFailure: () -> Unit = {}
 ) : AuthRepository {
 
-    private val _authStatus = MutableStateFlow<AuthStatus>(AuthStatus.NotAuthenticated)
+    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
+    private val _authStatus = MutableStateFlow<AuthStatus>(
+        if (!tokenStore.loadToken().isNullOrBlank()) AuthStatus.Initializing else AuthStatus.NotAuthenticated
+    )
     override val authStatus: StateFlow<AuthStatus> = _authStatus.asStateFlow()
 
     private var currentUserId: String? = null
 
+    init {
+        if (!tokenStore.loadToken().isNullOrBlank()) {
+            scope.launch {
+                restoreSession()
+            }
+        }
+    }
+
     // Generates a random session mock id once per repository instance so two emulators never collide on Google Sign-In
     private val mockDeviceId: String by lazy {
         java.util.UUID.randomUUID().toString().take(8)
+    }
+
+    override suspend fun restoreSession() {
+        val storedToken = tokenStore.loadToken()
+        if (storedToken.isNullOrBlank()) {
+            apiClient.authToken = null
+            currentUserId = null
+            _authStatus.value = AuthStatus.NotAuthenticated
+            return
+        }
+
+        apiClient.authToken = storedToken
+        val meResult = apiClient.get("/api/auth/me") { body ->
+            apiClient.json.decodeFromString<ProfileDto>(body).toDomain()
+        }
+        meResult.fold(
+            onSuccess = { profile ->
+                currentUserId = profile.id
+                _authStatus.value = AuthStatus.Authenticated(profile.id)
+            },
+            onFailure = { error ->
+                if (error is ApiException && (error.code == 401 || error.code == 403)) {
+                    tokenStore.clearToken()
+                    apiClient.authToken = null
+                    currentUserId = null
+                    _authStatus.value = AuthStatus.NotAuthenticated
+                } else {
+                    // Preserve token on transient offline/server errors so the user isn't logged out.
+                    _authStatus.value = AuthStatus.Initializing
+                    onTransientRestoreFailure()
+                }
+            }
+        )
     }
 
     override suspend fun signInWithEmail(email: String, pass: String): Result<Unit> {
@@ -57,6 +110,7 @@ class RemoteAuthRepository(
         return finalResult.fold(
             onSuccess = { authResp ->
                 apiClient.authToken = authResp.accessToken
+                tokenStore.saveToken(authResp.accessToken)
                 fetchAndSetUser()
             },
             onFailure = { error ->
@@ -75,6 +129,7 @@ class RemoteAuthRepository(
         return result.fold(
             onSuccess = { authResp ->
                 apiClient.authToken = authResp.accessToken
+                tokenStore.saveToken(authResp.accessToken)
                 fetchAndSetUser()
             },
             onFailure = { error ->
@@ -100,10 +155,16 @@ class RemoteAuthRepository(
     }
 
     override suspend fun signOut(): Result<Unit> {
-        apiClient.post("/api/auth/logout", null) { }
-        apiClient.authToken = null
-        currentUserId = null
-        _authStatus.value = AuthStatus.NotAuthenticated
+        try {
+            apiClient.post("/api/auth/logout", null) { }
+        } catch (_: Exception) {
+            // Ensure local credentials are cleared even when offline
+        } finally {
+            tokenStore.clearToken()
+            apiClient.authToken = null
+            currentUserId = null
+            _authStatus.value = AuthStatus.NotAuthenticated
+        }
         return Result.success(Unit)
     }
 
@@ -111,6 +172,7 @@ class RemoteAuthRepository(
 
     fun setInitialToken(token: String, userId: String) {
         apiClient.authToken = token
+        tokenStore.saveToken(token)
         currentUserId = userId
         _authStatus.value = AuthStatus.Authenticated(userId)
     }

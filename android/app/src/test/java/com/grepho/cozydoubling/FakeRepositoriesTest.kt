@@ -101,6 +101,10 @@ class FakeRepositoriesTest {
 
         assertEquals(0, friendsRepo.pendingRequests.value.size)
         assertTrue(friendsRepo.friends.value.any { it.id == pendingId })
+
+        // Remove friend (SOC-05)
+        friendsRepo.removeFriend(pendingId)
+        assertFalse(friendsRepo.friends.value.any { it.id == pendingId })
     }
 
     @Test
@@ -110,6 +114,38 @@ class FakeRepositoriesTest {
 
         safetyRepo.blockUser("annoying_user_1")
         assertTrue(safetyRepo.blockedUserIds.value.contains("annoying_user_1"))
+        assertTrue(safetyRepo.blockedUsers.value.any { it.id == "annoying_user_1" })
+
+        // Unblock user (SAFE-04)
+        safetyRepo.unblockUser("annoying_user_1")
+        assertFalse(safetyRepo.blockedUserIds.value.contains("annoying_user_1"))
+        assertFalse(safetyRepo.blockedUsers.value.any { it.id == "annoying_user_1" })
+    }
+
+    @Test
+    fun testFocusSessionController_lifecycleAndActions() = runBlocking {
+        val controller = container.focusSessionController
+        assertEquals(null, controller.loadPersistedSession())
+        assertTrue(controller.isPipEnabled.value)
+
+        val snapshot = com.grepho.cozydoubling.core.room.ActiveFocusSessionSnapshot(
+            sessionId = "sess_100",
+            startTimeEpochMs = 1_700_000_000_000L,
+            activeTaskText = "Study biology",
+            completedTasks = 1,
+            totalTasks = 3,
+            participantCount = 2
+        )
+        controller.startOrResumeSession(snapshot)
+        assertEquals("sess_100" to 1_700_000_000_000L, controller.loadPersistedSession())
+        assertEquals("Study biology", controller.activeSession.value?.activeTaskText)
+
+        controller.setPipEnabled(false)
+        assertFalse(controller.isPipEnabled.value)
+
+        controller.stopSession()
+        assertEquals(null, controller.loadPersistedSession())
+        assertEquals(null, controller.activeSession.value)
     }
 
     @Test

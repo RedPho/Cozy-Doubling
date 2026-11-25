@@ -13,6 +13,10 @@ class FakeAuthRepository(
     private val _authStatus = MutableStateFlow(initialStatus)
     override val authStatus: StateFlow<AuthStatus> = _authStatus.asStateFlow()
 
+    override suspend fun restoreSession() {
+        // Offline fake container retains its initial in-memory session state
+    }
+
     override suspend fun signInWithEmail(email: String, pass: String): Result<Unit> {
         val cleanName = email.trim().substringBefore("@").filter { it.isLetterOrDigit() }.lowercase()
         val userId = if (cleanName.isNotBlank()) "user_$cleanName" else "user_reviewer"

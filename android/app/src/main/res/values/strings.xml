@@ -52,6 +52,10 @@
     <string name="friends_report_user">Report User</string>
     <string name="friends_report_success">Report submitted. Thank you.</string>
     <string name="friends_block_user">Block User</string>
+    <string name="friends_remove_friend">Remove Friend</string>
+    <string name="friends_remove_confirm_title">Remove %1$s?</string>
+    <string name="friends_remove_confirm_message">They will be removed from your Neighbourhood. You can send a new friend request anytime later.</string>
+    <string name="action_remove">Remove</string>
     <string name="friends_no_sessions">Just joined! No sessions yet.</string>
     <string name="friends_last_focus">Last focus time: %1$s \nFocused: %2$dm \nLast Task: %3$s</string>
 
@@ -139,4 +143,24 @@
     <string name="settings_restore_none">No active purchases found to restore.</string>
     <string name="settings_danger_warning">Once you delete your account, there is no going back. Please be certain.</string>
     <string name="settings_delete_button">Delete Account</string>
+
+    <!-- Focus & Safety Settings -->
+    <string name="settings_group_focus_safety">FOCUS &amp; SAFETY</string>
+    <string name="settings_label_blocked_users">Blocked Users</string>
+    <string name="settings_blocked_count">%1$d blocked</string>
+    <string name="settings_blocked_none">None</string>
+    <string name="settings_blocked_empty">You haven\'t blocked anyone.</string>
+    <string name="action_unblock">Unblock</string>
+    <string name="settings_unblock_confirm_title">Unblock %1$s?</string>
+    <string name="settings_unblock_confirm_message">They will be able to appear in Focus Rooms and send you friend requests again.</string>
+    <string name="settings_label_pip_mode">Floating Mini-Widget (PiP)</string>
+    <string name="settings_pip_subtitle">Show compact focus pill when switching apps</string>
+
+    <!-- Background Focus Notification & PiP -->
+    <string name="notification_focus_channel_name">Active Focus Session</string>
+    <string name="notification_focus_channel_description">Keeps your live Focus Room connection and timer active while using other apps.</string>
+    <string name="notification_focus_content">%1$d focusing now • %2$d/%3$d done</string>
+    <string name="notification_action_complete_task">Complete Task</string>
+    <string name="notification_action_finish">Finish</string>
+    <string name="room_enter_pip_label">Floating Mini-Widget</string>
 </resources>

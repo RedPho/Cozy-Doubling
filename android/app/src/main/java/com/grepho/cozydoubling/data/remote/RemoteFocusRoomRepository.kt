@@ -31,6 +31,7 @@ class RemoteFocusRoomRepository(
     private var currentPresenceKey: String? = null
     private var isRoomActive = false
     private var reconnectJob: Job? = null
+    private var reconnectAttempt = 0
 
     override fun joinRoom(presenceKey: String): Flow<List<ParticipantPresence>> {
         currentPresenceKey = presenceKey
@@ -61,6 +62,7 @@ class RemoteFocusRoomRepository(
         val ws = apiClient.openWebSocket(path, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
                 activeWebSocket = webSocket
+                reconnectAttempt = 0
                 println("DEBUG: RemoteFocusRoomRepository - WebSocket CONNECTED successfully.")
                 _channelStatus.value = RoomConnectionStatus.CONNECTED
             }
@@ -134,10 +136,12 @@ class RemoteFocusRoomRepository(
     private fun scheduleReconnect() {
         if (!isRoomActive) return
         reconnectJob?.cancel()
+        val backoffMs = minOf(30_000L, 2_000L shl minOf(reconnectAttempt, 4))
+        reconnectAttempt += 1
         reconnectJob = scope.launch {
-            delay(2000)
+            delay(backoffMs)
             if (isRoomActive && _channelStatus.value != RoomConnectionStatus.CONNECTED) {
-                println("DEBUG: RemoteFocusRoomRepository - Attempting auto-reconnect...")
+                println("DEBUG: RemoteFocusRoomRepository - Attempting auto-reconnect (attempt=$reconnectAttempt)...")
                 subscribe()
             }
         }
@@ -168,6 +172,7 @@ class RemoteFocusRoomRepository(
 
     override suspend fun leaveRoom() {
         isRoomActive = false
+        reconnectAttempt = 0
         reconnectJob?.cancel()
         activeWebSocket?.close(1000, "Leaving room")
         activeWebSocket = null

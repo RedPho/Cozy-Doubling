@@ -97,6 +97,10 @@ class FakeFriendsRepository(
         _pendingRequests.update { it.filter { p -> p.id != senderId } }
     }
 
+    override suspend fun removeFriend(friendId: String) {
+        _friends.update { list -> list.filter { it.id != friendId } }
+    }
+
     override suspend fun fetchIncomingRequests(): List<Profile> {
         return pendingRequests.value
     }

@@ -10,3 +10,9 @@ class ReportUserRequest(BaseModel):
 
 class BlockedUsersResponse(BaseModel):
     blocked_user_ids: List[str]
+
+
+class BlockedProfileResponse(BaseModel):
+    id: str
+    display_name: str
+    player_tag: str

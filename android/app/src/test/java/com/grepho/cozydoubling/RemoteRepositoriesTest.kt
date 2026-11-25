@@ -4,6 +4,7 @@ import androidx.compose.ui.graphics.Color
 import com.grepho.cozydoubling.core.auth.AuthStatus
 import com.grepho.cozydoubling.core.di.ServiceLocator
 import com.grepho.cozydoubling.data.fake.FakeAppContainer
+import com.grepho.cozydoubling.data.local.InMemoryTokenStore
 import com.grepho.cozydoubling.data.remote.*
 import com.grepho.cozydoubling.features.room.FocusSession
 import com.grepho.cozydoubling.features.room.ParticipantPresence
@@ -151,6 +152,9 @@ class RemoteRepositoriesTest {
 
     @Test
     fun testMockedRemoteRepositoriesWorkflow() = runBlocking {
+        val mockBlockedIds = mutableSetOf("blocked_bad_user")
+        val mockFriendIds = mutableSetOf("friend_99")
+
         // Intercept HTTP calls to verify client-backend interaction end-to-end
         val interceptor = Interceptor { chain ->
             val request = chain.request()
@@ -225,21 +229,54 @@ class RemoteRepositoriesTest {
                         "duration_minutes": 25
                     }
                 """.trimIndent()
-                url.endsWith("/api/safety/blocks") -> """{"blocked_user_ids":["blocked_bad_user"]}"""
-                url.endsWith("/api/safety/block") -> """{"ok":true}"""
-                url.endsWith("/api/friends") -> """
-                    [
-                        {
-                            "friend_id": "friend_99",
-                            "display_name": "Buddy",
-                            "player_tag": "BUDD9999",
-                            "duration_minutes": 30,
-                            "end_time": "2026-11-20T11:00:00",
-                            "last_task_text": "Writing docs",
-                            "accepted_at": "2026-11-01T00:00:00"
-                        }
-                    ]
-                """.trimIndent()
+                url.endsWith("/api/safety/blocks") -> {
+                    val idsJson = mockBlockedIds.joinToString(",") { "\"$it\"" }
+                    """{"blocked_user_ids":[$idsJson]}"""
+                }
+                url.endsWith("/api/safety/blocked-profiles") -> {
+                    val profilesJson = mockBlockedIds.joinToString(",") { id ->
+                        """{"id":"$id","display_name":"Bad User","player_tag":"BADD9999"}"""
+                    }
+                    "[$profilesJson]"
+                }
+                url.endsWith("/api/safety/block") -> {
+                    val buf = okio.Buffer()
+                    request.body?.writeTo(buf)
+                    val reqDto = ApiClient().json.decodeFromString<BlockUserRequestDto>(buf.readUtf8())
+                    mockBlockedIds.add(reqDto.targetId)
+                    """{"ok":true}"""
+                }
+                url.endsWith("/api/safety/unblock") -> {
+                    val buf = okio.Buffer()
+                    request.body?.writeTo(buf)
+                    val reqDto = ApiClient().json.decodeFromString<BlockUserRequestDto>(buf.readUtf8())
+                    mockBlockedIds.remove(reqDto.targetId)
+                    """{"ok":true}"""
+                }
+                method == "DELETE" && url.startsWith("/api/friends/") -> {
+                    val fid = url.removePrefix("/api/friends/")
+                    mockFriendIds.remove(fid)
+                    """{"ok":true}"""
+                }
+                url.endsWith("/api/friends") -> {
+                    if (mockFriendIds.contains("friend_99")) {
+                        """
+                        [
+                            {
+                                "friend_id": "friend_99",
+                                "display_name": "Buddy",
+                                "player_tag": "BUDD9999",
+                                "duration_minutes": 30,
+                                "end_time": "2026-11-20T11:00:00",
+                                "last_task_text": "Writing docs",
+                                "accepted_at": "2026-11-01T00:00:00"
+                            }
+                        ]
+                        """.trimIndent()
+                    } else {
+                        "[]"
+                    }
+                }
                 url.endsWith("/api/friends/requests") -> """
                     [
                         {
@@ -293,19 +330,99 @@ class RemoteRepositoriesTest {
         assertNotNull(peach)
         assertEquals(100, peach?.leafPrice)
 
-        // Test Friends Repo
+        // Test Friends Repo (including removeFriend SOC-05)
         val friendsRepo = RemoteFriendsRepository(apiClient, profileRepo)
         val friends = friendsRepo.fetchFriendsWithStories()
         assertEquals(1, friends.size)
         assertEquals("Buddy", friends[0].name)
+        friendsRepo.removeFriend("friend_99")
+        assertTrue(friendsRepo.friends.value.isEmpty())
         val reqs = friendsRepo.fetchIncomingRequests()
         assertEquals(1, reqs.size)
         assertEquals("Requester", reqs[0].displayName)
 
-        // Test Safety Repo
+        // Test Safety Repo (including blockedProfiles & unblockUser SAFE-04)
         val safetyRepo = RemoteSafetyRepository(apiClient, authRepo)
         safetyRepo.blockUser("bad_guy_123")
         assertTrue(safetyRepo.blockedUserIds.value.contains("bad_guy_123"))
+        safetyRepo.refreshBlockedUsers()
+        assertTrue(safetyRepo.blockedUsers.value.any { it.id == "bad_guy_123" })
+        safetyRepo.unblockUser("bad_guy_123")
+        assertFalse(safetyRepo.blockedUserIds.value.contains("bad_guy_123"))
+        assertFalse(safetyRepo.blockedUsers.value.any { it.id == "bad_guy_123" })
+    }
+
+    @Test
+    fun testRemoteAuthRepository_persistentTokenRestoreAndFailureModes() = runBlocking {
+        // 1. Valid stored token restores Authenticated state on init
+        val validClient = ApiClient(
+            baseUrl = "http://mockserver:8000",
+            customOkHttpClient = OkHttpClient.Builder().addInterceptor { chain ->
+                val req = chain.request()
+                val authHeader = req.header("Authorization")
+                assertEquals("Bearer persisted_jwt_token", authHeader)
+                Response.Builder()
+                    .request(req)
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(200)
+                    .message("OK")
+                    .body(
+                        """{"id":"u_restored","display_name":"Restored","player_tag":"REST1234"}"""
+                            .toResponseBody("application/json".toMediaType())
+                    )
+                    .build()
+            }.build()
+        )
+        val validStore = InMemoryTokenStore("persisted_jwt_token")
+        val validRepo = RemoteAuthRepository(validClient, validStore)
+        validRepo.restoreSession()
+        assertEquals(AuthStatus.Authenticated("u_restored"), validRepo.authStatus.value)
+        assertEquals("persisted_jwt_token", validClient.authToken)
+
+        // 2. 401 Unauthorized clears TokenStore and transitions to NotAuthenticated
+        val expiredClient = ApiClient(
+            baseUrl = "http://mockserver:8000",
+            customOkHttpClient = OkHttpClient.Builder().addInterceptor { chain ->
+                Response.Builder()
+                    .request(chain.request())
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(401)
+                    .message("Unauthorized")
+                    .body("""{"detail":"Token expired"}""".toResponseBody("application/json".toMediaType()))
+                    .build()
+            }.build()
+        )
+        val expiredStore = InMemoryTokenStore("expired_jwt_token")
+        val expiredRepo = RemoteAuthRepository(expiredClient, expiredStore)
+        expiredRepo.restoreSession()
+        assertEquals(AuthStatus.NotAuthenticated, expiredRepo.authStatus.value)
+        assertNull(expiredStore.loadToken())
+        assertNull(expiredClient.authToken)
+
+        // 3. Transient network error keeps token persisted & notifies transient failure
+        var transientCallbackInvoked = false
+        val offlineClient = ApiClient(
+            baseUrl = "http://mockserver:8000",
+            customOkHttpClient = OkHttpClient.Builder().addInterceptor {
+                throw java.io.IOException("Network unreachable")
+            }.build()
+        )
+        val offlineStore = InMemoryTokenStore("offline_valid_token")
+        val offlineRepo = RemoteAuthRepository(
+            apiClient = offlineClient,
+            tokenStore = offlineStore,
+            onTransientRestoreFailure = { transientCallbackInvoked = true }
+        )
+        offlineRepo.restoreSession()
+        assertEquals(AuthStatus.Initializing, offlineRepo.authStatus.value)
+        assertEquals("offline_valid_token", offlineStore.loadToken())
+        assertTrue(transientCallbackInvoked)
+
+        // 4. Sign out while offline still clears TokenStore and logs out locally
+        offlineRepo.signOut()
+        assertEquals(AuthStatus.NotAuthenticated, offlineRepo.authStatus.value)
+        assertNull(offlineStore.loadToken())
+        assertNull(offlineClient.authToken)
     }
 
     @Test

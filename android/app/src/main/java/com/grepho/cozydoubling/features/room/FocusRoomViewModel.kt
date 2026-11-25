@@ -5,6 +5,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.grepho.cozydoubling.core.di.ServiceLocator
 import com.grepho.cozydoubling.core.profile.ProfileRepository
+import com.grepho.cozydoubling.core.room.ActiveFocusSessionSnapshot
+import com.grepho.cozydoubling.core.room.FocusNotificationAction
+import com.grepho.cozydoubling.core.room.FocusSessionLifecycleController
 import com.grepho.cozydoubling.core.safety.SafetyRepository
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
@@ -19,7 +22,8 @@ class FocusRoomViewModel(
     private val roomRepository: FocusRoomRepository,
     private val profileRepository: ProfileRepository,
     private val safetyRepository: SafetyRepository,
-    private val authRepository: com.grepho.cozydoubling.core.auth.AuthRepository = ServiceLocator.authRepository
+    private val authRepository: com.grepho.cozydoubling.core.auth.AuthRepository = ServiceLocator.authRepository,
+    private val sessionController: FocusSessionLifecycleController = ServiceLocator.focusSessionController
 ) : ViewModel() {
 
     constructor(savedStateHandle: SavedStateHandle) : this(
@@ -27,15 +31,23 @@ class FocusRoomViewModel(
         roomRepository = ServiceLocator.focusRoomRepository,
         profileRepository = ServiceLocator.profileRepository,
         safetyRepository = ServiceLocator.safetyRepository,
-        authRepository = ServiceLocator.authRepository
+        authRepository = ServiceLocator.authRepository,
+        sessionController = ServiceLocator.focusSessionController
     )
 
     val profile: StateFlow<com.grepho.cozydoubling.core.profile.Profile?> = profileRepository.profile
 
-    private val _uiState = MutableStateFlow(restoreUiState())
+    private val persistedSession = sessionController.loadPersistedSession()
+    private var currentSessionId: String? = savedStateHandle["session_id"] ?: persistedSession?.first
+    private var sessionStartEpochMs: Long =
+        savedStateHandle["session_start_ms"] ?: persistedSession?.second ?: System.currentTimeMillis()
+    private var isFinishing = false
+
+    private val _uiState = MutableStateFlow(restoreUiState().copy(sessionStartEpochMs = sessionStartEpochMs))
     val uiState: StateFlow<FocusRoomUiState> = _uiState.asStateFlow()
 
-    private var currentSessionId: String? = savedStateHandle["session_id"]
+    private val _autoFinishEvents = MutableSharedFlow<String>(extraBufferCapacity = 1)
+    val autoFinishEvents: SharedFlow<String> = _autoFinishEvents.asSharedFlow()
 
     // Throttling state for Presence (track)
     private var lastPresenceSyncTime = 0L
@@ -51,7 +63,7 @@ class FocusRoomViewModel(
             try {
                 println("DEBUG: FocusRoomViewModel - [1/4] Starting room setup sequence")
                 
-                // 1. Start session in DB or RESTORE existing one
+                // 1. Start session in DB or RESTORE existing one (handles config changes & process death)
                 val sessionId = if (currentSessionId == null) {
                     val newId = try {
                         roomRepository.startSession()
@@ -61,12 +73,18 @@ class FocusRoomViewModel(
                     } ?: java.util.UUID.randomUUID().toString()
                     println("DEBUG: FocusRoomViewModel - Using Session ID: $newId")
                     currentSessionId = newId
-                    savedStateHandle["session_id"] = newId
+                    sessionStartEpochMs = System.currentTimeMillis()
                     newId
                 } else {
                     println("DEBUG: FocusRoomViewModel - RESTORED Session ID: $currentSessionId")
                     currentSessionId!!
                 }
+                savedStateHandle["session_id"] = sessionId
+                savedStateHandle["session_start_ms"] = sessionStartEpochMs
+                _uiState.update { it.copy(sessionStartEpochMs = sessionStartEpochMs) }
+
+                // Start foreground service + persistent notification
+                sessionController.startOrResumeSession(buildSessionSnapshot())
 
                 // 2. Prepare flows (DO NOT subscribe yet)
                 val currentProfile = profileRepository.profile.value 
@@ -75,7 +93,28 @@ class FocusRoomViewModel(
                 val uniquePresenceId = "$myUserId:$sessionId"
                 val presenceFlow = roomRepository.joinRoom(uniquePresenceId)
 
-                // 3. START LISTENING (Parallel coroutine)
+                // 3. Collect notification actions from persistent notification
+                launch {
+                    sessionController.notificationActions.collect { action ->
+                        when (action) {
+                            FocusNotificationAction.COMPLETE_ACTIVE_TASK -> {
+                                val state = _uiState.value
+                                val target = state.tasks.find { it.id == state.activeTaskId && !it.isCompleted }
+                                    ?: state.tasks.firstOrNull { !it.isCompleted }
+                                if (target != null) {
+                                    onTaskToggleStatus(target.id)
+                                }
+                            }
+                            FocusNotificationAction.FINISH_SESSION -> {
+                                finishWork { finishedId ->
+                                    _autoFinishEvents.tryEmit(finishedId)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 4. START LISTENING (Parallel coroutine)
                 // This ensures we are listening BEFORE the subscription starts.
                 launch {
                     println("DEBUG: FocusRoomViewModel - [3/4] Listener coroutine active. My ID: $uniquePresenceId")
@@ -106,6 +145,7 @@ class FocusRoomViewModel(
                             _uiState.update { state ->
                                 state.copy(otherParticipants = uniqueParticipants)
                             }
+                            publishSessionSnapshot()
                         }
                 }
 
@@ -193,7 +233,25 @@ class FocusRoomViewModel(
         }
     }
 
+    private fun buildSessionSnapshot(state: FocusRoomUiState = _uiState.value): ActiveFocusSessionSnapshot {
+        val activeTaskText = state.tasks.find { it.id == state.activeTaskId }?.text ?: "Focusing in Cozy Room"
+        return ActiveFocusSessionSnapshot(
+            sessionId = currentSessionId ?: "",
+            startTimeEpochMs = sessionStartEpochMs,
+            activeTaskText = activeTaskText,
+            completedTasks = state.tasks.count { it.isCompleted },
+            totalTasks = state.tasks.size,
+            participantCount = state.otherParticipants.size + 1
+        )
+    }
+
+    private fun publishSessionSnapshot() {
+        if (isFinishing || currentSessionId.isNullOrBlank()) return
+        sessionController.updateSession(buildSessionSnapshot())
+    }
+
     private fun triggerSync() {
+        publishSessionSnapshot()
         viewModelScope.launch {
             syncWithOthers()
         }
@@ -300,10 +358,14 @@ class FocusRoomViewModel(
     }
 
     fun finishWork(onComplete: (String) -> Unit) {
+        if (isFinishing) return
+        isFinishing = true
         println("DEBUG: FocusRoomViewModel - Starting global cleanup (finishWork)...")
         val sessionId = currentSessionId ?: java.util.UUID.randomUUID().toString()
         val state = _uiState.value
         val lastTask = state.tasks.find { it.id == state.activeTaskId }?.text ?: "Focusing"
+
+        sessionController.stopSession()
 
         viewModelScope.launch {
             try {
@@ -329,6 +391,9 @@ class FocusRoomViewModel(
 
     override fun onCleared() {
         super.onCleared()
+        if (!isFinishing) {
+            sessionController.stopSession()
+        }
         // ViewModel is being destroyed. We use a non-cancelled scope to ensure cleanup completes.
         CoroutineScope(Dispatchers.IO).launch {
             try {

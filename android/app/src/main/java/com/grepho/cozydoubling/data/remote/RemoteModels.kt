@@ -2,6 +2,7 @@ package com.grepho.cozydoubling.data.remote
 
 import androidx.compose.ui.graphics.Color
 import com.grepho.cozydoubling.core.profile.Profile
+import com.grepho.cozydoubling.core.safety.BlockedUser
 import com.grepho.cozydoubling.core.theming.ThemePalette
 import com.grepho.cozydoubling.features.room.FocusSession
 import com.grepho.cozydoubling.features.room.ParticipantPresence
@@ -242,6 +243,19 @@ data class ReportUserRequestDto(
 data class BlockedUsersDto(
     @SerialName("blocked_user_ids") val blockedUserIds: List<String>
 )
+
+@Serializable
+data class BlockedProfileDto(
+    val id: String,
+    @SerialName("display_name") val displayName: String,
+    @SerialName("player_tag") val playerTag: String
+) {
+    fun toDomain(): BlockedUser = BlockedUser(
+        id = id,
+        displayName = displayName,
+        playerTag = playerTag
+    )
+}
 
 @Serializable
 data class SyncSubscriptionRequestDto(

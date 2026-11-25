@@ -167,4 +167,33 @@ class FocusRoomManager:
                         except Exception:
                             pass
 
+    async def handle_user_unblocked(self, user_a: str, user_b: str):
+        """Immediately restores live room presence between two users when no block remains."""
+        entries_a = []
+        entries_b = []
+        for entry in list(self.active_participants.values()):
+            if entry.user_id == user_a:
+                entry.blocked_ids.discard(user_b)
+                entries_a.append(entry)
+            elif entry.user_id == user_b:
+                entry.blocked_ids.discard(user_a)
+                entries_b.append(entry)
+
+        for entry_a in entries_a:
+            for entry_b in entries_b:
+                try:
+                    await entry_a.websocket.send_text(json.dumps({
+                        "type": "presence_update",
+                        "presence": entry_b.presence_data
+                    }))
+                except Exception:
+                    pass
+                try:
+                    await entry_b.websocket.send_text(json.dumps({
+                        "type": "presence_update",
+                        "presence": entry_a.presence_data
+                    }))
+                except Exception:
+                    pass
+
 focus_room_manager = FocusRoomManager()

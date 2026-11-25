@@ -108,10 +108,17 @@ reset_db()
 test_shop_items_listing_and_leaf_purchase(client)
 print("[PASS] test_shop_items_listing_and_leaf_purchase", flush=True)
 
-from tests.test_safety import test_blocking_and_reporting_flow
+from tests.test_safety import (
+    test_blocking_and_reporting_flow,
+    test_blocked_profiles_privacy_and_mutual_unblock,
+)
 reset_db()
 test_blocking_and_reporting_flow(client)
 print("[PASS] test_blocking_and_reporting_flow", flush=True)
+
+reset_db()
+test_blocked_profiles_privacy_and_mutual_unblock(client)
+print("[PASS] test_blocked_profiles_privacy_and_mutual_unblock", flush=True)
 
 from tests.test_subscriptions import test_revenuecat_webhook_and_auto_revert
 reset_db()
@@ -177,4 +184,4 @@ reset_db()
 test_live_uvicorn_many_websockets_do_not_exhaust_db_pool(client)
 print("[PASS] test_live_uvicorn_many_websockets_do_not_exhaust_db_pool", flush=True)
 
-print("=== ALL 25 BACKEND TESTS PASSED SUCCESSFULLY! ===", flush=True)
+print("=== ALL 26 BACKEND TESTS PASSED SUCCESSFULLY! ===", flush=True)

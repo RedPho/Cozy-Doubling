@@ -200,6 +200,18 @@ def test_realtime_block_separates_room_participants(client: TestClient):
             assert leave_for_b["type"] == "presence_leave"
             assert leave_for_b["presence_id"] == f"{user_a_id}:sA"
 
+            # User A unblocks User B -> both immediately receive presence_update for each other
+            client.post("/api/safety/unblock", json={"target_id": user_b_id}, headers={"Authorization": f"Bearer {token_a}"})
+            time.sleep(0.05)
+
+            restore_for_a = json.loads(ws_a.receive_text())
+            assert restore_for_a["type"] == "presence_update"
+            assert restore_for_a["presence"]["id"] == f"{user_b_id}:sB"
+
+            restore_for_b = json.loads(ws_b.receive_text())
+            assert restore_for_b["type"] == "presence_update"
+            assert restore_for_b["presence"]["id"] == f"{user_a_id}:sA"
+
 def test_reconnect_replaces_old_socket_cleanly(client: TestClient):
     """
     If a client reconnects with the same presence_key, the new socket replaces
