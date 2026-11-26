@@ -16,5 +16,7 @@ class CozyDoublingApplication : Application() {
         super.onCreate()
         ServiceLocator.init(this)
         LocalTaskDataSource.init(this)
+        // Configures RevenueCat and links it to the signed-in user (1.1.0 did this in MainActivity).
+        ServiceLocator.billingRepository
     }
 }

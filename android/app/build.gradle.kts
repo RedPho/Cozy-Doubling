@@ -16,6 +16,10 @@ val localProps: Properties = Properties().apply {
 val googleWebClientId: String = (project.findProperty("googleWebClientId") as String?)
     ?: localProps.getProperty("GOOGLE_WEB_CLIENT_ID", "")
 
+// Public RevenueCat SDK key (goog_...). Empty = no real purchases (debug simulates them).
+val revenueCatApiKey: String = (project.findProperty("revenueCatApiKey") as String?)
+    ?: localProps.getProperty("REVENUECAT_APIKEY", "")
+
 // Production API for release builds. Android Studio's "Generate Signed App Bundle" wizard cannot
 // pass -P flags, so the release machine sets RELEASE_API_BASE_URL in local.properties.
 val releaseApiBaseUrl: String = (project.findProperty("releaseApiBaseUrl") as String?)
@@ -31,6 +35,7 @@ tasks.configureEach {
         // Plain local copies: the configuration cache cannot serialize build-script references.
         val apiUrl = releaseApiBaseUrl
         val webClientId = googleWebClientId
+        val rcKey = revenueCatApiKey
         doFirst {
             check(apiUrl.startsWith("https://")) {
                 "Release builds need RELEASE_API_BASE_URL=https://... in local.properties " +
@@ -38,6 +43,9 @@ tasks.configureEach {
             }
             check(webClientId.isNotBlank()) {
                 "Release builds need GOOGLE_WEB_CLIENT_ID (OAuth web client ID) in local.properties or -PgoogleWebClientId=..."
+            }
+            check(rcKey.isNotBlank()) {
+                "Release builds need REVENUECAT_APIKEY (public goog_ SDK key) in local.properties or -PrevenueCatApiKey=..."
             }
         }
     }
@@ -62,6 +70,7 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$googleWebClientId\"")
+        buildConfigField("String", "REVENUECAT_APIKEY", "\"$revenueCatApiKey\"")
     }
 
     buildTypes {
@@ -133,6 +142,9 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.okhttp)
 
+    // Google Play purchases through RevenueCat
+    implementation(libs.revenuecat.purchases)
+
     // Google Sign-In through Credential Manager
     implementation(libs.androidx.credentials)
     implementation(libs.androidx.credentials.play.services.auth)
@@ -151,4 +163,5 @@ secrets {
     // Generated explicitly above (the plugin emits invalid Java for empty values).
     ignoreList.add("GOOGLE_WEB_CLIENT_ID")
     ignoreList.add("RELEASE_API_BASE_URL")
+    ignoreList.add("REVENUECAT_APIKEY")
 }
