@@ -1,5 +1,8 @@
 from starlette.testclient import TestClient
+from app.config import settings
 from tests.conftest import create_user_helper
+
+WEBHOOK_HEADERS = {"Authorization": f"Bearer {settings.REVENUECAT_WEBHOOK_AUTH}"}
 
 def test_revenuecat_webhook_and_auto_revert(client: TestClient):
     user = create_user_helper(client, "supporter_user@cozy.com")
@@ -13,7 +16,7 @@ def test_revenuecat_webhook_and_auto_revert(client: TestClient):
     assert fail_equip.status_code == 400
 
     # 1. RevenueCat Webhook: INITIAL_PURCHASE
-    wh_resp = client.post("/api/subscriptions/webhook", json={
+    wh_resp = client.post("/api/subscriptions/webhook", headers=WEBHOOK_HEADERS, json={
         "event": {
             "type": "INITIAL_PURCHASE",
             "app_user_id": user_id
@@ -32,7 +35,7 @@ def test_revenuecat_webhook_and_auto_revert(client: TestClient):
     assert prof_theme.json()["equipped_theme_id"] == "theme_midnight_velvet"
 
     # 3. RevenueCat Webhook: EXPIRATION
-    exp_resp = client.post("/api/subscriptions/webhook", json={
+    exp_resp = client.post("/api/subscriptions/webhook", headers=WEBHOOK_HEADERS, json={
         "event": {
             "type": "EXPIRATION",
             "app_user_id": user_id

@@ -1,12 +1,12 @@
 from typing import Optional
 import datetime
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 class StartSessionResponse(BaseModel):
     session_id: str
 
 class FinishSessionRequest(BaseModel):
-    tasks_completed: int
+    tasks_completed: int = Field(..., ge=0, le=1000)
     last_task_text: str = ""
     end_reason: Optional[str] = None
 
