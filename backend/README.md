@@ -87,7 +87,8 @@ pytest backend/tests -v -c backend/pytest.ini
 | `GOOGLE_CLIENT_IDS` | *(empty)* | Comma-separated Google OAuth **web** client ID(s) whose ID tokens are accepted. Required in production |
 | `REVENUECAT_WEBHOOK_AUTH` | development value | Authorization header value configured on the RevenueCat webhook. Required in production |
 | `REVENUECAT_API_KEY` | *(empty)* | RevenueCat secret REST key (`sk_...`). When set, "Restore Purchases" verifies entitlements server-side |
-| `FIREBASE_CREDENTIALS_FILE` | *(empty)* | Path to a Firebase service-account JSON. When unset, friend push notifications are only logged |
+| `FIREBASE_CREDENTIALS_FILE` | *(empty)* | Path to a Firebase service-account JSON. When neither this nor `FIREBASE_CREDENTIALS_JSON` is set, friend push notifications are only logged |
+| `FIREBASE_CREDENTIALS_JSON` | *(empty)* | The service-account JSON itself, for hosts without file uploads. Wins over `FIREBASE_CREDENTIALS_FILE` |
 | `ROOM_CAPACITY_LIMIT` | `50` | Maximum participants in global focus room |
 | `MAX_REWARDED_TASKS_PER_SESSION` | `20` | Completed tasks that earn leaves in one session (anti leaf-farming) |
 
@@ -95,6 +96,29 @@ pytest backend/tests -v -c backend/pytest.ini
 - Set `ENVIRONMENT=production` plus every variable marked *required* above — the server will not start otherwise.
 - Serve the API only over HTTPS/WSS (TLS-terminating proxy in front of Uvicorn).
 - Run a **single** Uvicorn worker: room presence, safety sockets and the login throttle are in-memory. Scaling out needs a shared store (e.g. Redis pub/sub).
+
+### Deploying (any container host)
+`backend/Dockerfile` runs the API with Python 3.12 and **one** Uvicorn worker on `$PORT` (default 8000). Any host that builds a Dockerfile works:
+
+1. Create a **PostgreSQL** database on the host (or any managed PostgreSQL).
+2. Create a service from this repository with **root directory `backend`**; the host finds the `Dockerfile`. Keep it at **one instance/replica**.
+3. Set the variables:
+
+   | Variable | Value |
+   |---|---|
+   | `ENVIRONMENT` | `production` |
+   | `DATABASE_URL` | the PostgreSQL connection URL (`postgres://…` is fine) |
+   | `SECRET_KEY` | random, ≥ 32 chars |
+   | `GOOGLE_CLIENT_IDS` | the Google OAuth web client ID |
+   | `REVENUECAT_API_KEY` | RevenueCat secret key `sk_…` |
+   | `REVENUECAT_WEBHOOK_AUTH` | random; also set as the RevenueCat webhook's Authorization header |
+   | `FIREBASE_CREDENTIALS_JSON` | the whole Firebase service-account JSON |
+
+4. Give the service a public **HTTPS** domain and check `https://<domain>/health`. That `https://<domain>` is the app's `RELEASE_API_BASE_URL`.
+
+Tables and the shop catalog are created on first start. Run the 1.1.0 import below once the service is up.
+
+Local check: `docker build -t cozy-api backend` then `docker run -p 8000:8000 cozy-api`.
 
 ### Migrating 1.1.0 (Supabase) accounts — `[AUTH-12]`
 `scripts/import_supabase.py` copies the 1.1.0 data from the Supabase database straight into `DATABASE_URL`. It keeps user IDs, which keeps RevenueCat app user IDs and friend links valid. It also keeps:
