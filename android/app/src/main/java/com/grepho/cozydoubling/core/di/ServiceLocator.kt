@@ -29,7 +29,8 @@ object ServiceLocator {
         container = DefaultAppContainer(
             baseUrl = baseUrl,
             tokenStore = EncryptedTokenStore(app),
-            focusSessionController = AndroidFocusSessionController(app)
+            focusSessionController = AndroidFocusSessionController(app),
+            appContext = app
         )
         isInitializedWithContext = true
     }
@@ -46,7 +47,8 @@ object ServiceLocator {
             DefaultAppContainer(
                 baseUrl = resolvedBaseUrl,
                 tokenStore = EncryptedTokenStore(ctx),
-                focusSessionController = AndroidFocusSessionController(ctx)
+                focusSessionController = AndroidFocusSessionController(ctx),
+                appContext = ctx
             )
         } else {
             isInitializedWithContext = false

@@ -12,11 +12,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.encodeToString
 
 /**
- * PLACEHOLDER billing: there is no Google Play Billing / RevenueCat integration in this client yet
- * (the 1.1.0 Play build had one). Debug builds simulate purchases against a development backend;
- * release builds expose no purchasable packages, so the Shop hides Supporter passes instead of
- * offering a purchase that cannot complete. Re-integrating RevenueCat is a release blocker
- * for Supporter subscriptions (see specs/03_play_release_readiness.md).
+ * Fallback billing used when no RevenueCat key is configured (local development, JVM tests).
+ * Real purchases go through [com.grepho.cozydoubling.data.billing.RevenueCatBillingRepository].
+ * Debug builds simulate purchases against a development backend; otherwise no packages are
+ * offered, so the Shop hides Supporter passes. Release builds cannot be packaged without the key.
  */
 class RemoteBillingRepository(
     private val apiClient: ApiClient,
