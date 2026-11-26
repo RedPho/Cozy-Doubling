@@ -13,12 +13,13 @@ import com.grepho.cozydoubling.features.room.FocusRoomRepository
 
 class FakeAppContainer : AppContainer {
     override val authRepository: AuthRepository by lazy { FakeAuthRepository() }
-    override val profileRepository: ProfileRepository by lazy { FakeProfileRepository(authRepository) }
-    override val focusRoomRepository: FocusRoomRepository by lazy { FakeFocusRoomRepository(profileRepository) }
-    override val economyRepository: EconomyRepository by lazy { FakeEconomyRepository(profileRepository) }
+    private val fakeProfileRepository: FakeProfileRepository by lazy { FakeProfileRepository(authRepository) }
+    override val profileRepository: ProfileRepository get() = fakeProfileRepository
+    override val focusRoomRepository: FocusRoomRepository by lazy { FakeFocusRoomRepository(fakeProfileRepository) }
+    override val economyRepository: EconomyRepository by lazy { FakeEconomyRepository(fakeProfileRepository) }
     override val safetyRepository: SafetyRepository by lazy { FakeSafetyRepository() }
     override val friendsRepository: FriendsRepository by lazy { FakeFriendsRepository(profileRepository, safetyRepository) }
     override val notificationRepository: NotificationRepository by lazy { FakeNotificationRepository() }
-    override val billingRepository: BillingRepository by lazy { FakeBillingRepository(profileRepository) }
+    override val billingRepository: BillingRepository by lazy { FakeBillingRepository(fakeProfileRepository) }
     override val focusSessionController: FocusSessionLifecycleController by lazy { NoOpFocusSessionLifecycleController() }
 }

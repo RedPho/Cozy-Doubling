@@ -219,6 +219,27 @@ object BackendTestHelper {
         )
     }
 
+    /** Registers an email/password account; tolerates "Email already registered". */
+    fun ensureEmailAccountViaApi(email: String, password: String) {
+        val body = buildJsonObject {
+            put("email", email.trim().lowercase())
+            put("password", password)
+        }.toString()
+        val request = Request.Builder()
+            .url("${BuildConfig.API_BASE_URL}/api/auth/register")
+            .post(body.toRequestBody(jsonMediaType))
+            .build()
+        httpClient.newCall(request).execute().use { response ->
+            val raw = response.body?.string().orEmpty()
+            check(response.isSuccessful || raw.contains("already registered", ignoreCase = true)) {
+                "Backend registration for $email failed (${response.code}): $raw"
+            }
+        }
+    }
+
+    // Matches the backend's development default for REVENUECAT_WEBHOOK_AUTH.
+    private const val DEV_WEBHOOK_AUTH = "cozy_rc_secret_key"
+
     fun triggerSupporterExpirationWebhook(userId: String) {
         val payload = buildJsonObject {
             put(
@@ -232,6 +253,7 @@ object BackendTestHelper {
         executeJson(
             Request.Builder()
                 .url("${BuildConfig.API_BASE_URL}/api/subscriptions/webhook")
+                .addHeader("Authorization", "Bearer $DEV_WEBHOOK_AUTH")
                 .post(payload.toRequestBody(jsonMediaType))
                 .build()
         )
@@ -270,12 +292,35 @@ fun ComposeTestRule.waitUntilNodeDoesNotExist(
     }
 }
 
+/** Visible on the Login screen; used to detect that the user is signed out. */
+const val LOGIN_SCREEN_MARKER = "Continue with email"
+
+/**
+ * Signs in through the email dialog. The app no longer auto-registers unknown emails, so the
+ * account is first created through the backend API (a no-op if it already exists).
+ */
 fun ComposeTestRule.signInWithEmailUi(email: String, password: String) {
-    waitUntilNodeExists(hasText("Reviewer Access"))
-    onNodeWithText("Reviewer Access").performClick()
+    BackendTestHelper.ensureEmailAccountViaApi(email, password)
+    waitUntilNodeExists(hasText(LOGIN_SCREEN_MARKER))
+    onNodeWithText(LOGIN_SCREEN_MARKER).performClick()
     waitUntilNodeExists(hasTestTag("login_email_input"))
     onNodeWithTag("login_email_input").performTextInput(email)
     onNodeWithTag("login_password_input").performTextInput(password)
+    onNodeWithTag("login_submit_button").performClick()
+    waitUntilNodeExists(hasText("Start Focus"))
+}
+
+/** Creates a new account through the in-app registration form ([AUTH-08]). */
+fun ComposeTestRule.registerWithEmailUi(email: String, password: String, displayName: String = "") {
+    waitUntilNodeExists(hasText(LOGIN_SCREEN_MARKER))
+    onNodeWithText(LOGIN_SCREEN_MARKER).performClick()
+    waitUntilNodeExists(hasTestTag("login_mode_toggle"))
+    onNodeWithTag("login_mode_toggle").performClick()
+    waitUntilNodeExists(hasTestTag("register_confirm_password_input"))
+    onNodeWithTag("login_email_input").performTextInput(email)
+    if (displayName.isNotEmpty()) onNodeWithTag("register_display_name_input").performTextInput(displayName)
+    onNodeWithTag("login_password_input").performTextInput(password)
+    onNodeWithTag("register_confirm_password_input").performTextInput(password)
     onNodeWithTag("login_submit_button").performClick()
     waitUntilNodeExists(hasText("Start Focus"))
 }
@@ -301,7 +346,7 @@ fun ComposeTestRule.updateDisplayNameFromHome(newName: String) {
 fun ComposeTestRule.signOutFromHome() {
     openSettingsFromTopBar()
     onNodeWithText("Sign Out").performScrollTo().performClick()
-    waitUntilNodeExists(hasText("Reviewer Access"))
+    waitUntilNodeExists(hasText(LOGIN_SCREEN_MARKER))
 }
 
 fun ComposeTestRule.openOasisSubTab(subTabLabel: String) {

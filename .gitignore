@@ -103,3 +103,15 @@ venv/
 .venv/
 backend/venv/
 backend/.venv/
+
+# Release secrets and artifacts: these live only on the release (old) PC, never in git.
+# Upload keystore (*.jks / *.keystore) and local.properties are ignored above.
+*service-account*.json
+*-firebase-adminsdk-*.json
+supabase/.env*
+supabase/.temp/
+backend/.env*
+*.aab
+android/app/release/
+*.sql.gz
+supabase_dump*/

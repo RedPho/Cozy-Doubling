@@ -1,6 +1,5 @@
 package com.grepho.cozydoubling.data.fake
 
-import com.grepho.cozydoubling.core.profile.ProfileRepository
 import com.grepho.cozydoubling.features.room.FocusRoomRepository
 import com.grepho.cozydoubling.features.room.FocusSession
 import com.grepho.cozydoubling.features.room.ParticipantPresence
@@ -15,7 +14,7 @@ import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flowOf
 
 class FakeFocusRoomRepository(
-    private val profileRepository: ProfileRepository
+    private val profileRepository: FakeProfileRepository
 ) : FocusRoomRepository {
 
     private val initialParticipants = listOf(

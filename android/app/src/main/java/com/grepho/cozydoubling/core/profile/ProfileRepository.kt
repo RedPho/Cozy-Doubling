@@ -18,10 +18,13 @@ interface ProfileRepository {
     suspend fun updateDisplayName(newName: String)
     suspend fun signOut()
     suspend fun syncRestoredPurchases()
-    suspend fun deleteAccount()
+    /**
+     * Permanently deletes the account on the server, then clears the local session.
+     * On failure nothing local is cleared, so the user is never told a still-existing account is gone.
+     */
+    suspend fun deleteAccount(): Result<Unit>
 
-    suspend fun setSupporter(isSupporter: Boolean)
-    suspend fun updateLeaves(delta: Long)
-    suspend fun updateFocusMinutes(minutes: Long)
+    // Leaves, focus minutes and supporter status are server-owned ([ECON-02], [SHOP-03]); the
+    // domain interface deliberately offers no way for the client to write them.
     suspend fun setEquippedTheme(themeId: String?)
 }

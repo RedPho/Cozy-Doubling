@@ -121,7 +121,7 @@ class FakeProfileRepository(
         _syncEvents.emit(Unit)
     }
 
-    override suspend fun deleteAccount() {
+    override suspend fun deleteAccount(): Result<Unit> {
         val currentId = _profile.value?.id
         if (currentId != null) {
             userProfiles.remove(currentId)
@@ -129,9 +129,11 @@ class FakeProfileRepository(
         updateProfileState(null)
         authRepository?.signOut()
         _syncEvents.emit(Unit)
+        return Result.success(Unit)
     }
 
-    override suspend fun setSupporter(isSupporter: Boolean) {
+    // Test/offline helpers that simulate server-side effects; not part of ProfileRepository.
+    suspend fun setSupporter(isSupporter: Boolean) {
         val current = _profile.value ?: return
         val updated = current.copy(isSupporter = isSupporter)
         userProfiles[updated.id] = updated
@@ -139,7 +141,7 @@ class FakeProfileRepository(
         _syncEvents.emit(Unit)
     }
 
-    override suspend fun updateLeaves(delta: Long) {
+    suspend fun updateLeaves(delta: Long) {
         val current = _profile.value ?: return
         val updatedLeaves = maxOf(0L, current.leaves + delta)
         val updated = current.copy(leaves = updatedLeaves)
@@ -148,7 +150,7 @@ class FakeProfileRepository(
         _syncEvents.emit(Unit)
     }
 
-    override suspend fun updateFocusMinutes(minutes: Long) {
+    suspend fun updateFocusMinutes(minutes: Long) {
         val current = _profile.value ?: return
         val updated = current.copy(totalMinutesFocused = current.totalMinutesFocused + minutes)
         userProfiles[updated.id] = updated

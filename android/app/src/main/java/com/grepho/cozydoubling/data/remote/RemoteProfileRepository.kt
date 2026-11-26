@@ -82,40 +82,21 @@ class RemoteProfileRepository(
     }
 
     override suspend fun syncRestoredPurchases() {
-        val body = apiClient.json.encodeToString(SyncSubscriptionRequestDto(isSupporter = true))
-        apiClient.post("/api/subscriptions/sync", body) { }
+        // Asks the server to re-check entitlements; never asserts supporter status from the client.
+        apiClient.post("/api/subscriptions/sync", "{}") { }
         refreshProfile()
     }
 
-    override suspend fun deleteAccount() {
-        apiClient.delete("/api/auth/account") { }
+    override suspend fun deleteAccount(): Result<Unit> {
+        val result = apiClient.delete("/api/auth/account") { }
+        if (result.isFailure) {
+            return Result.failure(result.exceptionOrNull() ?: IllegalStateException("Account deletion failed"))
+        }
         authRepository.signOut()
         _profile.value = null
         _profileState.value = ProfileState.Success(null)
         _syncEvents.emit(Unit)
-    }
-
-    override suspend fun setSupporter(isSupporter: Boolean) {
-        val body = apiClient.json.encodeToString(SyncSubscriptionRequestDto(isSupporter = isSupporter))
-        apiClient.post("/api/subscriptions/sync", body) { }
-        refreshProfile()
-    }
-
-    override suspend fun updateLeaves(delta: Long) {
-        // Optimistic local update while sync settles
-        val current = profile.value ?: return
-        val updated = current.copy(leaves = maxOf(0L, current.leaves + delta))
-        _profile.value = updated
-        _profileState.value = ProfileState.Success(updated)
-        _syncEvents.emit(Unit)
-    }
-
-    override suspend fun updateFocusMinutes(minutes: Long) {
-        val current = profile.value ?: return
-        val updated = current.copy(totalMinutesFocused = current.totalMinutesFocused + minutes)
-        _profile.value = updated
-        _profileState.value = ProfileState.Success(updated)
-        _syncEvents.emit(Unit)
+        return Result.success(Unit)
     }
 
     override suspend fun setEquippedTheme(themeId: String?) {
