@@ -104,7 +104,8 @@ venv/
 backend/venv/
 backend/.venv/
 
-# Release secrets and artifacts: these live only on the release (old) PC, never in git.
+# Release secrets and artifacts: never in git. Keep secrets outside the repo
+# (see specs/04_release_machine_inventory.md); these patterns are a safety net.
 # Upload keystore (*.jks / *.keystore) and local.properties are ignored above.
 *service-account*.json
 *-firebase-adminsdk-*.json
@@ -115,3 +116,7 @@ backend/.env*
 android/app/release/
 *.sql.gz
 supabase_dump*/
+.env.*
+!.env.example
+cozy-secrets/
+*.secrets.env
