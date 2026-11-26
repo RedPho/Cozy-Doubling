@@ -14,6 +14,9 @@ pip install -r backend/requirements.txt
 ```
 
 ### 2. Run the Server
+Optional: copy `backend/.env.example` to `backend/.env` (git-ignored) to test real Google Sign-In,
+RevenueCat restore or push notifications locally. The server reads it on start; tests ignore it.
+
 ```bash
 python backend/run.py
 ```
