@@ -82,7 +82,7 @@ pytest backend/tests -v -c backend/pytest.ini
 | Variable | Default | Description |
 |---|---|---|
 | `ENVIRONMENT` | `development` | `production` disables mock Google tokens and client-asserted supporter status, and refuses to boot with development secrets |
-| `DATABASE_URL` | `sqlite:///./cozy_doubling.db` | Database connection string. Production requires a managed database (PostgreSQL) |
+| `DATABASE_URL` | `sqlite:///./cozy_doubling.db` | Database connection string. Production requires a managed database (PostgreSQL); `postgres://` URLs are used with the psycopg 3 driver |
 | `SECRET_KEY` | development value | JWT signing key. **Required** in production (random, ≥ 32 chars) |
 | `GOOGLE_CLIENT_IDS` | *(empty)* | Comma-separated Google OAuth **web** client ID(s) whose ID tokens are accepted. Required in production |
 | `REVENUECAT_WEBHOOK_AUTH` | development value | Authorization header value configured on the RevenueCat webhook. Required in production |
@@ -95,3 +95,30 @@ pytest backend/tests -v -c backend/pytest.ini
 - Set `ENVIRONMENT=production` plus every variable marked *required* above — the server will not start otherwise.
 - Serve the API only over HTTPS/WSS (TLS-terminating proxy in front of Uvicorn).
 - Run a **single** Uvicorn worker: room presence, safety sockets and the login throttle are in-memory. Scaling out needs a shared store (e.g. Redis pub/sub).
+
+### Migrating 1.1.0 (Supabase) accounts — `[AUTH-12]`
+`scripts/import_supabase.py` copies the 1.1.0 data from the Supabase database straight into `DATABASE_URL`. It keeps user IDs, which keeps RevenueCat app user IDs and friend links valid. It also keeps:
+- emails;
+- bcrypt password hashes, for confirmed email accounts only;
+- Google `sub` IDs, so 2.0 Google Sign-In finds the same account;
+- profiles (tag, leaves, minutes, supporter flag, theme);
+- owned catalog items;
+- friendships, blocks and reports;
+- processed focus sessions.
+
+Deleted and anonymous users, unfinished sessions and FCM tokens are dropped.
+
+Run it on the staging or production host, **never on a development PC**. No dump file is written, and the output shows counts and opaque user IDs only.
+
+```bash
+cd backend
+export SUPABASE_DB_URL='postgresql://postgres.<project-ref>:<db-password>@<session-pooler-host>:5432/postgres'
+export DATABASE_URL='postgresql://...'        # the 2.0 database
+python -m scripts.import_supabase --check     # schema check only, reads no user rows
+python -m scripts.import_supabase --dry-run   # full import, rolled back, prints the summary
+python -m scripts.import_supabase             # commit
+```
+
+- `SUPABASE_DB_URL` is in the Supabase dashboard under **Connect → Session pooler**. The direct connection is IPv6-only. Pass it as an environment variable, not as an argument, so it stays out of the shell history.
+- Re-runs upsert by primary key and never delete. Do the dry run against staging. On release day, make Supabase read-only, then import into the **empty** production database.
+- If `--check` reports a schema mismatch, compare it with a schema-only `supabase db dump`. That dump contains no user rows, so it is safe on a development PC. Then adjust `SOURCE_TABLES` in the script.
