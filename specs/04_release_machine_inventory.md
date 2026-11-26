@@ -3,7 +3,7 @@
 > 1.1.0 (`versionCode 9`, commit `b949621`, Supabase) is live on Play. 2.0 ships as a beta first, then the same build is promoted.
 >
 > - **Secrets** live in the repo's git-ignored **`secrets/`** folder on the development PC. Never commit them.
-> - **Server secrets** are pasted into the hosting provider's variables page (Railway).
+> - **Server secrets** are pasted into the hosting provider's environment-variables page.
 > - **Old PC** only pulls `main`, signs with the Android Studio wizard and uploads to Play. There is no signing config in Gradle.
 
 ---
@@ -35,14 +35,14 @@ KEY_ALIAS=
 KEYSTORE_PASSWORD=
 KEY_PASSWORD=
 
-# --- Server: paste into Railway → Variables ---
+# --- Server: paste into the host's environment variables ---
 ENVIRONMENT=production
 SECRET_KEY=
 GOOGLE_CLIENT_IDS=                 # same value as GOOGLE_WEB_CLIENT_ID
 REVENUECAT_API_KEY=                # new sk_ key
 REVENUECAT_WEBHOOK_AUTH=
 # FIREBASE_CREDENTIALS_JSON = the contents of firebase-service-account.json
-# DATABASE_URL comes from the Railway PostgreSQL service
+# DATABASE_URL comes from the host's PostgreSQL database
 
 # --- Account import only ---
 SUPABASE_DB_URL=
@@ -54,7 +54,7 @@ SUPABASE_DB_URL=
 |---|---|
 | Upload keystore, alias, passwords | Old PC: `Get-ChildItem C:\Users -Recurse -Include *.jks,*.keystore -ErrorAction SilentlyContinue`. The old project's `.idea\workspace.xml` → `GenerateSignedApkSettings` shows the file and alias. **Missing = start a Play Console upload-key reset now.** |
 | `GOOGLE_WEB_CLIENT_ID` | Google Cloud → APIs & Services → Credentials → the OAuth 2.0 *Web* client 1.1.0 used. Also check that the Android client lists both the upload-key and the Play App Signing SHA-1 (Play Console → Test and release → App integrity). |
-| `RELEASE_API_BASE_URL` | Railway → backend service → Settings → Networking → the public domain, with `https://`. |
+| `RELEASE_API_BASE_URL` | The backend service's public HTTPS domain on the host, with `https://`. See `backend/README.md` → Deploying. |
 | `REVENUECAT_APIKEY` | RevenueCat → project → API keys → the public Google Play key (`goog_…`). Same as 1.1.0. |
 | `REVENUECAT_API_KEY` | RevenueCat → project → API keys → **+ New secret API key**. A new key does not revoke the old one. |
 | `SECRET_KEY`, `REVENUECAT_WEBHOOK_AUTH` | Generate each: `python -c "import secrets; print(secrets.token_urlsafe(48))"` |
