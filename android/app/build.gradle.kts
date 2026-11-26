@@ -16,7 +16,10 @@ val localProps: Properties = Properties().apply {
 val googleWebClientId: String = (project.findProperty("googleWebClientId") as String?)
     ?: localProps.getProperty("GOOGLE_WEB_CLIENT_ID", "")
 
+// Production API for release builds. Android Studio's "Generate Signed App Bundle" wizard cannot
+// pass -P flags, so the release machine sets RELEASE_API_BASE_URL in local.properties.
 val releaseApiBaseUrl: String = (project.findProperty("releaseApiBaseUrl") as String?)
+    ?: localProps.getProperty("RELEASE_API_BASE_URL")
     ?: (project.findProperty("apiBaseUrl") as String?)
     ?: ""
 
@@ -30,7 +33,8 @@ tasks.configureEach {
         val webClientId = googleWebClientId
         doFirst {
             check(apiUrl.startsWith("https://")) {
-                "Release builds need -PreleaseApiBaseUrl=https://... (got '$apiUrl')."
+                "Release builds need RELEASE_API_BASE_URL=https://... in local.properties " +
+                    "(or -PreleaseApiBaseUrl=...); got '$apiUrl'."
             }
             check(webClientId.isNotBlank()) {
                 "Release builds need GOOGLE_WEB_CLIENT_ID (OAuth web client ID) in local.properties or -PgoogleWebClientId=..."
@@ -146,4 +150,5 @@ secrets {
     defaultPropertiesFileName = "local.defaults.properties"
     // Generated explicitly above (the plugin emits invalid Java for empty values).
     ignoreList.add("GOOGLE_WEB_CLIENT_ID")
+    ignoreList.add("RELEASE_API_BASE_URL")
 }
