@@ -3,10 +3,18 @@ from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from app.config import settings
 
-connect_args = {"check_same_thread": False} if "sqlite" in settings.DATABASE_URL else {}
+def normalize_database_url(url: str) -> str:
+    """Hosts (and Supabase) hand out postgres:// URLs; SQLAlchemy needs the psycopg 3 driver named."""
+    for prefix in ("postgres://", "postgresql://"):
+        if url.startswith(prefix):
+            return "postgresql+psycopg://" + url[len(prefix):]
+    return url
+
+DATABASE_URL = normalize_database_url(settings.DATABASE_URL)
+connect_args = {"check_same_thread": False} if "sqlite" in DATABASE_URL else {}
 
 engine = create_engine(
-    settings.DATABASE_URL,
+    DATABASE_URL,
     echo=False,
     connect_args=connect_args
 )

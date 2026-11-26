@@ -7,6 +7,8 @@ pydantic>=2.9.0
 pyjwt>=2.8.0
 bcrypt>=4.0.0
 websockets>=12.0
+# PostgreSQL driver (production DATABASE_URL and the Supabase importer)
+psycopg[binary]>=3.2
 # Google Sign-In ID token verification
 google-auth>=2.30.0
 requests>=2.32.0
