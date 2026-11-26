@@ -39,6 +39,8 @@ class Settings:
     GOOGLE_CLIENT_IDS: list[str] = _csv_env("GOOGLE_CLIENT_IDS")
     # Path to a Firebase service-account JSON. When unset, push notifications are only logged.
     FIREBASE_CREDENTIALS_FILE: str = os.getenv("FIREBASE_CREDENTIALS_FILE", "")
+    # Alternative for hosts without file uploads: the service-account JSON itself. Wins over the file.
+    FIREBASE_CREDENTIALS_JSON: str = os.getenv("FIREBASE_CREDENTIALS_JSON", "")
 
     MIN_PASSWORD_LENGTH: int = 8
 

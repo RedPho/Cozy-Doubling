@@ -1,5 +1,6 @@
+import json
 import logging
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from app.config import settings
 
@@ -9,17 +10,26 @@ _firebase_app = None
 _firebase_init_failed = False
 
 
+def _firebase_credential_source() -> Union[dict, str, None]:
+    """The service account as parsed JSON (FIREBASE_CREDENTIALS_JSON) or a file path, else None."""
+    if settings.FIREBASE_CREDENTIALS_JSON.strip():
+        return json.loads(settings.FIREBASE_CREDENTIALS_JSON)
+    return settings.FIREBASE_CREDENTIALS_FILE or None
+
+
 def _get_firebase_app():
-    """Lazily initialises firebase-admin from FIREBASE_CREDENTIALS_FILE (None when not configured)."""
+    """Lazily initialises firebase-admin (None when no credentials are configured)."""
     global _firebase_app, _firebase_init_failed
-    if _firebase_app is not None or _firebase_init_failed or not settings.FIREBASE_CREDENTIALS_FILE:
+    if _firebase_app is not None or _firebase_init_failed:
         return _firebase_app
+    if not (settings.FIREBASE_CREDENTIALS_JSON.strip() or settings.FIREBASE_CREDENTIALS_FILE):
+        return None
     try:
         import firebase_admin
         from firebase_admin import credentials
 
         _firebase_app = firebase_admin.initialize_app(
-            credentials.Certificate(settings.FIREBASE_CREDENTIALS_FILE),
+            credentials.Certificate(_firebase_credential_source()),
             name="cozy-doubling-push",
         )
     except Exception as exc:  # pragma: no cover - depends on deployment credentials

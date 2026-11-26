@@ -12,7 +12,7 @@ psycopg[binary]>=3.2
 # Google Sign-In ID token verification
 google-auth>=2.30.0
 requests>=2.32.0
-# Push notifications (FCM); only imported when FIREBASE_CREDENTIALS_FILE is set
+# Push notifications (FCM); only imported when Firebase credentials are configured
 firebase-admin>=6.5.0
 pytest>=8.0.0
 pytest-asyncio>=0.23.0
