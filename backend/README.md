@@ -64,7 +64,7 @@ pytest backend/tests -v -c backend/pytest.ini
 - **Friend Stories:** Fetches accepted friends with their latest completed session duration and task description.
 
 ### 5. Shop, Themes & Inventory (`/api/shop` & `/api/inventory`)
-- **Catalog Seeding:** Pre-seeded with System Default, Peach Blossom, Midnight Velvet, and Supporter Passes.
+- **Catalog:** `app/seed.py` syncs it on every start (adds and updates, never deletes): System Default, Peach Blossom, Midnight Velvet, the eleven 1.1.0 themes (same IDs as in 1.1.0) and the Supporter Passes.
 - **Leaf Purchases:** Atomic validation: cannot buy premium items with leaves, cannot repurchase owned items, leaf balance check.
 - **Theme Palettes:** 18-color Material 3 color role palettes matching Android client specifications.
 - **Auto-Revert on Expiration:** When a supporter subscription expires, any equipped premium theme automatically reverts to System Default.

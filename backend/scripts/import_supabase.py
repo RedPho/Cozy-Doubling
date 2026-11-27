@@ -537,12 +537,12 @@ def main(argv: Optional[list[str]] = None) -> int:
 
     # Imported here so --check works without a configured target database.
     from app.database import Base, SessionLocal, engine, ensure_schema_migrations
-    from app.seed import seed_catalog_if_empty
+    from app.seed import sync_catalog
 
     Base.metadata.create_all(bind=engine)
     ensure_schema_migrations(engine)
     with SessionLocal() as db:
-        seed_catalog_if_empty(db)
+        sync_catalog(db)
         db.commit()
 
     snapshot = read_snapshot(source)
