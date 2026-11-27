@@ -2,21 +2,17 @@
 
 > **Scope:** What has to happen before the FastAPI-backed 2.0 client replaces the Supabase-backed 1.1.0 build that is live on Google Play.
 > **Production today:** commit `b949621`, `versionCode 9`, `versionName 1.1.0`, Supabase (Auth + Postgres/RLS + Realtime + Edge Functions for FCM and `sync-revenuecat`), RevenueCat + Google Play Billing, Firebase Cloud Messaging.
-> **Next release:** `new_feature` plus the hardening branches below. The client talks only to the FastAPI backend (`backend/`).
-
-Related branches (all cut from `origin/new_feature`):
-
-| Branch | Contents |
-|---|---|
-| `fix/backend-security-hardening` | Google ID-token verification, webhook auth, server-owned supporter status, leaf-farming fixes, presence spoofing fix, push dispatch, production config guard, login throttle |
-| `fix/android-auth-and-release-config` | Real Google Sign-In (Credential Manager), email registration UI, no auto-register, Application-scoped DI, release build guards, version 2.0.0 (10), backup exclusions, auth specs (`AUTH-08/10/11/12`) |
-| `docs/play-release-readiness` | This checklist and legal-page corrections (privacy, terms, deletion page) |
+> **Next release:** `main`, `versionCode 10`, `versionName 2.0.0`. The client talks only to the FastAPI backend (`backend/`).
+>
+> **Status (2026-11-27):** all code blockers are done. Left: pick a host (B4), fill the legal-page placeholders (B6), Play Console updates (B7). Release flow and secrets: [04_release_machine_inventory.md](04_release_machine_inventory.md).
 
 ---
 
 ## 1. Release blockers
 
 ### B1. Existing users lose everything unless accounts are migrated (`[AUTH-12]`)
+**Done:** `backend/scripts/import_supabase.py` (run on the server; see `backend/README.md`). Re-run at the full release.
+
 1.1.0 users live in Supabase (`auth.users`, `profiles`, sessions, friendships, inventory, blocks). The 2.0 client cannot see them. Without a migration, every updating user lands on an empty new account (new player tag, 0 leaves, no friends, no themes, no Supporter).
 - Export Supabase tables and import them into the new database, **keeping user IDs** (RevenueCat `app_user_id` is the Supabase user ID).
 - Fill `users.google_sub` from Supabase's Google identities so the first 2.0 Google sign-in resolves to the migrated account.
@@ -24,12 +20,16 @@ Related branches (all cut from `origin/new_feature`):
 - Plan the cut-over: freeze Supabase writes, import, then roll out 2.0. Decide how long 1.1.0 keeps working against Supabase (it cannot be force-updated).
 
 ### B2. Supporter purchases are not wired in the 2.0 client
+**Done:** RevenueCat is back in `data/billing/RevenueCatBillingRepository.kt`; `REVENUECAT_PUBLIC_KEY` (app) and `REVENUECAT_SECRET_KEY` (server, API V1). Left: point the RevenueCat webhook at the new server at the full release.
+
 1.1.0 used RevenueCat (`Purchases.configure`, `logIn(userId)`, offerings, purchase, restore). The 2.0 client only has a placeholder `RemoteBillingRepository`. Before the hardening branch, it granted Supporter for free by posting `is_supporter=true`.
 - Now: release builds hide Supporter passes, and the backend ignores client-asserted status in production.
 - To ship subscriptions: re-integrate the RevenueCat SDK in `data/` (port from `b949621:app/src/main/java/com/grepho/cozydoubling/core/billing/BillingRepository.kt`), call `Purchases.logIn(<backend user id>)` after sign-in, point the RevenueCat webhook at `POST /api/subscriptions/webhook` with the `REVENUECAT_WEBHOOK_AUTH` secret, and set `REVENUECAT_API_KEY` so "Restore Purchases" verifies server-side.
 - Existing subscribers keep their entitlement only if their user ID is preserved (B1).
 
 ### B3. Google Sign-In configuration
+**Done (checked 2026-11-27):** Android OAuth clients exist for all three Play app signing SHA-1s (classical, post-quantum, previous key) and the development PC's debug key. The upload key has none; Play installs do not need it.
+
 - Reuse the OAuth **web** client ID that Supabase used (`SUPABASE_GOOGLE_OAUTH_WEB_CLIENT_ID` in 1.1.0's `local.properties`):
   - Android: `GOOGLE_WEB_CLIENT_ID=` in `android/local.properties`.
   - Backend: `GOOGLE_CLIENT_IDS=`.
@@ -37,6 +37,8 @@ Related branches (all cut from `origin/new_feature`):
 - `bundleRelease` refuses to build without the web client ID and an `https://` API URL.
 
 ### B4. Production backend does not exist yet
+**Partly done:** `backend/Dockerfile` (one worker) and host-neutral deploy steps in `backend/README.md`. Left: choose the host. Alembic is not adopted for 2.0: the production database starts empty and `create_all()` builds it; add Alembic before the first schema change after 2.0.
+
 - HTTPS/WSS domain, managed PostgreSQL, automated backups.
 - Required env (the server refuses to start without them when `ENVIRONMENT=production`): `SECRET_KEY`, `DATABASE_URL`, `GOOGLE_CLIENT_IDS`, `REVENUECAT_WEBHOOK_AUTH`. Recommended: `REVENUECAT_API_KEY`, `FIREBASE_CREDENTIALS_FILE`.
 - **Schema migrations:** `create_all()` + hand-written `ALTER TABLE`s in `ensure_schema_migrations()` will not scale. Adopt Alembic before the first production deploy.
@@ -44,12 +46,14 @@ Related branches (all cut from `origin/new_feature`):
 - Monitoring/alerting and log retention (must match the privacy policy).
 
 ### B5. Push notifications
+**Done:** the server reads the service account from `FIREBASE_CREDENTIALS_JSON` (or `FIREBASE_CREDENTIALS_FILE`).
+
 1.1.0 sent friend alerts from a Supabase Edge Function. 2.0 sends them from the backend via `firebase-admin`; they only go out when `FIREBASE_CREDENTIALS_FILE` points at a service account for the **same Firebase project** as `android/app/google-services.json`.
 
 ### B6. Legal pages
 The pages served at `https://redpho.github.io/Cozy-Doubling/*.html` come from `/docs` on `main`. The 1.1.0 app and the Play listing link to them.
 - Problems in the live text: it claims *"We do not store your email address in our own database"*, which is false for Supabase too. It names Supabase/RLS, describes Google-only accounts, does not mention reports, IP processing or on-device storage, and lists "aggregated usage data" that is not collected.
-- `docs/play-release-readiness` fixes these. Fill every `[PLACEHOLDER]` (hosting provider, region, log retention, release date) and **merge it on release day**: merging earlier changes the policy for 1.1.0 users.
+- `docs/play-release-readiness` fixes these. Fill the remaining placeholders once the host is chosen: `[HOSTING PROVIDER]`, its privacy URL, `[REGION]` and log retention `[N] days`, and **merge it on release day**: merging earlier changes the policy for 1.1.0 users.
 - Keep `docs/delete-account.html` linked as the Play "Delete account URL".
 
 ### B7. Play Console updates
@@ -75,7 +79,7 @@ The pages served at `https://redpho.github.io/Cozy-Doubling/*.html` come from `/
 | Moderation tooling | Reports are stored but nobody can review them. Google Play's UGC policy expects timely action on reports, so at minimum add an admin script/dashboard and a ban flag. |
 | Rate limits beyond login | Registration, friend requests and reports are unthrottled. |
 | Forced-update channel | Add `GET /api/app/config` with a minimum supported version now, so future breaking backend changes can prompt 2.x users to update (1.1.0 has no such hook). |
-| Release logging | `println` debug logs ship in release builds (R8 keeps them). Move to `Log` with an R8 `-assumenosideeffects` rule or a release no-op logger. |
+| Release logging | Done: R8 strips `println` from release builds (`proguard-rules.pro`). |
 | Google "G" button asset | Use the official branded button/mark per Google Sign-In branding guidelines. |
 
 ---
@@ -102,8 +106,8 @@ The pages served at `https://redpho.github.io/Cozy-Doubling/*.html` come from `/
 | 16 | No login brute-force protection despite spec `[AUTH-02]` | Medium | Fixed (in-memory throttle) |
 | 17 | No migrations framework; in-memory realtime state blocks horizontal scaling | Medium | Open (B4) |
 | 18 | No session revocation; 30-day non-revocable JWTs | Medium | Open (§2) |
-| 19 | Billing integration missing in 2.0 client | Blocker | Open (B2) |
+| 19 | Billing integration missing in 2.0 client | Blocker | Fixed (RevenueCat, B2) |
 
 ## 4. Not verified yet
-- Android + backend E2E suites (`python scripts/run_e2e.py`) were not run for these branches. Unit tests and instrumentation-test compilation pass.
-- Real Google Sign-In against a Play-signed build, FCM delivery with a real service account, and RevenueCat webhooks were not exercised (no credentials in the dev environment).
+- Real Google Sign-In, RevenueCat offerings/restore and FCM can be checked locally with a debug build (`backend/.env.example`, `android/local.properties.example`).
+- Not possible before the beta: sign-in with a migrated 1.1.0 account (the import runs only on the server), real Play purchases and the RevenueCat webhook on the production server.
