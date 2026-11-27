@@ -57,7 +57,7 @@ class Settings:
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 30  # 30 days
     REVENUECAT_WEBHOOK_AUTH: str = os.getenv("REVENUECAT_WEBHOOK_AUTH", _DEV_WEBHOOK_AUTH)
     # Secret RevenueCat REST API key (sk_...) used to verify entitlements server-side on "Restore".
-    REVENUECAT_API_KEY: str = os.getenv("REVENUECAT_API_KEY", "")
+    REVENUECAT_SECRET_KEY: str = os.getenv("REVENUECAT_SECRET_KEY", "")
     ROOM_CAPACITY_LIMIT: int = int(os.getenv("ROOM_CAPACITY_LIMIT", "50"))
     SUPPORTER_ENTITLEMENT_ID: str = "Cozy Doubling Supporter Pass"
     MAX_SESSION_DURATION_MINUTES: int = int(os.getenv("MAX_SESSION_DURATION_MINUTES", "720"))

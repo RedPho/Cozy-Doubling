@@ -28,7 +28,7 @@ class DefaultAppContainer(
     private val googleIdTokenProvider: GoogleIdTokenProvider = defaultGoogleIdTokenProvider(),
     /** Needed for RevenueCat; without it (JVM tests) billing falls back to [RemoteBillingRepository]. */
     private val appContext: Context? = null,
-    private val revenueCatApiKey: String = BuildConfig.REVENUECAT_APIKEY
+    private val revenueCatPublicKey: String = BuildConfig.REVENUECAT_PUBLIC_KEY
 ) : AppContainer {
     val apiClient: ApiClient by lazy { ApiClient(baseUrl = baseUrl) }
 
@@ -48,10 +48,10 @@ class DefaultAppContainer(
     override val notificationRepository: NotificationRepository by lazy { RemoteNotificationRepository(apiClient) }
     override val billingRepository: BillingRepository by lazy {
         val context = appContext
-        if (context != null && revenueCatApiKey.isNotBlank()) {
+        if (context != null && revenueCatPublicKey.isNotBlank()) {
             RevenueCatBillingRepository(
                 context = context,
-                apiKey = revenueCatApiKey,
+                apiKey = revenueCatPublicKey,
                 authStatus = authRepository.authStatus,
                 apiClient = apiClient,
                 profileRepository = profileRepository

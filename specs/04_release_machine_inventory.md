@@ -27,7 +27,7 @@ Template for `secrets/release.env` (fill it in on the development PC only):
 # --- Android build: copy into android/local.properties on the old PC ---
 GOOGLE_WEB_CLIENT_ID=
 RELEASE_API_BASE_URL=https://
-REVENUECAT_APIKEY=                 # public goog_ key
+REVENUECAT_PUBLIC_KEY=                 # public goog_ key
 
 # --- Upload keystore: typed into the Generate Signed App Bundle wizard ---
 KEYSTORE_FILE=upload.jks
@@ -39,7 +39,7 @@ KEY_PASSWORD=
 ENVIRONMENT=production
 SECRET_KEY=
 GOOGLE_CLIENT_IDS=                 # same value as GOOGLE_WEB_CLIENT_ID
-REVENUECAT_API_KEY=                # new sk_ key
+REVENUECAT_SECRET_KEY=                # new sk_ key
 REVENUECAT_WEBHOOK_AUTH=
 # FIREBASE_CREDENTIALS_JSON = the contents of firebase-service-account.json
 # DATABASE_URL comes from the host's PostgreSQL database
@@ -55,8 +55,8 @@ SUPABASE_DB_URL=
 | Upload keystore, alias, passwords | Old PC: `Get-ChildItem C:\Users -Recurse -Include *.jks,*.keystore -ErrorAction SilentlyContinue`. The old project's `.idea\workspace.xml` → `GenerateSignedApkSettings` shows the file and alias. **Missing = start a Play Console upload-key reset now.** |
 | `GOOGLE_WEB_CLIENT_ID` | Google Cloud → APIs & Services → Credentials → the OAuth 2.0 *Web* client 1.1.0 used. Also check that the Android client lists both the upload-key and the Play App Signing SHA-1 (Play Console → Test and release → App integrity). |
 | `RELEASE_API_BASE_URL` | The backend service's public HTTPS domain on the host, with `https://`. See `backend/README.md` → Deploying. |
-| `REVENUECAT_APIKEY` | RevenueCat → project → API keys → the public Google Play key (`goog_…`). Same as 1.1.0. |
-| `REVENUECAT_API_KEY` | RevenueCat → project → API keys → **+ New secret API key**. A new key does not revoke the old one. |
+| `REVENUECAT_PUBLIC_KEY` | RevenueCat → project → API keys → the public Google Play key (`goog_…`). Same as 1.1.0. |
+| `REVENUECAT_SECRET_KEY` | RevenueCat → project → API keys → **+ New secret API key**, API version **V1** (the backend calls `/v1/subscribers`). A new key does not revoke the old one. |
 | `SECRET_KEY`, `REVENUECAT_WEBHOOK_AUTH` | Generate each: `python -c "import secrets; print(secrets.token_urlsafe(48))"` |
 | Firebase JSON | Firebase console → project `cozy-doubling-17db0` → Project settings → Service accounts → **Generate new private key**. Old keys keep working. |
 | `SUPABASE_DB_URL` | Supabase dashboard → **Connect → Session pooler**, with the DB password filled in. |
@@ -70,7 +70,7 @@ SUPABASE_DB_URL=
    ```properties
    GOOGLE_WEB_CLIENT_ID=...
    RELEASE_API_BASE_URL=https://...
-   REVENUECAT_APIKEY=goog_...
+   REVENUECAT_PUBLIC_KEY=goog_...
    ```
    `preReleaseBuild` stops the release build if one is missing or the URL is not `https://`.
 3. **Build → Generate Signed App Bundle or APK → Android App Bundle → Next**: pick the keystore, enter the alias and passwords → **Next** → **release** → **Create**.

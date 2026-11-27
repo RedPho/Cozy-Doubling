@@ -12,4 +12,4 @@ GOOGLE_WEB_CLIENT_ID=
 RELEASE_API_BASE_URL=
 
 # Public RevenueCat goog_ key: real Play purchases (also in debug)
-REVENUECAT_APIKEY=
+REVENUECAT_PUBLIC_KEY=
