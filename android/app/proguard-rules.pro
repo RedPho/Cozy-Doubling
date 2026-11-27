@@ -45,3 +45,10 @@
 -keep class com.google.android.gms.auth.** { *; }
 -keep public class com.google.android.gms.auth.api.signin.** { *; }
 -keep class androidx.credentials.** { *; }
+
+# --- RELEASE LOGGING ---
+# Debug println calls (Kotlin's println compiles to System.out.println) are removed from release builds.
+-assumenosideeffects class java.io.PrintStream {
+    public void println(...);
+    public void print(...);
+}
