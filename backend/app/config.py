@@ -3,6 +3,37 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+
+def _load_env_file(path: Path) -> None:
+    """Loads KEY=VALUE lines from backend/.env for local runs.
+
+    Real environment variables win, and empty values are skipped so the built-in defaults apply.
+    """
+    if os.getenv("TESTING") or not path.is_file():
+        return
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        value = value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+            value = value[1:-1]
+        if value:
+            os.environ.setdefault(key.strip(), value)
+
+
+_load_env_file(BASE_DIR / ".env")
+
+
+def _path_env(name: str) -> str:
+    """A file path from the environment; relative paths are relative to backend/."""
+    value = os.getenv(name, "").strip()
+    if value and not Path(value).is_absolute():
+        value = str((BASE_DIR / value).resolve())
+    return value
+
+
 _DEV_SECRET_KEY = "cozy-doubling-super-secret-key-change-in-production-2026"
 _DEV_WEBHOOK_AUTH = "cozy_rc_secret_key"
 
@@ -38,7 +69,7 @@ class Settings:
     # OAuth client IDs whose Google ID tokens are accepted (the Android app's *web* client ID).
     GOOGLE_CLIENT_IDS: list[str] = _csv_env("GOOGLE_CLIENT_IDS")
     # Path to a Firebase service-account JSON. When unset, push notifications are only logged.
-    FIREBASE_CREDENTIALS_FILE: str = os.getenv("FIREBASE_CREDENTIALS_FILE", "")
+    FIREBASE_CREDENTIALS_FILE: str = _path_env("FIREBASE_CREDENTIALS_FILE")
     # Alternative for hosts without file uploads: the service-account JSON itself. Wins over the file.
     FIREBASE_CREDENTIALS_JSON: str = os.getenv("FIREBASE_CREDENTIALS_JSON", "")
 

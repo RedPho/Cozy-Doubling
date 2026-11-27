@@ -1,0 +1,15 @@
+# Copy to android/local.properties (git-ignored). Android Studio adds sdk.dir by itself.
+# Debug builds work with all of these empty: they talk to http://10.0.2.2:8000 (the backend on this
+# PC, seen from the emulator), use mock Google tokens and simulated purchases.
+# Release builds need all three (values in secrets/release.env).
+
+sdk.dir=
+
+# OAuth 2.0 web client ID: real Google Sign-In (backend needs the same value in GOOGLE_CLIENT_IDS)
+GOOGLE_WEB_CLIENT_ID=
+
+# Release builds only: the deployed backend, https://
+RELEASE_API_BASE_URL=
+
+# Public RevenueCat goog_ key: real Play purchases (also in debug)
+REVENUECAT_APIKEY=
