@@ -4,7 +4,7 @@
 > **Production today:** commit `b949621`, `versionCode 9`, `versionName 1.1.0`, Supabase (Auth + Postgres/RLS + Realtime + Edge Functions for FCM and `sync-revenuecat`), RevenueCat + Google Play Billing, Firebase Cloud Messaging.
 > **Next release:** `main`, `versionCode 10`, `versionName 2.0.0`. The client talks only to the FastAPI backend (`backend/`).
 >
-> **Status (2026-11-27):** all code blockers are done. Left: pick a host (B4), fill the legal-page placeholders (B6), Play Console updates (B7). Release flow and secrets: [04_release_machine_inventory.md](04_release_machine_inventory.md).
+> **Status (2026-11-27):** all code blockers are done. Left: fill the release date in the legal pages (B6) and Play Console updates (B7). Hosting: one Oracle VM, see `deploy/oracle/README.md`. Release flow and secrets: [04_release_machine_inventory.md](04_release_machine_inventory.md).
 
 ---
 
@@ -37,7 +37,7 @@
 - `bundleRelease` refuses to build without the web client ID and an `https://` API URL.
 
 ### B4. Production backend does not exist yet
-**Partly done:** `backend/Dockerfile` (one worker) and host-neutral deploy steps in `backend/README.md`. Left: choose the host. Alembic is not adopted for 2.0: the production database starts empty and `create_all()` builds it; add Alembic before the first schema change after 2.0.
+**Done:** one Oracle Always Free VM (Amsterdam) with Docker Compose: API, PostgreSQL 17, Caddy HTTPS, nightly backups (`deploy/oracle/`). Alembic is not adopted for 2.0: the production database starts empty and `create_all()` builds it; add Alembic before the first schema change after 2.0.
 
 - HTTPS/WSS domain, managed PostgreSQL, automated backups.
 - Required env (the server refuses to start without them when `ENVIRONMENT=production`): `SECRET_KEY`, `DATABASE_URL`, `GOOGLE_CLIENT_IDS`, `REVENUECAT_WEBHOOK_AUTH`. Recommended: `REVENUECAT_API_KEY`, `FIREBASE_CREDENTIALS_FILE`.
@@ -53,7 +53,7 @@
 ### B6. Legal pages
 The pages served at `https://redpho.github.io/Cozy-Doubling/*.html` come from `/docs` on `main`. The 1.1.0 app and the Play listing link to them.
 - Problems in the live text: it claims *"We do not store your email address in our own database"*, which is false for Supabase too. It names Supabase/RLS, describes Google-only accounts, does not mention reports, IP processing or on-device storage, and lists "aggregated usage data" that is not collected.
-- `docs/play-release-readiness` fixes these. Fill the remaining placeholders once the host is chosen: `[HOSTING PROVIDER]`, its privacy URL, `[REGION]` and log retention `[N] days`, and **merge it on release day**: merging earlier changes the policy for 1.1.0 users.
+- `docs/play-release-readiness` fixes these. Hosting is filled in (Oracle Cloud Infrastructure, Amsterdam; logs 7 days; backups 14 days). Only `[2.0 RELEASE DATE]` is left: fill it and **merge it on release day**: merging earlier changes the policy for 1.1.0 users.
 - Keep `docs/delete-account.html` linked as the Play "Delete account URL".
 
 ### B7. Play Console updates
