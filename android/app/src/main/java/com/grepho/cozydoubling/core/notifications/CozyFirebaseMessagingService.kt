@@ -24,7 +24,7 @@ class CozyFirebaseMessagingService : FirebaseMessagingService() {
 
     override fun onNewToken(token: String) {
         super.onNewToken(token)
-        println("DEBUG: FCM - New token generated: $token")
+        println("DEBUG: FCM - New registration token generated")
         serviceScope.launch {
             ServiceLocator.notificationRepository.updateToken(token)
         }

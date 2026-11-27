@@ -1,7 +1,11 @@
 package com.grepho.cozydoubling.data.remote
 
+import android.app.Activity
+import com.grepho.cozydoubling.core.auth.AuthInputValidator
 import com.grepho.cozydoubling.core.auth.AuthRepository
 import com.grepho.cozydoubling.core.auth.AuthStatus
+import com.grepho.cozydoubling.data.auth.GoogleIdTokenProvider
+import com.grepho.cozydoubling.data.auth.UnconfiguredGoogleIdTokenProvider
 import com.grepho.cozydoubling.data.local.InMemoryTokenStore
 import com.grepho.cozydoubling.data.local.TokenStore
 import kotlinx.coroutines.CoroutineScope
@@ -16,7 +20,9 @@ import kotlinx.serialization.encodeToString
 class RemoteAuthRepository(
     private val apiClient: ApiClient,
     private val tokenStore: TokenStore = InMemoryTokenStore(),
-    private val onTransientRestoreFailure: () -> Unit = {}
+    private val onTransientRestoreFailure: () -> Unit = {},
+    // Fail closed by default; DefaultAppContainer wires the real (or debug mock) provider.
+    private val googleIdTokenProvider: GoogleIdTokenProvider = UnconfiguredGoogleIdTokenProvider
 ) : AuthRepository {
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -34,11 +40,6 @@ class RemoteAuthRepository(
                 restoreSession()
             }
         }
-    }
-
-    // Generates a random session mock id once per repository instance so two emulators never collide on Google Sign-In
-    private val mockDeviceId: String by lazy {
-        java.util.UUID.randomUUID().toString().take(8)
     }
 
     override suspend fun restoreSession() {
@@ -74,68 +75,50 @@ class RemoteAuthRepository(
         )
     }
 
-    override suspend fun signInWithEmail(email: String, pass: String): Result<Unit> {
-        val cleanEmail = email.trim().lowercase()
-        val cleanPass = pass.trim()
-        val loginBody = apiClient.json.encodeToString(LoginRequestDto(email = cleanEmail, password = cleanPass))
-        val loginResult = apiClient.post("/api/auth/login", loginBody) { body ->
-            apiClient.json.decodeFromString<AuthResponseDto>(body)
-        }
-
-        // Auto-register convenience for new accounts (only when server returns 401/404)
-        val finalResult = if (loginResult.isFailure) {
-            val exception = loginResult.exceptionOrNull()
-            if (exception is ApiException && (exception.code == 401 || exception.code == 404)) {
-                val regBody = apiClient.json.encodeToString(RegisterRequestDto(email = cleanEmail, password = cleanPass))
-                val regResult = apiClient.post("/api/auth/register", regBody) { body ->
-                    apiClient.json.decodeFromString<AuthResponseDto>(body)
-                }
-                if (regResult.isSuccess) {
-                    regResult
-                } else {
-                    val regMsg = regResult.exceptionOrNull()?.message ?: ""
-                    if (regMsg.contains("already registered", ignoreCase = true)) {
-                        Result.failure(java.io.IOException("Incorrect password for this account."))
-                    } else {
-                        regResult
-                    }
-                }
-            } else {
-                loginResult
-            }
-        } else {
-            loginResult
-        }
-
-        return finalResult.fold(
-            onSuccess = { authResp ->
-                apiClient.authToken = authResp.accessToken
-                tokenStore.saveToken(authResp.accessToken)
-                fetchAndSetUser()
-            },
-            onFailure = { error ->
-                Result.failure(error)
-            }
+    override suspend fun signInWithEmail(email: String, password: String): Result<Unit> {
+        // Passwords are sent verbatim: trimming would silently change what the user typed.
+        val body = apiClient.json.encodeToString(
+            LoginRequestDto(email = AuthInputValidator.normalizeEmail(email), password = password)
         )
+        val result = apiClient.post("/api/auth/login", body) { res ->
+            apiClient.json.decodeFromString<AuthResponseDto>(res)
+        }
+        return completeSignIn(result)
     }
 
-    override suspend fun signInWithGoogle(): Result<Unit> {
-        val googleToken = "mock:google:dev_$mockDeviceId:Cozy Doubler $mockDeviceId:cozy_$mockDeviceId@google.com"
-        val body = apiClient.json.encodeToString(GoogleAuthRequestDto(idToken = googleToken))
+    override suspend fun registerWithEmail(email: String, password: String, displayName: String?): Result<Unit> {
+        val body = apiClient.json.encodeToString(
+            RegisterRequestDto(
+                email = AuthInputValidator.normalizeEmail(email),
+                password = password,
+                displayName = displayName?.trim()?.takeIf { it.isNotEmpty() }
+            )
+        )
+        val result = apiClient.post("/api/auth/register", body) { res ->
+            apiClient.json.decodeFromString<AuthResponseDto>(res)
+        }
+        return completeSignIn(result)
+    }
+
+    override suspend fun signInWithGoogle(activity: Activity): Result<Unit> {
+        val idToken = googleIdTokenProvider.requestIdToken(activity).getOrElse { return Result.failure(it) }
+        val body = apiClient.json.encodeToString(GoogleAuthRequestDto(idToken = idToken))
         val result = apiClient.post("/api/auth/google", body) { res ->
             apiClient.json.decodeFromString<AuthResponseDto>(res)
         }
+        return completeSignIn(result)
+    }
 
-        return result.fold(
-            onSuccess = { authResp ->
-                apiClient.authToken = authResp.accessToken
-                tokenStore.saveToken(authResp.accessToken)
-                fetchAndSetUser()
-            },
-            onFailure = { error ->
-                Result.failure(error)
-            }
-        )
+    private suspend fun completeSignIn(tokenResult: Result<AuthResponseDto>): Result<Unit> {
+        val authResp = tokenResult.getOrElse { return Result.failure(it) }
+        apiClient.authToken = authResp.accessToken
+        val userResult = fetchAndSetUser()
+        if (userResult.isSuccess) {
+            tokenStore.saveToken(authResp.accessToken)
+        } else {
+            apiClient.authToken = null
+        }
+        return userResult
     }
 
     private suspend fun fetchAndSetUser(): Result<Unit> {

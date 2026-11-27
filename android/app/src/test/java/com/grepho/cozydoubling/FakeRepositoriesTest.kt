@@ -1,5 +1,7 @@
 package com.grepho.cozydoubling
 
+import com.grepho.cozydoubling.data.fake.FakeProfileRepository
+
 import com.grepho.cozydoubling.core.auth.AuthStatus
 import com.grepho.cozydoubling.core.room.FocusNotificationAction
 import com.grepho.cozydoubling.data.fake.FakeAppContainer
@@ -40,7 +42,7 @@ class FakeRepositoriesTest {
         profileRepo.updateDisplayName("Focus Hero")
         assertEquals("Focus Hero", profileRepo.profile.value?.displayName)
 
-        profileRepo.updateLeaves(25)
+        (profileRepo as FakeProfileRepository).updateLeaves(25)
         assertEquals(175L, profileRepo.profile.value?.leaves)
     }
 
@@ -212,16 +214,16 @@ class FakeRepositoriesTest {
 
         // 1. Initial user has 150 leaves
         assertEquals("user_cozy_001", profileRepo.profile.value?.id)
-        profileRepo.updateLeaves(50)
+        (profileRepo as FakeProfileRepository).updateLeaves(50)
         assertEquals(200L, profileRepo.profile.value?.leaves)
 
         // 2. Delete account
-        profileRepo.deleteAccount()
+        assertTrue(profileRepo.deleteAccount().isSuccess)
         assertEquals(null, profileRepo.profile.value)
         assertTrue(authRepo.authStatus.value is AuthStatus.NotAuthenticated)
 
         // 3. Re-login with Google -> fresh default profile created
-        authRepo.signInWithGoogle()
+        authRepo.signInWithGoogle(android.app.Activity())
         profileRepo.refreshProfile()
         assertNotNull(profileRepo.profile.value)
         assertEquals("user_cozy_001", profileRepo.profile.value?.id)

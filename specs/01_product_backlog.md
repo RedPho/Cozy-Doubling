@@ -10,7 +10,9 @@
 **Goal:** Enable users to seamlessly register, authenticate across devices, maintain persistent sessions, customize profile identity, and control their account lifecycle up to complete deletion.  
 **Scope:**
 - Google One-Tap/Native Authentication
-- Email & Password Login
+- Email & Password Login and Self-Serve Registration
+- Password Reset (planned)
+- Migration of 1.x (Supabase) accounts (planned, release-blocking)
 - Automatic Profile and Player Tag Provisioning
 - Session Persistence and Graceful Session Recovery
 - Display Name Customization
@@ -31,12 +33,19 @@ As a Cozy Doubling user, I want to authenticate using my Google account so that 
 - If the Google account has never signed in before, the system must automatically provision a new user profile (see [AUTH-03]).
 - If the account already exists, the user's existing profile, balance, inventory, and stats are restored.
 - An unverified or expired Google identity credential must be rejected.
+- **Credential verification (server-side):** The app obtains a Google ID token via Android Credential Manager ("Sign in with Google") and the backend verifies its signature, issuer, expiry, and that its audience is the app's OAuth *web* client ID before trusting any claim.
+- **Account matching:** Accounts are matched on the stable Google account ID (`sub`), never on the email claim alone.
+- **Linking to an existing email account:** If no account has that Google ID but an email/password account uses the same email, the Google identity is linked to it only when Google reports the email as verified. Otherwise sign-in is refused with `"An account with this email already exists. Please sign in with your email and password."`
+- Developer mock tokens (`mock:google:…`) are accepted only by non-production backends and only sent by debug builds without a configured web client ID.
 
 ### Acceptance Criteria
 - [ ] Given a user with an existing account linked to Google, when they authenticate with Google, then their active session is restored and they are routed to the Home screen.
 - [ ] Given a first-time user, when they authenticate with Google, then an account and profile are created immediately and they are routed to the Home screen.
 - [ ] Given invalid, expired, or cancelled Google credentials, when sign-in is attempted, then authentication is rejected, an error message is displayed, and the user remains on the Login screen.
 - [ ] Given two simultaneous sign-in requests for the same new Google account, then exactly one user account is created and both requests resolve to that account.
+- [ ] Given a forged or mock Google token sent to the production backend, then sign-in is rejected with `401`.
+- [ ] Given a Google ID token issued for another app's client ID, then sign-in is rejected.
+- [ ] Given the user dismisses the Google account picker, then no error dialog is shown and the user stays on the Login screen.
 
 ### Open Questions
 - None.
@@ -47,10 +56,12 @@ As a Cozy Doubling user, I want to authenticate using my Google account so that 
 **Priority:** High
 
 ### Description
-As a user on a device without Google services, I want to sign in with an email address and password so that I can access my account.
+As a user who prefers not to use Google (or whose device has no Google services), I want to sign in with an email address and password so that I can access my account.
 
 ### Business Rules & Constraints
-- Email addresses must be handled case-insensitively and trimmed of leading/trailing whitespace.
+- Email sign-in is a first-class, clearly visible option on the Login screen ("Continue with email"), not a hidden reviewer path. Google Play reviewers use the same flow with a provided demo account.
+- Signing in never creates an account implicitly. An unknown email returns the generic error; account creation happens only through [AUTH-08].
+- Email addresses must be handled case-insensitively and trimmed of leading/trailing whitespace. Passwords are sent exactly as typed (never trimmed).
 - Passwords must be securely stored and verified.
 - Generic error messaging must be returned on failure to prevent user enumeration (an external party cannot determine whether the email exists or the password was wrong).
 - Repeated consecutive failed attempts must trigger temporary rate limiting to protect against brute-force attacks.
@@ -61,32 +72,99 @@ As a user on a device without Google services, I want to sign in with an email a
 - [ ] Given an incorrect password for a registered email, when login is attempted, then authentication fails with `"Invalid email or password"`.
 - [ ] Given an unregistered email address, when login is attempted, then authentication fails with the identical `"Invalid email or password"` message.
 - [ ] Given an empty email, empty password, or malformed email format, when submitted, then client validation fails with a clear message and no login attempt is dispatched.
-- [ ] Given repeated consecutive failed login attempts, then further attempts are temporarily rate-limited and the user is shown a clear lockout notice explaining when they can retry.
+- [ ] Given repeated consecutive failed login attempts (5 within 15 minutes for the same email and IP), then further attempts are rate-limited for 15 minutes (`429`) and the user is shown `"Too many failed sign-in attempts. Please try again in N minute(s)."`
+- [ ] Given an email that has never registered, when the user signs in, then no account is created.
 
 ### Open Questions
-- None. (Self-serve email registration and guest access are planned enhancements; see [AUTH-08]).
+- None. (Registration: [AUTH-08]. Forgotten passwords: [AUTH-10].)
 
 ---
 
-## [AUTH-08] Guest Access & Self-Serve Email Registration (Planned Enhancement)
-**Priority:** Low
+## [AUTH-08] Self-Serve Email Registration
+**Priority:** High
+**Status:** `Implemented`
 
 ### Description
-As a new visitor, I want the option to explore Cozy Doubling as a guest or sign up with email and password so that I can start using the app without a third-party social account.
+As a new visitor without (or not wanting to use) a Google account, I want to create a Cozy Doubling account with my email and a password so that I can start focusing right away.
 
 ### Business Rules & Constraints
-- **Self-Serve Email Registration:**
-  - Will provide an in-app registration form requiring email, password, and confirmation.
-  - Generates initial profile and unique player tag identical to Google sign-in ([AUTH-03]).
-- **Guest Access Mode:**
-  - Allows immediate access to core focus features with temporary local session credentials.
-  - Open Design Question: How guest moderation, blocking, and reporting will function (e.g., whether guest device fingerprints or ephemeral IDs are used) remains under review before implementation.
+- The Login screen offers **Continue with Google** and **Continue with email**. The email dialog has two modes, toggled by `"New here? Create an account"` / `"Already have an account? Sign in"`.
+- Registration form: email, optional display name, password, confirm password.
+- **Validation (client and server):**
+  - Email must be a syntactically valid address (`"Please enter a valid email address."`).
+  - Password: minimum 8 characters, maximum 128 (`"Password must be at least 8 characters."`).
+  - Password and confirmation must match (client only: `"Passwords do not match."`).
+  - Duplicate email → `"Email already registered"`.
+- Successful registration provisions the profile and player tag exactly as [AUTH-03] and signs the user in (token persisted per [AUTH-09]).
+- Display name defaults to `"Cozy Doubler"` when left blank; capped at 30 characters.
+- Email ownership is **not** verified yet; see Open Questions.
+
+### Acceptance Criteria
+- [ ] Given a new email and a valid matching password, when the user taps "Create account", then the account and profile are created and the Home screen opens.
+- [ ] Given a password shorter than 8 characters or a mismatched confirmation, then the form shows the validation message and no request is sent.
+- [ ] Given an email that is already registered, then `"Email already registered"` is shown inside the dialog and the user stays on the Login screen.
+- [ ] Given a registered account, when the user later signs in with Google using the same verified email, then both methods open the same account ([AUTH-01]).
+
+### Open Questions
+- Should email ownership be verified (confirmation link) before the account can add friends or appear in rooms? Needed before [AUTH-10] can send reset emails safely; requires a transactional email provider.
+
+---
+
+## [AUTH-10] Password Reset ("Forgot password?")
+**Priority:** High
+**Status:** `Planned`
+
+### Description
+As an email/password user who forgot my password, I want to reset it from the Login screen so that I don't lose my account, streak, and leaves.
+
+### Business Rules & Constraints
+- "Forgot password?" link in the email sign-in dialog opens an email field.
+- Backend `POST /api/auth/password-reset/request` always returns the same success message (no user enumeration) and, for existing email accounts, emails a single-use token valid for 30 minutes (stored hashed).
+- `POST /api/auth/password-reset/confirm` with token + new password (same rules as [AUTH-08]) sets the password, invalidates the token and every existing session token for that account.
+- Rate-limited per email and per IP.
+- Requires a transactional email provider (e.g. Postmark, SES, Resend) and a sender domain with SPF/DKIM.
+
+### Acceptance Criteria
+- [ ] Given any email, when a reset is requested, then the UI shows `"If an account exists for this email, we've sent a reset link."`
+- [ ] Given a valid reset token, when a new valid password is set, then sign-in works with the new password and fails with the old one.
+- [ ] Given an expired or already-used token, then the reset is rejected.
+
+---
+
+## [AUTH-11] Guest Access Mode
+**Priority:** Low
+**Status:** `Planned`
+
+### Description
+As a new visitor, I want to try a focus session as a guest before creating an account.
+
+### Business Rules & Constraints
+- Guests get a temporary server identity with no friends, no purchases, and leaves held until they upgrade to a full account (Google or email) which keeps their progress.
+- Open Design Question: how guest moderation, blocking, and reporting work for users without persistent identities (ephemeral IDs vs. device-bound identities).
 
 ### Acceptance Criteria
 - [ ] *(To be finalized upon technical design approval)*
 
-### Open Questions
-- Finalize guest moderation architecture: How should abuse prevention, user blocking, and reporting work for users without persistent account identities?
+---
+
+## [AUTH-12] Migrate 1.x (Supabase) Accounts to the New Backend
+**Priority:** High — **Release blocker for 2.0 on Google Play**
+**Status:** `Planned`
+
+### Description
+As an existing user of the Play Store version 1.1.0 (Supabase backend), I want to keep my profile, player tag, leaves, focus minutes, friends, themes, and Supporter status after updating to 2.0 so that the update doesn't wipe my progress.
+
+### Business Rules & Constraints
+- Export from Supabase: `auth.users` (id, email, Google identity `sub`), `profiles`, focus sessions, friendships, inventory, blocks, reports.
+- Import keeps user IDs (RevenueCat `app_user_id` is the Supabase user ID; keeping it preserves subscriptions without RevenueCat aliasing).
+- Google users: populate `users.google_sub` from the Supabase Google identity so the first 2.0 Google sign-in resolves to the migrated account ([AUTH-01]).
+- Email/password users: Supabase password hashes are bcrypt and can be imported as-is, or users are asked to reset their password ([AUTH-10]).
+- Cut-over: freeze writes on Supabase, run the import, then publish 2.0. Keep Supabase read-only until 2.0 adoption is high enough; 1.x clients should be shown a "please update" message (Play in-app update / minimum version check).
+- Accounts deleted on Supabase before migration must not be resurrected.
+
+### Acceptance Criteria
+- [ ] Given a 1.1.0 user who signed in with Google, when they update to 2.0 and sign in with the same Google account, then their player tag, leaves, minutes, friends, and themes are unchanged.
+- [ ] Given a 1.1.0 Supporter, when they update to 2.0, then Supporter status is still active without restoring purchases.
 
 ---
 
@@ -559,6 +637,7 @@ As a user who has finished working, I want to end my focus session so that my ti
 As a user, I want to earn Leaves and accumulate focus minutes based on my focus duration and task completions so that I can buy shop items and track my milestone growth.
 
 ### Business Rules & Constraints
+- **Anti-farming limits:** at most `MAX_REWARDED_TASKS_PER_SESSION` (default 20) completed tasks earn leaves per session; finishing a session ID that was never started returns `404` (`"Session not found or already processed."`).
 - **Reward Formula:**
   $$\text{earned\_leaves} = (\text{duration\_minutes} \times 1) + (\text{tasks\_completed} \times 3)$$
 - **Minimum Reward Floor:**

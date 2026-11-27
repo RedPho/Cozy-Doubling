@@ -53,7 +53,11 @@ fun SettingsScreen(
         onUnblockUser = { viewModel.onUnblockUser(it) },
         onTogglePip = { viewModel.onTogglePip(it) },
         onSignOut = { viewModel.onSignOut() },
-        onDeleteAccount = { viewModel.onDeleteAccount() },
+        onDeleteAccount = {
+            viewModel.onDeleteAccount { message ->
+                Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+            }
+        },
         onManageSubscription = { viewModel.onManageSubscription(context) },
         onRestorePurchases = {
             viewModel.onRestorePurchases { message ->

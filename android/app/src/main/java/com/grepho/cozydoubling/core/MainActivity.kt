@@ -60,7 +60,6 @@ import com.grepho.cozydoubling.core.room.FocusNotificationAction
 import com.grepho.cozydoubling.core.room.FocusSessionIntentExtras
 import com.grepho.cozydoubling.core.room.shouldRestoreFocusRoomOnPipExit
 import com.grepho.cozydoubling.features.room.FocusPipOverlay
-import com.grepho.cozydoubling.features.room.LocalTaskDataSource
 import com.grepho.cozydoubling.ui.theme.BackgroundCream
 import com.grepho.cozydoubling.ui.theme.CozyDoublingTheme
 import kotlinx.coroutines.flow.launchIn
@@ -74,8 +73,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        ServiceLocator.init(applicationContext)
-        LocalTaskDataSource.init(this)
+        // ServiceLocator and LocalTaskDataSource are initialised in CozyDoublingApplication.
         handleIntentExtras(intent)
 
         ConnectivityObserver(this).isOnline

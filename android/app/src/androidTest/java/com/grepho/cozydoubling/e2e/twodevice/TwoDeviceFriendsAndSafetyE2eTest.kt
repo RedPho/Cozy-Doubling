@@ -14,6 +14,7 @@ import com.grepho.cozydoubling.core.MainActivity
 import com.grepho.cozydoubling.e2e.AbortCoordinatorOnFailureRule
 import com.grepho.cozydoubling.e2e.E2eCoordinator
 import com.grepho.cozydoubling.e2e.E2eTestHarness
+import com.grepho.cozydoubling.e2e.LOGIN_SCREEN_MARKER
 import com.grepho.cozydoubling.e2e.addTaskInFocusRoom
 import com.grepho.cozydoubling.e2e.openOasisSubTab
 import com.grepho.cozydoubling.e2e.openSettingsFromTopBar
@@ -459,7 +460,7 @@ class TwoDeviceFriendsAndSafetyE2eTest {
         composeRule.onNodeWithText("Delete Account").performScrollTo().performClick()
         composeRule.waitUntilNodeExists(hasText("Delete"))
         composeRule.onNodeWithText("Delete").performClick()
-        composeRule.waitUntilNodeExists(hasText("Reviewer Access"))
+        composeRule.waitUntilNodeExists(hasText(LOGIN_SCREEN_MARKER))
         E2eCoordinator.arrive("del_bob_deleted", 2)
     }
 }

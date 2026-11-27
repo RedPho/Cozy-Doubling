@@ -75,6 +75,12 @@ cd android
 ./gradlew testDebugUnitTest assembleDebug
 ```
 
+#### Google Sign-In & Release Builds
+- **Debug:** without `GOOGLE_WEB_CLIENT_ID`, "Sign in with Google" sends mock tokens that only a development backend (`ENVIRONMENT=development`) accepts. Cleartext HTTP is allowed in debug builds only.
+- **Real Google Sign-In:** create an OAuth 2.0 *Web application* client in Google Cloud (plus an *Android* client with the package name and each signing-key SHA-1, including the Play App Signing key), put the web client ID in `android/local.properties` as `GOOGLE_WEB_CLIENT_ID=...`, and set the same value in the backend's `GOOGLE_CLIENT_IDS`.
+- **Release:** pull `main` on the build machine and sign with Android Studio's *Build → Generate Signed App Bundle* (no signing config in Gradle). Its `android/local.properties` must set `RELEASE_API_BASE_URL=https://...` and `GOOGLE_WEB_CLIENT_ID`, or the build fails fast. Backend secrets go into the hosting provider's settings, and nothing secret is ever committed. Where every secret lives: [specs/04_release_machine_inventory.md](specs/04_release_machine_inventory.md).
+- Non-secret defaults (legal page URLs) live in `android/local.defaults.properties`; anything in `local.properties` overrides them.
+
 #### Running Full Android + Backend E2E Tests:
 See [docs/e2e_testing_guide.md](docs/e2e_testing_guide.md) and [specs/02_e2e_test_tickets.md](specs/02_e2e_test_tickets.md).
 ```bash

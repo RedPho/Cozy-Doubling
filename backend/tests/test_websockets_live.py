@@ -7,7 +7,7 @@ import uvicorn
 import websockets
 
 from app.main import app
-from app.services.auth import create_access_token
+from tests.conftest import seeded_token
 from app.websockets.room_manager import focus_room_manager
 
 
@@ -42,8 +42,8 @@ async def _run_two_clients_bidirectional_and_keepalive():
         while not server.started:
             await asyncio.sleep(0.05)
 
-        t1 = create_access_token({"sub": "live_u1", "email": "osman_live@cozy.com"})
-        t2 = create_access_token({"sub": "live_u2", "email": "emin_live@cozy.com"})
+        t1 = seeded_token("live_u1", "Osman", "osman_live@cozy.com")
+        t2 = seeded_token("live_u2", "Emin", "emin_live@cozy.com")
         url1 = f"ws://127.0.0.1:{port}/ws/room?token={t1}&presence_key=live_u1:s1&name=Osman"
         url2 = f"ws://127.0.0.1:{port}/ws/room?token={t2}&presence_key=live_u2:s2&name=Emin"
 
@@ -162,7 +162,7 @@ async def _run_many_websockets_do_not_exhaust_db_pool(token: str, user_id: str):
         focus_room_manager.clear()
 
 
-def test_live_uvicorn_two_clients_bidirectional_presence_and_keepalive(client=None):
+def test_live_uvicorn_two_clients_bidirectional_presence_and_keepalive(client):
     asyncio.run(_run_two_clients_bidirectional_and_keepalive())
 
 

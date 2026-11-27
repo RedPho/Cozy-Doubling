@@ -3,7 +3,6 @@ package com.grepho.cozydoubling.data.fake
 import androidx.compose.ui.graphics.Color
 import com.grepho.cozydoubling.core.economy.EconomyRepository
 import com.grepho.cozydoubling.core.economy.ThemeState
-import com.grepho.cozydoubling.core.profile.ProfileRepository
 import com.grepho.cozydoubling.core.theming.ThemePalette
 import com.grepho.cozydoubling.features.shop.ShopItemUiState
 import com.grepho.cozydoubling.ui.theme.CozyPalettes
@@ -16,7 +15,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class FakeEconomyRepository(
-    private val profileRepository: ProfileRepository
+    private val profileRepository: FakeProfileRepository
 ) : EconomyRepository {
 
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())

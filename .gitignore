@@ -103,3 +103,22 @@ venv/
 .venv/
 backend/venv/
 backend/.venv/
+
+# Release secrets and artifacts: never in git. All release secrets live in the
+# repo's git-ignored secrets/ folder (see specs/04_release_machine_inventory.md);
+# the patterns below are a safety net.
+# Upload keystore (*.jks / *.keystore) and local.properties are ignored above.
+/secrets/
+*service-account*.json
+*-firebase-adminsdk-*.json
+supabase/.env*
+supabase/.temp/
+backend/.env*
+*.aab
+android/app/release/
+*.sql.gz
+supabase_dump*/
+.env.*
+!.env.example
+cozy-secrets/
+*.secrets.env

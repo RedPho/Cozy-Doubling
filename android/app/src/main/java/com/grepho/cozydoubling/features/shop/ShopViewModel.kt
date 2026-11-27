@@ -27,10 +27,11 @@ class ShopViewModel(
     ) { rawItems, offerings ->
         val availablePackages = offerings?.availablePackages ?: emptyList()
 
-        rawItems.map { item ->
+        rawItems.mapNotNull { item ->
             if (item is ShopItemUiState.Pass) {
-                val pkg = availablePackages.find { it.productId == item.iapId }
-                item.copy(priceString = pkg?.formattedPrice ?: item.priceString)
+                // Only offer passes that the store can actually sell right now.
+                val pkg = availablePackages.find { it.productId == item.iapId } ?: return@mapNotNull null
+                item.copy(priceString = pkg.formattedPrice)
             } else item
         }.let { hydratedList ->
             val themes = hydratedList.filterIsInstance<ShopItemUiState.Theme>()

@@ -1,6 +1,6 @@
 import datetime
 import uuid
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -26,6 +26,7 @@ router = APIRouter(prefix="/api/sessions", tags=["sessions"])
 
 @router.post("/start", response_model=StartSessionResponse)
 def start_session(
+    background_tasks: BackgroundTasks,
     user_and_profile: tuple[User, Profile] = Depends(get_current_user_and_profile),
     db: Session = Depends(get_db)
 ):
@@ -78,12 +79,9 @@ def start_session(
             ).all()
             tokens = [t[0] for t in profiles if t[0]]
             if tokens:
-                import asyncio
-                try:
-                    loop = asyncio.get_running_loop()
-                    loop.create_task(send_friend_focus_notification(profile.display_name, tokens))
-                except RuntimeError:
-                    pass
+                # Sync endpoints run in a worker thread without an event loop, so the previous
+                # loop.create_task() call silently never ran. BackgroundTasks runs after the response.
+                background_tasks.add_task(send_friend_focus_notification, profile.display_name, tokens)
 
     return StartSessionResponse(session_id=session_id)
 
@@ -103,13 +101,12 @@ def finish_session(
     forced_reason = "app_closed" if req.end_reason == "app_closed" else None
 
     if not session:
-        session = FocusSession(
-            id=session_id,
-            user_id=profile.id,
-            start_time=datetime.datetime.utcnow(),
-            is_processed=False
+        # Never mint a session on finish: a client could otherwise farm task leaves by finishing
+        # arbitrary session IDs it never started ([ECON-01]).
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Session not found or already processed."
         )
-        db.add(session)
     elif session.is_processed:
         if forced_reason == "app_closed":
             return FocusSessionResponse.from_orm_model(session)

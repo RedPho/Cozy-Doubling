@@ -110,26 +110,29 @@ class SettingsViewModel(
                 focusRoomRepository.leaveRoom()
                 notificationRepository.clearToken()
                 LocalTaskDataSource.clear()
+                // ProfileRepository.signOut() ends the auth session (single owner of teardown).
                 profileRepository.signOut()
-                authRepository.signOut()
             } catch (e: Exception) {
                 e.printStackTrace()
+                authRepository.signOut()
             }
         }
     }
 
-    fun onDeleteAccount() {
+    /**
+     * Deletes the account on the server first ([AUTH-07]). Local data is only wiped after the server
+     * confirms; on failure the user stays signed in and [onError] receives a message to display.
+     */
+    fun onDeleteAccount(onError: (String) -> Unit) {
         viewModelScope.launch {
-            try {
-                focusSessionController.stopSession()
+            focusSessionController.stopSession()
+            focusRoomRepository.leaveRoom()
+            val result = profileRepository.deleteAccount()
+            if (result.isSuccess) {
                 focusSessionController.clearInterruptedSession()
-                focusRoomRepository.leaveRoom()
-                notificationRepository.clearToken()
                 LocalTaskDataSource.clear()
-                profileRepository.deleteAccount()
-                authRepository.signOut()
-            } catch (e: Exception) {
-                e.printStackTrace()
+            } else {
+                onError(result.exceptionOrNull()?.message ?: "Could not delete your account. Please try again.")
             }
         }
     }

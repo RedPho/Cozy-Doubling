@@ -3,10 +3,18 @@ from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from app.config import settings
 
-connect_args = {"check_same_thread": False} if "sqlite" in settings.DATABASE_URL else {}
+def normalize_database_url(url: str) -> str:
+    """Hosts (and Supabase) hand out postgres:// URLs; SQLAlchemy needs the psycopg 3 driver named."""
+    for prefix in ("postgres://", "postgresql://"):
+        if url.startswith(prefix):
+            return "postgresql+psycopg://" + url[len(prefix):]
+    return url
+
+DATABASE_URL = normalize_database_url(settings.DATABASE_URL)
+connect_args = {"check_same_thread": False} if "sqlite" in DATABASE_URL else {}
 
 engine = create_engine(
-    settings.DATABASE_URL,
+    DATABASE_URL,
     echo=False,
     connect_args=connect_args
 )
@@ -22,6 +30,13 @@ Base = declarative_base()
 def ensure_schema_migrations(target_engine=engine) -> None:
     """Idempotently add new columns to existing SQLite/SQL tables."""
     inspector = inspect(target_engine)
+    if inspector.has_table("users"):
+        user_cols = {col["name"] for col in inspector.get_columns("users")}
+        if "google_sub" not in user_cols:
+            with target_engine.begin() as conn:
+                conn.execute(text("ALTER TABLE users ADD COLUMN google_sub VARCHAR"))
+                conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_google_sub ON users (google_sub)"))
+
     if not inspector.has_table("focus_sessions"):
         return
 

@@ -238,7 +238,7 @@ def record_ws_activity(
 
     session.last_seen_at = current_time
 
-    if tasks_completed is not None and tasks_completed >= 0:
+    if isinstance(tasks_completed, int) and not isinstance(tasks_completed, bool) and 0 <= tasks_completed <= 1000:
         session.tasks_completed = tasks_completed
     if active_task_text and active_task_text != "No active task":
         session.last_task_text = active_task_text

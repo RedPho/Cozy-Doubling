@@ -72,7 +72,8 @@ class RemoteFocusRoomRepository(
         oldWs?.close(1000, "Reconnecting")
 
         val path = "/ws/room?token=$token&presence_key=$pKey&name=$encodedName"
-        println("DEBUG: RemoteFocusRoomRepository - Opening room WebSocket at: $path")
+        // Never log `path`: it carries the bearer token.
+        println("DEBUG: RemoteFocusRoomRepository - Opening room WebSocket for presence $pKey")
         val ws = apiClient.openWebSocket(path, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
                 if (myGeneration != connectionGeneration || !isRoomActive) return

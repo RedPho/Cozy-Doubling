@@ -8,6 +8,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Query, Depends, sta
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.database import engine, Base, SessionLocal, get_db, ensure_schema_migrations
 from app.seed import seed_catalog_if_empty
 from app.services.auth import decode_access_token
@@ -18,6 +19,7 @@ from app.services.session_lifecycle import (
     record_ws_connect,
     record_ws_disconnect,
 )
+from app.models.profile import Profile
 from app.models.safety import UserBlock
 from app.websockets.room_manager import focus_room_manager
 from app.websockets.safety_manager import safety_manager
@@ -51,6 +53,14 @@ async def _stale_session_sweeper():
 async def lifespan(app: FastAPI):
     import os
     sweeper_task: Optional[asyncio.Task] = None
+    config_problems = settings.validate()
+    if config_problems:
+        raise RuntimeError("Refusing to start in production: " + " ".join(config_problems))
+    if not settings.is_production:
+        logger.warning(
+            "ENVIRONMENT=%s: development shortcuts (mock Google tokens, client supporter sync) are enabled.",
+            settings.ENVIRONMENT,
+        )
     if not os.getenv("TESTING"):
         logger.info("Initializing database schema...")
         Base.metadata.create_all(bind=engine)
@@ -83,7 +93,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,  # Bearer tokens only; no cookies to protect
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -123,6 +133,18 @@ def _extract_session_id(presence_key: Optional[str]) -> Optional[str]:
         return None
     return session_id
 
+def _canonical_presence_key(user_id: str, presence_key: Optional[str]) -> str:
+    raw = (presence_key or "").strip()
+    suffix = raw.split(":", 1)[1] if ":" in raw else raw
+    suffix = suffix.strip()[:64] or "default"
+    return f"{user_id}:{suffix}"
+
+def _fetch_display_name(db: Session, user_id: str) -> Optional[str]:
+    profile = db.query(Profile).filter(Profile.id == user_id).first()
+    if profile is None:
+        return None
+    return (profile.display_name or "Cozy Doubler").strip()[:30] or "Cozy Doubler"
+
 def _fetch_blocked_ids(user_id: str) -> set[str]:
     def _query(db: Session) -> set[str]:
         blocks = db.query(UserBlock).filter(
@@ -150,8 +172,14 @@ async def focus_room_websocket(
         return
 
     user_id = payload["sub"]
-    p_key = presence_key or f"{user_id}:default"
+    # The presence key is always namespaced by the *authenticated* user. A client-chosen key such
+    # as "<victim_id>:x" would otherwise replace the victim's socket and make blocks target them.
+    p_key = _canonical_presence_key(user_id, presence_key)
     session_id = _extract_session_id(p_key)
+    profile_name = _run_with_db(lambda db: _fetch_display_name(db, user_id))
+    if profile_name is None:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
 
     connect_status = _run_with_db(lambda db: record_ws_connect(db, user_id, session_id))
     if connect_status in ("expired", "already_processed"):
@@ -166,7 +194,8 @@ async def focus_room_websocket(
 
     blocked_ids = _fetch_blocked_ids(user_id)
 
-    safe_name = (name or "Cozy Doubler").strip()[:30] or "Cozy Doubler"
+    # Display name comes from the server-side profile, never from the client (anti-impersonation).
+    safe_name = profile_name
     safe_task = (active_task or "Focusing").strip()[:120] or "Focusing"
     initial_presence = {
         "id": p_key,
@@ -208,9 +237,9 @@ async def focus_room_websocket(
                 continue
             msg_type = msg.get("type")
             if msg_type == "presence_update":
-                updated_presence = dict(msg.get("presence", {}))
-                if isinstance(updated_presence.get("name"), str):
-                    updated_presence["name"] = updated_presence["name"].strip()[:30]
+                raw_presence = msg.get("presence")
+                updated_presence = dict(raw_presence) if isinstance(raw_presence, dict) else {}
+                updated_presence["name"] = safe_name
                 if isinstance(updated_presence.get("active_task"), str):
                     updated_presence["active_task"] = updated_presence["active_task"].strip()[:120]
                 await focus_room_manager.update_presence(p_key, updated_presence)

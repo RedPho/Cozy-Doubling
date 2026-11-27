@@ -89,13 +89,16 @@ class ShopInventoryJourneyE2eTest {
         composeRule.waitUntilNodeDoesNotExist(hasText("Unlock Theme"))
         composeRule.onNodeWithTag("shop_theme_buy_theme_peach_blossom").assertIsDisplayed()
 
-        // 3. Earn 102 leaves via real backend /api/sessions/start + /finish (34 tasks * 3 = 102)
-        BackendTestHelper.completeRealSessionViaApi(
-            email = email,
-            password = password,
-            tasksCompleted = 34,
-            lastTaskText = "Earn leaves for Peach Blossom"
-        )
+        // 3. Earn 102 leaves via real backend /api/sessions/start + /finish (2 sessions x 17 tasks x 3 = 102)
+        // Task rewards are capped at 20 per session server-side, so split across two sessions.
+        repeat(2) {
+            BackendTestHelper.completeRealSessionViaApi(
+                email = email,
+                password = password,
+                tasksCompleted = 17,
+                lastTaskText = "Earn leaves for Peach Blossom"
+            )
+        }
         runBlocking { ServiceLocator.profileRepository.refreshProfile() }
         composeRule.waitUntilNodeExists(hasText("102"))
 
@@ -168,12 +171,15 @@ class ShopInventoryJourneyE2eTest {
         val userId = E2eTestHarness.currentUserId()
 
         // Earn 102 leaves so Peach Blossom stays owned even after supporter expiration
-        BackendTestHelper.completeRealSessionViaApi(
-            email = email,
-            password = password,
-            tasksCompleted = 34,
-            lastTaskText = "Earn leaves before supporter test"
-        )
+        // Task rewards are capped at 20 per session server-side, so split across two sessions.
+        repeat(2) {
+            BackendTestHelper.completeRealSessionViaApi(
+                email = email,
+                password = password,
+                tasksCompleted = 17,
+                lastTaskText = "Earn leaves before supporter test"
+            )
+        }
         runBlocking { ServiceLocator.profileRepository.refreshProfile() }
 
         composeRule.openOasisSubTab("Shop")

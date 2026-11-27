@@ -4,13 +4,12 @@ import android.app.Activity
 import com.grepho.cozydoubling.core.billing.BillingRepository
 import com.grepho.cozydoubling.core.billing.SubscriptionOfferings
 import com.grepho.cozydoubling.core.billing.SubscriptionPackage
-import com.grepho.cozydoubling.core.profile.ProfileRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 class FakeBillingRepository(
-    private val profileRepository: ProfileRepository
+    private val profileRepository: FakeProfileRepository
 ) : BillingRepository {
 
     private val samplePackages = listOf(
