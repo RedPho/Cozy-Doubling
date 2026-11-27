@@ -118,7 +118,7 @@ def test_client_cannot_grant_itself_supporter_in_production(client: TestClient, 
 
 def test_sync_uses_revenuecat_entitlement_when_configured(client: TestClient, production, monkeypatch):
     user = create_user_helper(client, "restorer@cozy.com")
-    monkeypatch.setattr(settings, "REVENUECAT_API_KEY", "sk_test")
+    monkeypatch.setattr(settings, "REVENUECAT_SECRET_KEY", "sk_test")
     calls = []
 
     def fake_fetch(app_user_id):

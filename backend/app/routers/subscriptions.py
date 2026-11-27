@@ -85,7 +85,7 @@ def sync_subscription(
     """Re-evaluates supporter status ("Restore Purchases" / post-purchase refresh)."""
     _, profile = user_and_profile
 
-    if settings.REVENUECAT_API_KEY:
+    if settings.REVENUECAT_SECRET_KEY:
         try:
             is_supporter = fetch_supporter_entitlement(profile.id)
         except RevenueCatUnavailable as exc:

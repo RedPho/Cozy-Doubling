@@ -89,7 +89,7 @@ pytest backend/tests -v -c backend/pytest.ini
 | `SECRET_KEY` | development value | JWT signing key. **Required** in production (random, ≥ 32 chars) |
 | `GOOGLE_CLIENT_IDS` | *(empty)* | Comma-separated Google OAuth **web** client ID(s) whose ID tokens are accepted. Required in production |
 | `REVENUECAT_WEBHOOK_AUTH` | development value | Authorization header value configured on the RevenueCat webhook. Required in production |
-| `REVENUECAT_API_KEY` | *(empty)* | RevenueCat secret REST key (`sk_...`). When set, "Restore Purchases" verifies entitlements server-side |
+| `REVENUECAT_SECRET_KEY` | *(empty)* | RevenueCat secret REST key (`sk_...`, API version V1). When set, "Restore Purchases" verifies entitlements server-side |
 | `FIREBASE_CREDENTIALS_FILE` | *(empty)* | Path to a Firebase service-account JSON. When neither this nor `FIREBASE_CREDENTIALS_JSON` is set, friend push notifications are only logged |
 | `FIREBASE_CREDENTIALS_JSON` | *(empty)* | The service-account JSON itself, for hosts without file uploads. Wins over `FIREBASE_CREDENTIALS_FILE` |
 | `ROOM_CAPACITY_LIMIT` | `50` | Maximum participants in global focus room |
@@ -113,7 +113,7 @@ pytest backend/tests -v -c backend/pytest.ini
    | `DATABASE_URL` | the PostgreSQL connection URL (`postgres://…` is fine) |
    | `SECRET_KEY` | random, ≥ 32 chars |
    | `GOOGLE_CLIENT_IDS` | the Google OAuth web client ID |
-   | `REVENUECAT_API_KEY` | RevenueCat secret key `sk_…` |
+   | `REVENUECAT_SECRET_KEY` | RevenueCat secret key `sk_…` |
    | `REVENUECAT_WEBHOOK_AUTH` | random; also set as the RevenueCat webhook's Authorization header |
    | `FIREBASE_CREDENTIALS_JSON` | the whole Firebase service-account JSON |
 

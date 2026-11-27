@@ -36,7 +36,7 @@ def fetch_supporter_entitlement(app_user_id: str) -> bool:
     try:
         response = httpx.get(
             _SUBSCRIBERS_URL.format(app_user_id=quote(app_user_id, safe="")),
-            headers={"Authorization": f"Bearer {settings.REVENUECAT_API_KEY}"},
+            headers={"Authorization": f"Bearer {settings.REVENUECAT_SECRET_KEY}"},
             timeout=10.0,
         )
     except httpx.HTTPError as exc:
