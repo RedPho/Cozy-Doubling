@@ -36,6 +36,8 @@ import kotlinx.serialization.encodeToString
  *
  * - The RevenueCat app user ID is the backend user ID, which equals the 1.1.0 Supabase user ID
  *   for imported accounts, so existing subscriptions stay attached to the same customer.
+ * - Catalog `iap_id`s are RevenueCat product IDs exactly as 1.1.0 used them: subscriptions as
+ *   `productId:basePlanId` (`cozy_supporter:monthly`), one-time products plain (`cozy_supporter_lifetime`).
  * - After a purchase or restore the backend re-checks the entitlement through RevenueCat REST
  *   (`/api/subscriptions/sync`); the client never decides supporter status on a production server.
  */
@@ -89,7 +91,7 @@ class RevenueCatBillingRepository(
                 availablePackages = offerings.current?.availablePackages.orEmpty().map { pkg ->
                     SubscriptionPackage(
                         identifier = pkg.identifier,
-                        productId = playProductId(pkg.product.id),
+                        productId = pkg.product.id,
                         formattedPrice = pkg.product.price.formatted
                     )
                 }
@@ -102,7 +104,7 @@ class RevenueCatBillingRepository(
     override suspend fun purchase(activity: Activity, productId: String): Boolean {
         if (rcOfferings == null) refreshOfferings()
         val rcPackage = rcOfferings?.current?.availablePackages
-            ?.find { playProductId(it.product.id) == playProductId(productId) }
+            ?.find { it.product.id == productId }
             ?: return false
         return try {
             val result = Purchases.sharedInstance.awaitPurchase(
@@ -145,9 +147,3 @@ class RevenueCatBillingRepository(
         const val TAG = "RevenueCatBilling"
     }
 }
-
-/**
- * RevenueCat reports Play subscriptions as `productId:basePlanId`; the catalog stores the Play
- * product ID. Comparing the part before ':' matches both forms.
- */
-internal fun playProductId(storeProductId: String): String = storeProductId.substringBefore(':')

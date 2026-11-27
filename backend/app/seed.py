@@ -106,7 +106,7 @@ def seed_catalog_if_empty(db: Session):
         name="Monthly Supporter Pass",
         leaf_price=0,
         is_premium=True,
-        iap_id="cozy_supporter_monthly"
+        iap_id="cozy_supporter:monthly"
     )
     pass_yearly = Item(
         id="pass_yearly",
@@ -114,7 +114,7 @@ def seed_catalog_if_empty(db: Session):
         name="Yearly Supporter Pass",
         leaf_price=0,
         is_premium=True,
-        iap_id="cozy_supporter_yearly"
+        iap_id="cozy_supporter:yearly"
     )
     pass_lifetime = Item(
         id="pass_lifetime",
