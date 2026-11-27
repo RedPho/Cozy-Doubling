@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.database import engine, Base, SessionLocal, get_db, ensure_schema_migrations
-from app.seed import seed_catalog_if_empty
+from app.seed import sync_catalog
 from app.services.auth import decode_access_token
 from app.services.session_lifecycle import (
     auto_finalize_stale_sessions,
@@ -66,7 +66,7 @@ async def lifespan(app: FastAPI):
         Base.metadata.create_all(bind=engine)
         ensure_schema_migrations(engine)
         with SessionLocal() as session:
-            seed_catalog_if_empty(session)
+            sync_catalog(session)
         sweeper_task = asyncio.create_task(_stale_session_sweeper())
         logger.info("Database schema initialized and catalog seeded.")
     

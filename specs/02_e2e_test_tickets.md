@@ -14,7 +14,7 @@ This backlog defines the ticket-style work items for full-stack **Android + Fast
 As an engineer, I need a reproducible, one-command E2E test harness that boots an isolated live FastAPI backend plus 2 real Android emulators (with Wi-Fi disabled on the 2nd emulator to avoid the `AndroidWifi` collision) and synchronizes real 2-device instrumentation tests without violating clean architecture boundaries.
 
 ### Scope & Rules
-- Starts Uvicorn (`app.main:app`) backed by a fresh ephemeral SQLite DB (`DATABASE_URL`) seeded via standard startup catalog seeding (`seed_catalog_if_empty`).
+- Starts Uvicorn (`app.main:app`) backed by a fresh ephemeral SQLite DB (`DATABASE_URL`) seeded via standard startup catalog seeding (`sync_catalog`).
 - Runs a test-only `ThreadingHTTPServer` coordinator (`E2eCoordinator`) offering `/kv`, `/barrier`, and `/abort` endpoints over `adb reverse`.
 - Boots/attaches 2 dedicated emulators (`Medium_Phone_API_37.0` and `Medium_Phone_API_37.0_2`), disables Wi-Fi and enables cellular data on the 2nd emulator, disables animations, and grants `POST_NOTIFICATIONS`.
 - Builds debug + androidTest APKs once with `-PapiBaseUrl=http://127.0.0.1:<port>` and installs across both devices.

@@ -84,7 +84,7 @@ SOURCE_TABLES: dict[tuple[str, str], tuple[set[str], set[str]]] = {
          "is_processed", "duration_minutes"},
         {"last_task_text"},
     ),
-    ("public", "user_inventory"): ({"user_id", "item_id"}, {"acquired_at", "created_at"}),
+    ("public", "user_inventory"): ({"user_id", "item_id"}, {"purchased_at", "acquired_at", "created_at"}),
     ("public", "user_blocks"): ({"blocker_id", "blocked_id"}, {"created_at"}),
     ("public", "items"): ({"id"}, set()),
 }
@@ -431,7 +431,8 @@ def _import_inventory(snap: SourceSnapshot, db: Session, report: ImportReport, i
         if item_id not in catalog:
             report.add("inventory.skipped.unknown_item")
             continue
-        acquired = _dt(row.get("acquired_at") or row.get("created_at")) or datetime.datetime.utcnow()
+        acquired = (_dt(row.get("purchased_at") or row.get("acquired_at") or row.get("created_at"))
+                    or datetime.datetime.utcnow())
         db.merge(UserInventory(user_id=user_id, item_id=item_id, acquired_at=acquired))
         report.add("inventory.imported")
 
@@ -537,12 +538,12 @@ def main(argv: Optional[list[str]] = None) -> int:
 
     # Imported here so --check works without a configured target database.
     from app.database import Base, SessionLocal, engine, ensure_schema_migrations
-    from app.seed import seed_catalog_if_empty
+    from app.seed import sync_catalog
 
     Base.metadata.create_all(bind=engine)
     ensure_schema_migrations(engine)
     with SessionLocal() as db:
-        seed_catalog_if_empty(db)
+        sync_catalog(db)
         db.commit()
 
     snapshot = read_snapshot(source)

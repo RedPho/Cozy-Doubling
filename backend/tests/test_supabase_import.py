@@ -45,7 +45,7 @@ SOURCE_DDL = [
     """CREATE TABLE public.focus_sessions (id TEXT PRIMARY KEY, user_id TEXT, start_time TEXT,
         end_time TEXT, tasks_completed INTEGER, earned_leaves INTEGER, is_processed BOOLEAN,
         duration_minutes INTEGER, last_task_text TEXT)""",
-    "CREATE TABLE public.user_inventory (user_id TEXT, item_id TEXT, acquired_at TEXT)",
+    "CREATE TABLE public.user_inventory (user_id TEXT, item_id TEXT, purchased_at TEXT)",  # 1.1.0 name
     "CREATE TABLE public.user_blocks (blocker_id TEXT, blocked_id TEXT, created_at TEXT)",
     "CREATE TABLE public.items (id TEXT PRIMARY KEY, leaf_price INTEGER)",
     """CREATE TABLE public.reports (id TEXT PRIMARY KEY, reporter_id TEXT, reported_id TEXT,
@@ -193,6 +193,8 @@ def test_imports_accounts_profiles_and_relations(source, target_db):
 
     owned = {(i.user_id, i.item_id) for i in db.query(UserInventory).all()}
     assert (GOOGLE_ID, "theme_peach_blossom") in owned
+    bought = db.get(UserInventory, (GOOGLE_ID, "theme_peach_blossom")).acquired_at
+    assert bought.date().isoformat() == "2025-01-15"  # 1.1.0 purchased_at is kept
     assert (GOOGLE_ID, "theme_removed") not in owned
     assert all((uid, "system_default") in owned for uid in (GOOGLE_ID, EMAIL_ID, UNCONFIRMED_ID, NO_PROFILE_ID))
     assert any("theme_removed" in w for w in report.warnings)

@@ -11,7 +11,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.database import Base, get_db
 from app.main import app
-from app.seed import seed_catalog_if_empty
+from app.seed import sync_catalog
 
 test_engine = create_engine(
     "sqlite:///:memory:",
@@ -33,7 +33,7 @@ def reset_db():
     Base.metadata.drop_all(bind=test_engine)
     Base.metadata.create_all(bind=test_engine)
     with TestingSessionLocal() as session:
-        seed_catalog_if_empty(session)
+        sync_catalog(session)
 
 reset_db()
 client = TestClient(app, raise_server_exceptions=True)
