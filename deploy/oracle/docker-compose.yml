@@ -3,9 +3,17 @@
 # Needs .env and firebase-service-account.json next to this file (both git-ignored); see README.md.
 name: cozy
 
+# Container logs: at most 3 x 10 MB each, and emptied every Monday by cron (privacy policy: kept up to 7 days).
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   db:
     image: postgres:17-alpine
+    logging: *logging
     restart: unless-stopped
     environment:
       POSTGRES_USER: cozy
@@ -21,6 +29,7 @@ services:
 
   api:
     build: ../../backend
+    logging: *logging
     restart: unless-stopped
     env_file: .env
     environment:
@@ -36,6 +45,7 @@ services:
 
   caddy:
     image: caddy:2
+    logging: *logging
     restart: unless-stopped
     ports:
       - "80:80"

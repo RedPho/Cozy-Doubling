@@ -38,6 +38,14 @@ The server values come from `secrets/release.env`; `POSTGRES_PASSWORD` is random
 | Restart | `docker compose restart api` |
 | Backup now | `./backup.sh` |
 
+## Logs
+
+Container logs are capped at 3 x 10 MB per service and emptied every Monday (the privacy policy promises at most 7 days). Root's crontab:
+
+```
+0 4 * * 1 truncate -s 0 /var/lib/docker/containers/*/*-json.log
+```
+
 ## Backups
 
 `backup.sh` runs every night at 03:30 from cron and keeps 14 days in `~/backups`:
